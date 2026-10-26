@@ -112,7 +112,7 @@ button{font:inherit;color:inherit}
 :root{
   --bg:#E9EEF4; --ink:#1F2A37; --soft:#5B6878; --rule:#C9D3DF;
   --head:#1E3A5F; --now:#D7262E; --card:#FFFFFF;
-  --js:#3274C4; --dec:#7B4F9E; --rp:#4F9A46; --ca:#F2C230; --autre:#8A94A3;
+  --js:#3274C4; --dec:#7B4F9E; --rp:#3A902D; --ca:#5BB7D5; --abs:#DE8AEA; --dj:#333333; --autre:#8A94A3;
   color-scheme: light; box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
@@ -445,18 +445,23 @@ function analyser(ev){
 }
 
 /* ---------- Catégories ---------- */
+// Codes couleur de l'agenda Graou : vert (repos), bleu clair (congés, maladie…), rose (absences), « d » en pastille sombre
 function categorie(ev){
   if(!ev.entier) return 'js';
-  const t=ev.titre.toUpperCase();
-  if(/^(RP|RM|RF|RQ|RU)\b/.test(t)) return 'rp';
-  if(/\bCA\b/.test(t)) return 'ca';
+  const brut=String(ev.titre||'').replace(/^•\s*/,'').trim(), tok=brut.split(/\s+/)[0]||'', T=tok.toUpperCase();
+  if(tok==='d') return 'd';
+  if(/^(RP|RM|RF|RQ|RU|VT)$/.test(T)) return 'rp';
+  if(/^(CA|½CA|12CA|MA|EC|RG)$/.test(T) || tok==='i' || /^1\/2$/.test(T) || /\bCA\b/.test(brut.toUpperCase())) return 'ca';
+  if(/^(AH|AY|CSE|DD|CSCT|RPX)$/.test(T)) return 'abs';
   return 'autre';
 }
 const COUL = {
   js:  {bg:'var(--js)',  fg:'#fff', nom:'Service'},
   dec: {bg:'var(--dec)', fg:'#fff', nom:'Découché'},
   rp:  {bg:'var(--rp)',  fg:'#fff', nom:'Repos'},
-  ca:  {bg:'var(--ca)',  fg:'#1F2A37', nom:'Congé'},
+  ca:  {bg:'var(--ca)',  fg:'#fff', nom:'Congé'},
+  abs: {bg:'var(--abs)', fg:'#fff', nom:'Absence'},
+  d:   {bg:'var(--dj)',  fg:'#fff', nom:'d'},
   autre:{bg:'var(--autre)', fg:'#fff', nom:'Autre'}
 };
 const court = t => t.replace(/\s+-?\d+(?:[.,]\d+)?$/,'');
@@ -665,7 +670,7 @@ function rendreEntete(){
     const j=ajout(mon,i), b=document.createElement('button');
     b.className='jour'+(cle(j)===cle(d)?' sel':'')+(cle(j)===cle(auj)?' auj':'');
     const it=(INDEX[cle(j)]||[])[0];
-    b.innerHTML=l+'<b>'+j.getDate()+'</b><span class="pt" style="background:'+(it?COUL[it.cat].bg:'transparent')+'"></span>';
+    b.innerHTML=l+'<b>'+j.getDate()+'</b><span class="pt" style="background:'+(it?(it.cat==='d'?'#C9D3DF':COUL[it.cat].bg):'transparent')+'"></span>';
     b.setAttribute('aria-label',cap(JOURS[j.getDay()])+' '+j.getDate()+' '+MOIS[j.getMonth()]+(it?', '+COUL[it.cat].nom:''));
     b.onclick=()=>{ etat.date=j; rendre(); };
     box.appendChild(b);
@@ -1497,7 +1502,7 @@ main{padding:10px 10px 30px;max-width:900px;margin:0 auto}
 .carte{background:#fff;border:1px solid var(--trait);border-radius:12px;overflow:hidden;margin-bottom:10px}
 .bandeau{background:var(--js);color:#fff;padding:9px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .bandeau.dec{background:#7A4FB5}
-.bandeau.rp{background:#2E9E5B}.bandeau.ca{background:#E0A93B;color:#1F2A37}.bandeau.autre{background:#5B6878}
+.bandeau.rp{background:#3A902D}.bandeau.ca{background:#5BB7D5}.bandeau.abs{background:#DE8AEA}.bandeau.d{background:#333}.bandeau.autre{background:#5B6878}
 .bandeau .code{font-size:21px;font-weight:700}
 .bandeau .sous{font-size:13.5px;opacity:.92}
 .bandeau .h{margin-left:auto;font-size:15px;font-weight:600}
@@ -1618,11 +1623,14 @@ function nuitDu(k){   // k = jour du changement
 function texteChangement(c, quand){
   return `🕐 Changement d’heure ${quand} : à ${c.avant} h il sera ${c.apres} h (${c.hiver?'passage à l’heure d’hiver':'passage à l’heure d’été'}).`;
 }
+// Codes couleur de l'agenda Graou : vert (repos), bleu clair (congés, maladie…), rose (absences), « d » en pastille sombre
 function categorie(ev){
   if(!ev.entier) return 'js';
-  const t=String(ev.titre||'').toUpperCase();
-  if(/^(RP|RM|RF|RQ|RU)\b/.test(t)) return 'rp';
-  if(/\bCA\b/.test(t)) return 'ca';
+  const brut=String(ev.titre||'').replace(/^•\s*/,'').trim(), tok=brut.split(/\s+/)[0]||'', T=tok.toUpperCase();
+  if(tok==='d') return 'd';
+  if(/^(RP|RM|RF|RQ|RU|VT)$/.test(T)) return 'rp';
+  if(/^(CA|½CA|12CA|MA|EC|RG)$/.test(T) || tok==='i' || /^1\/2$/.test(T) || /\bCA\b/.test(brut.toUpperCase())) return 'ca';
+  if(/^(AH|AY|CSE|DD|CSCT|RPX)$/.test(T)) return 'abs';
   return 'autre';
 }
 let INDEX={};
@@ -1884,7 +1892,7 @@ function detailLignes(x){
 /* ---- Affichage d'un jour ---- */
 let JOUR=null;
 /* ---- Vue mois (dans l'esprit de l'agenda Graou) ---- */
-const COUL_CAT={js:'#2F5FA8',dec:'#2F5FA8',rp:'#2E9E5B',ca:'#3FA9D6',autre:'#E87722'};
+const COUL_CAT={js:'#2F5FA8',dec:'#2F5FA8',rp:'#3A902D',ca:'#5BB7D5',abs:'#DE8AEA',d:'#333333',autre:'#E87722'};
 // Grille de semaines complètes (lundi → dimanche), sans s'arrêter au mois calendaire
 const SEMAINES=5;
 function lundiDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-(x.getDay()+6)%7); return x; }
@@ -1916,6 +1924,10 @@ function moisSVG(debut,W,nbSem,sansEntete){
         if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
       } else {
         const t=String(e.ev.titre||'').replace(/^•\s*/,''), fs=t.length>6?9.5:11.5;
+        if(e.cat==='d'){   // « d » : pastille sombre, lettre blanche, comme dans Graou
+          const r=Math.min(cw,ch)*0.17;
+          o.push(`<circle cx="${cx.toFixed(1)}" cy="${(y+ch*0.52).toFixed(1)}" r="${r.toFixed(1)}" fill="${coul}"/><text x="${cx.toFixed(1)}" y="${(y+ch*0.52+r*0.42).toFixed(1)}" font-size="${(r*1.25).toFixed(1)}" fill="#fff" text-anchor="middle">${esc(t)}</text>`);
+        } else
         o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.55).toFixed(1)}" font-size="${fs}" font-weight="700" fill="${coul}" text-anchor="middle">${esc(t)}</text>`);
       }
     }
