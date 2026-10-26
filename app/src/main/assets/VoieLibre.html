@@ -2478,8 +2478,17 @@ function majService(){
     const trav=new Set(L.filter(s=>jours.includes(s.j)).map(s=>s.j));
     lirePl('pl-evts').concat(lirePl('pl-csv')).forEach(e=>{ if(e&&e.entier&&estJourD(e.titre)) jours.forEach(j=>{ if(j>=e.j1&&j<=e.j2) trav.add(j); }); });
     const nbS=trav.size;
-    const rep=new Set(); lirePl('pl-evts').concat(lirePl('pl-csv')).forEach(e=>{ if(e&&e.entier&&estRepos(e.titre)) jours.forEach(j=>{ if(j>=e.j1&&j<=e.j2) rep.add(j); }); });
-    T.semaines=(nbS||rep.size)?`Cette semaine : ${nbS} service${nbS>1?'s':''} · ${rep.size} repos`:'Ton planning semaine par semaine';
+    // repos (dont AH) et congés annuels (CA, ½CA comptée pour une demi-journée)
+    const rep=new Set(), ca=new Map();
+    lirePl('pl-evts').concat(lirePl('pl-csv')).forEach(e=>{ if(!e||!e.entier) return;
+      const tok=String(e.titre||'').replace(/^•\s*/,'').trim().toUpperCase(), demi=/^(½CA|12CA|1\/2\s*CA)/.test(tok), estCA=demi||/^CA\b/.test(tok);
+      jours.forEach(j=>{ if(j<e.j1||j>e.j2) return; if(estCA) ca.set(j,demi?0.5:1); else if(estRepos(e.titre)||/^AH\b/.test(tok)) rep.add(j); }); });
+    const nbCA=[...ca.values()].reduce((a,b)=>a+b,0), caTxt=nbCA===0.5?'½ jour':String(nbCA).replace('.',',')+' jour'+(nbCA>=2?'s':'');
+    const morceaux=[];
+    if(nbS) morceaux.push(`${nbS} service${nbS>1?'s':''}`);
+    if(rep.size) morceaux.push(`${rep.size} repos`);
+    if(nbCA) morceaux.push(`<span style="color:#3A9CC0;font-weight:600">${caTxt} de congés annuels</span>`);
+    T.semaines=morceaux.length?'Cette semaine : '+morceaux.join(' · '):'Ton planning semaine par semaine';
     // Repos : période en cours, sinon la prochaine
     const R=reposInfo(now); T.repos=R.html; TITRES.repos=R.titre; CIBLE_REPOS=R.date;
     // Rappels
