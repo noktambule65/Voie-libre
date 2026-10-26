@@ -269,6 +269,22 @@ public class Pont {
         }
     }
 
+    /** Présentation (dernière page) : demande d'autorisation d'Android, ou l'écran des notifications si elle a déjà été refusée. */
+    @JavascriptInterface
+    public void demanderNotifs() {
+        if (act == null) return;
+        surEcran(() -> {
+            if (Build.VERSION.SDK_INT >= 33
+                    && ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                    && !Notifs.prefs(ctx).getBoolean("permDemandee", false)) {
+                Notifs.prefs(ctx).edit().putBoolean("permDemandee", true).apply();
+                act.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 77);
+            } else if (!Notifs.autorisees(ctx)) {
+                ouvrirReglagesNotifs();
+            }
+        });
+    }
+
     /** Bouton « Autoriser les notifications » (Paramètres) : ouvre directement l'écran des notifications de l'appli. */
     @JavascriptInterface
     public void ouvrirReglagesNotifs() {
