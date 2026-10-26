@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.VoieLibre" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fond</item>
+        <item name="android:statusBarColor">@color/bandeau</item>
+        <item name="android:navigationBarColor">@color/bandeau</item>
+        <item name="android:colorPrimary">@color/bandeau</item>
+        <item name="android:colorAccent">@color/bandeau</item>
+    </style>
+    <color name="bandeau">#14243A</color>
+    <color name="fond">#E9EEF4</color>
+    <color name="icone_fond">#14243A</color>
+</resources>

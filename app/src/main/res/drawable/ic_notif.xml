@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Petite icône des notifications : tête de signal (feu du haut allumé (rouge), feu du bas éteint) sur son mât.
+     Android l'affiche en blanc dans la barre d'état : la forme seule doit être reconnaissable. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M12,0.5a6,6 0,0 1,6 6v5a6,6 0,0 1,-6 6a6,6 0,0 1,-6 -6v-5a6,6 0,0 1,6 -6z
+            M12,3.8a2.5,2.5 0,1 0,0 5a2.5,2.5 0,1 0,0 -5z
+            M12,9.2a2.5,2.5 0,1 0,0 5a2.5,2.5 0,1 0,0 -5z"/>
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M12,4.8a1.5,1.5 0,1 0,0 3a1.5,1.5 0,1 0,0 -3z M10.7,17h2.6v6.5h-2.6z"/>
+</vector>

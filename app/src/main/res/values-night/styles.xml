@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème sombre du téléphone : la page suit (prefers-color-scheme) car ce thème n'est pas « clair » -->
+    <style name="Theme.VoieLibre" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fond</item>
+        <item name="android:statusBarColor">@color/bandeau</item>
+        <item name="android:navigationBarColor">@color/bandeau</item>
+        <item name="android:colorPrimary">@color/bandeau</item>
+        <item name="android:colorAccent">@color/bandeau</item>
+    </style>
+    <color name="fond">#0E141B</color>
+</resources>

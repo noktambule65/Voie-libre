@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Le numéro de version suit le numéro de compilation GitHub : chaque APK remplace le précédent.
+def numero = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+// Mot de passe de la clé de signature : secret VOIE_LIBRE_MDP du dépôt (jamais écrit dans le code).
+def mdp = System.getenv('VOIE_LIBRE_MDP')
+
+android {
+    namespace 'fr.noktambule.voielibre'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'fr.noktambule.voielibre'
+        minSdk 29
+        targetSdk 34
+        versionCode numero
+        versionName "1.${numero}"
+    }
+
+    // Clé de signature fixe (déchiffrée par GitHub Actions) : indispensable pour installer les mises à jour par-dessus.
+    signingConfigs {
+        voielibre {
+            storeFile file('voie-libre.jks')
+            storePassword mdp
+            keyAlias 'voielibre'
+            keyPassword mdp
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (mdp) signingConfig signingConfigs.voielibre
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.work:work-runtime:2.9.1'
+}
