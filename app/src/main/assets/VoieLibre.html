@@ -986,6 +986,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 /* Choix d'une gare (codes Graou de toute la France) */
 #voile .panneau .action.deco{background:transparent;color:var(--now);border:1.5px solid var(--now);margin-top:22px}
 #choixGare{z-index:30}
+#voile .panneau .action.autoriseNotif{margin-top:8px}
 #voile .panneau .lienAide{display:block;border:0;background:none;color:var(--js);font:inherit;font-size:14.5px;font-weight:600;padding:8px 0 2px;text-align:left;text-decoration:underline;cursor:pointer}
 #tutoGraou{z-index:30}
 #tutoGraou .intro{font-size:15px;line-height:1.45;margin:2px 0 14px}
@@ -1047,7 +1048,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     effacer.before(n);
     const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:true,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
     const etat=()=>{ const o=lire(); let ok=true; try{ ok=AND.notifsAutorisees(); }catch(e){}
-      $('nEtat').textContent=(o.modif||o.dec||o.ch3||o.chVeille||o.taches||o.reveilOn||o.neige||o.neigeJour||o.sync)&&!ok?'⚠️ Android bloque les notifications de Voie libre : autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).':'';
+      const bloque=(o.modif||o.dec||o.ch3||o.chVeille||o.taches||o.reveilOn||o.neige||o.neigeJour||o.sync)&&!ok;
+      $('nEtat').innerHTML=bloque?'⚠️ Android bloque les notifications de Voie libre.'
+        +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).'):'';
+      const bA=$('nAutorise'); if(bA) bA.onclick=()=>{ try{ AND.ouvrirReglagesNotifs(); }catch(e){} };
       let dg=''; try{ dg=AND.diagWidget?AND.diagWidget():''; }catch(e){}
       $('wDiag').textContent=dg?'Widget : dernier affichage raté le '+dg+' (rattrapé automatiquement).':''; };
     const remplir=()=>{ const o=lire(); $('nModif').checked=!!o.modif; $('nDec').checked=!!o.dec; $('nHeure').value=String(o.heure||18);

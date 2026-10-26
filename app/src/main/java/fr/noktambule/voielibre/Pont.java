@@ -269,6 +269,22 @@ public class Pont {
         }
     }
 
+    /** Bouton « Autoriser les notifications » (Paramètres) : ouvre directement l'écran des notifications de l'appli. */
+    @JavascriptInterface
+    public void ouvrirReglagesNotifs() {
+        if (act == null) return;
+        surEcran(() -> {
+            try {
+                act.startActivity(new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, ctx.getPackageName()));
+            } catch (Exception e) {
+                // repli : fiche de l'appli dans les réglages d'Android
+                try { act.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + ctx.getPackageName()))); } catch (Exception ignore) { }
+            }
+        });
+    }
+
     /** Délais et sonneries du bouton ⏰, repris par le bouton de la notification « Réveil oublié ». */
     @JavascriptInterface
     public void reglerReveils(String json) {
