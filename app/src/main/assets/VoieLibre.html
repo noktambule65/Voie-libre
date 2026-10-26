@@ -1158,7 +1158,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const notesHtml=notes=>`<div class="sousOpt notesGare">${notes.map((n,i)=>`<div class="noteGare" data-i="${i}" data-gare="${esc(n.gare||'')}">
         <span>Au départ de</span> <button class="action clair bgare" data-ngare="${i}">${esc(n.gare||'choisir la gare')}</button>
         <input data-nt="${i}" value="${esc(n.texte||'')}" placeholder="Phrase ajoutée au rappel"><button class="lien" data-nsup="${i}" aria-label="Supprimer">✕</button></div>`).join('')}
-        <button class="action clair" data-najout="1">+ Ajouter une phrase pour une gare de départ</button></div>`;
+        <button class="action clair" data-najout="1">+ Ajouter une phrase pour une gare de départ</button><p class="petit">Utile en cas de spécificité locale (AuM, etc.)</p></div>`;
     const changerT=()=>{ const t=lireT(), c=$('nTachesCorps');
       c.querySelectorAll('[data-on]').forEach(i=>t[i.dataset.on].on=i.checked);
       c.querySelectorAll('[data-t]').forEach(i=>{ t[i.dataset.t].min=mn(i.value,t[i.dataset.t].min); i.value=t[i.dataset.t].min; });
