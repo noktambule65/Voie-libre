@@ -1005,7 +1005,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 .panneau .noteGare select{font:inherit;font-size:14px;padding:4px 6px;border:1.5px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
 .panneau .noteGare input{box-sizing:border-box;flex:1 1 100%;min-width:0;font:inherit;font-size:15px;padding:8px;border:1.5px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink);order:3}
 .panneau .noteGare .lien{margin-left:auto;font-size:16px;padding:2px 8px}.panneau details.sousMenu label.coche.long span{flex:1}
-.treveil td.sup{width:30px;text-align:right}.treveil td.sup .lien{font-size:16px;padding:2px 6px}
+.treveil td.sup{width:30px;text-align:right}.treveil input:disabled{opacity:.35}.treveil td.sup .lien{font-size:16px;padding:2px 6px}
 #voile .panneau .noteGare .bgare{width:auto!important;flex:0 1 auto;max-width:60%;margin:0!important;padding:6px 10px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #voile .panneau .ajoutG{display:block;width:100%!important;box-sizing:border-box;margin:6px 0 0}
 /* Choix d'une gare (codes Graou de toute la France) */
@@ -1157,11 +1157,15 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const DEF={defaut:{r:60,d:30}, lieux:{}};
     const lireR=()=>{ const o=charger('bo-reveil',null); return o&&o.lieux?o:JSON.parse(JSON.stringify(DEF)); };
     const z=document.createElement('div'); z.setAttribute('data-sec','reveil');
-    const ligne=(nom,v,lib)=>`<tr data-lieu="${esc(nom)}"><td>${esc(lib||nom)}</td><td><input type="number" min="0" max="300" step="5" inputmode="numeric" data-k="r" value="${v.r}"></td><td><input type="number" min="0" max="300" step="5" inputmode="numeric" data-k="d" value="${v.d}"></td><td class="sup">${lib?'':`<button class="lien" data-rvsup="${esc(nom)}" aria-label="Retirer">✕</button>`}</td></tr>`;
+    const ligne=(nom,v,lib)=>{ const al=alarmes(lireR()); return `<tr data-lieu="${esc(nom)}"><td>${esc(lib||nom)}</td><td><input type="number" min="0" max="300" step="5" inputmode="numeric" data-k="r" value="${v.r}"${al.r?'':' disabled'}></td><td><input type="number" min="0" max="300" step="5" inputmode="numeric" data-k="d" value="${v.d}"${al.d?'':' disabled'}></td><td class="sup">${lib?'':`<button class="lien" data-rvsup="${esc(nom)}" aria-label="Retirer">✕</button>`}</td></tr>`; };
     // Accordéon : seul son contenu est redessiné, pour qu'il reste ouvert pendant les réglages
     z.innerHTML=`<details class="sousMenu"><summary>Réveil (bouton ⏰ dans « Voir ma journée »)</summary><div class="rvCorps"></div></details>`;
-    const dessiner=()=>{ const o=lireR();
-      z.querySelector('.rvCorps').innerHTML=`<p class="petit">Minutes avant la prise de service, selon la gare de PS.</p>
+    const alarmes=o=>Object.assign({r:true,d:true}, o.alarmes||{});
+    const dessiner=()=>{ const o=lireR(), al=alarmes(o);
+      z.querySelector('.rvCorps').innerHTML=`<div class="coche chg"><b>Alarmes à régler</b>
+          <span class="chgCases"><label><input type="checkbox" data-al="r"${al.r?' checked':''}> Réveil</label><label><input type="checkbox" data-al="d"${al.d?' checked':''}> Départ</label></span>
+          <small>Le bouton ⏰ de « Voir ma journée » et la notification « Réveil oublié » règlent ces alarmes dans l’Horloge. Au moins une des deux.</small></div>
+        <p class="petit">Minutes avant la prise de service, selon la gare de PS.</p>
         <table class="treveil"><tr><th>Gare de PS</th><th>Réveil</th><th>Départ</th><th></th></tr>
         ${Object.keys(o.lieux).map(n=>ligne(n,o.lieux[n])).join('')}
         ${ligne('Autres gares',o.defaut,Object.keys(o.lieux).length?'Autres gares':'Toutes les gares')}</table>
@@ -1188,6 +1192,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       else if(e.target.closest('[data-raz]')) majSon(c,{uri:'',titre:''});
     });
     z.addEventListener('change',e=>{ const v=e.target.closest('[data-vib]'); if(v) majSon(v.closest('.lson').dataset.c,{vib:v.checked}); });
+    z.addEventListener('change',e=>{ const c=e.target.closest('[data-al]'); if(!c) return;
+      const o=lireR(), al=alarmes(o); al[c.dataset.al]=c.checked;
+      if(!al.r && !al.d) al[c.dataset.al==='r'?'d':'r']=true;   // jamais aucune alarme : l'autre se coche
+      o.alarmes=al; sauver('bo-reveil',o); versAndroid(o); dessiner(); });
     dessiner();
     z.addEventListener('change',e=>{
       const i=e.target.closest('input[data-k]'); if(!i) return;
@@ -1246,7 +1254,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     if(zR || $('nRv')){
       const cR=carte('⏰','Réveil','rReveil');
       if($('nRv')) mettre(cR, lab('nRv'));
-      if(zR){ const sm=zR.querySelector('summary'); if(sm) sm.textContent='Délais et sonneries du réveil';
+      if(zR){ const sm=zR.querySelector('summary'); if(sm) sm.textContent='Alarmes, délais et sonneries';
         cR.appendChild(zR); }
     }
 
@@ -1989,25 +1997,31 @@ function infosReveil(x){
   const L=lieuMeteo(x.s.ps.lieu), nom=L?L.n:String(x.s.ps.lieu||'').trim(), R=reglagesReveil();
   const dl=(L&&R.lieux[L.n])||R.lieux[nom]||R.defaut;
   const tR=tPS-dl.r*60000, tD=tPS-dl.d*60000, now=Date.now();
-  // L'Horloge ne connaît que l'heure : le réveil doit tomber dans les 24 h qui viennent
-  const ok=tR>now && tR-now<24*3600000;
-  return {A, tR, tD, ok, nom, ps:x.s.ps.h, code:x.code};
+  const al=Object.assign({r:true,d:true}, R.alarmes||{});
+  const avecR=al.r||!al.d, avecD=al.d && (!avecR || tD>tR);
+  // L'Horloge ne connaît que l'heure : la première alarme doit tomber dans les 24 h qui viennent
+  const t1=avecR?tR:tD, ok=t1>now && t1-now<24*3600000;
+  return {A, tR, tD, avecR, avecD, ok, nom, ps:x.s.ps.h, code:x.code};
+}
+function texteAlarmes(r){
+  return r.avecR&&r.avecD ? `le réveil ${hhmm(r.tR)} et le départ ${hhmm(r.tD)}` : r.avecR ? `le réveil ${hhmm(r.tR)}` : `l’alarme de départ ${hhmm(r.tD)}`;
 }
 const hhmm=t=>{ const d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
 function boutonReveil(x){
   const r=infosReveil(x); if(!r) return '';
-  if(!r.ok) return `<div class="reveilInfo">⏰ Réveil ${hhmm(r.tR)} · départ ${hhmm(r.tD)} — à régler dans les 24 h qui précèdent</div>`;
-  return `<button class="reveil" data-reveil="${esc(x.seg+'')}">⏰ Régler le réveil ${hhmm(r.tR)} et le départ ${hhmm(r.tD)}</button>`;
+  if(!r.ok) return `<div class="reveilInfo">⏰ ${[r.avecR?'Réveil '+hhmm(r.tR):'', r.avecD?'départ '+hhmm(r.tD):''].filter(Boolean).join(' · ')} — à régler dans les 24 h qui précèdent</div>`;
+  return `<button class="reveil" data-reveil="${esc(x.seg+'')}">⏰ Régler ${texteAlarmes(r)}</button>`;
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-reveil]'); if(!b) return;
   const x=(INDEX[JOUR]||[]).find(z=>z.s && String(z.seg)===b.dataset.reveil); const r=x&&infosReveil(x); if(!r||!r.ok) return;
   const lib=`${r.code} PS ${r.ps} ${r.nom}`, d1=new Date(r.tR), d2=new Date(r.tD);
   const sons=reglagesReveil().sons||{}, avecSon=(o,c)=>{ const v=sons[c]; if(v){ if(v.uri) o.son=v.uri; o.vib=v.vib!==false; } return o; };
-  const liste=[avecSon({h:d1.getHours(), m:d1.getMinutes(), msg:'Voie libre · Réveil · '+lib},'r')];
-  if(r.tD>r.tR) liste.push(avecSon({h:d2.getHours(), m:d2.getMinutes(), msg:'Voie libre · Départ · '+lib},'d'));
+  const liste=[];
+  if(r.avecR) liste.push(avecSon({h:d1.getHours(), m:d1.getMinutes(), msg:'Voie libre · Réveil · '+lib},'r'));
+  if(r.avecD) liste.push(avecSon({h:d2.getHours(), m:d2.getMinutes(), msg:'Voie libre · Départ · '+lib},'d'));
   let ok=false; try{ ok=r.A.reveils(JSON.stringify(liste)); }catch(err){}
-  b.textContent=ok?`✓ Demandé à l’Horloge : réveil ${hhmm(r.tR)}, départ ${hhmm(r.tD)}`:'Aucune appli Horloge trouvée pour régler le réveil';
+  b.textContent=ok?`✓ Demandé à l’Horloge : ${texteAlarmes(r)}`:'Aucune appli Horloge trouvée pour régler le réveil';
   b.disabled=true;
 });
 // Avertissement de changement d'heure : le jour même et la veille (« la nuit prochaine »)

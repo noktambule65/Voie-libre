@@ -535,14 +535,22 @@ public class Notifs extends BroadcastReceiver {
             }
             if (dl == null) dl = new JSONObject().put("r", 60).put("d", 30);
             long ps = j.optLong("debut"), tR = ps - dl.optInt("r", 60) * 60000L, tD = ps - dl.optInt("d", 30) * 60000L;
-            if (tR <= System.currentTimeMillis()) return null;
+            // alarmes choisies dans Paramètres › Réveil : réveil et départ, réveil seul ou départ seul
+            JSONObject al = o.optJSONObject("alarmes");
+            boolean avecR = al == null || al.optBoolean("r", true), avecD0 = al == null || al.optBoolean("d", true);
+            if (!avecR && !avecD0) avecR = true;
+            boolean avecD = avecD0 && (!avecR || tD > tR);
+            long t1 = avecR ? tR : tD;
+            if (t1 <= System.currentTimeMillis()) return null;
             String lib = j.optString("code") + " PS " + VoieLibreWidget.hm(ps) + " " + gare;
             Calendar c = Calendar.getInstance();
             JSONArray liste = new JSONArray();
-            c.setTimeInMillis(tR);
-            liste.put(avecSon(new JSONObject().put("h", c.get(Calendar.HOUR_OF_DAY)).put("m", c.get(Calendar.MINUTE))
-                    .put("msg", "Voie libre · Réveil · " + lib), o.optJSONObject("sons"), "r"));
-            if (tD > tR) {
+            if (avecR) {
+                c.setTimeInMillis(tR);
+                liste.put(avecSon(new JSONObject().put("h", c.get(Calendar.HOUR_OF_DAY)).put("m", c.get(Calendar.MINUTE))
+                        .put("msg", "Voie libre · Réveil · " + lib), o.optJSONObject("sons"), "r"));
+            }
+            if (avecD) {
                 c.setTimeInMillis(tD);
                 liste.put(avecSon(new JSONObject().put("h", c.get(Calendar.HOUR_OF_DAY)).put("m", c.get(Calendar.MINUTE))
                         .put("msg", "Voie libre · Départ · " + lib), o.optJSONObject("sons"), "d"));
@@ -550,7 +558,8 @@ public class Notifs extends BroadcastReceiver {
             Intent i = new Intent(ctx, ReveilActivity.class).putExtra("liste", liste.toString())
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             PendingIntent pi = PendingIntent.getActivity(ctx, 2006, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            String titre = "Régler " + VoieLibreWidget.hm(tR) + (tD > tR ? " + départ " + VoieLibreWidget.hm(tD) : "");
+            String titre = avecR ? "Régler " + VoieLibreWidget.hm(tR) + (avecD ? " + départ " + VoieLibreWidget.hm(tD) : "")
+                    : "Régler le départ " + VoieLibreWidget.hm(tD);
             return new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(ctx, R.drawable.ic_notif), titre, pi).build();
         } catch (Exception e) {
             return null;
