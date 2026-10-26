@@ -1044,6 +1044,9 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 #voile .panneau .action.deco{background:transparent;color:var(--now);border:1.5px solid var(--now);margin-top:22px}
 #choixGare{z-index:30}
 #voile .panneau .action.autoriseNotif{margin-top:8px}
+.panneau .noteAuto{background:#FFF3E0;border:1px solid #F3C48B;color:#8A4B00;border-radius:10px;padding:9px 11px;font-size:13.5px;line-height:1.4;margin:4px 0 8px}
+.panneau .noteAuto .btnAuto{display:inline-block;margin-left:4px;border:0;border-radius:8px;background:#E8902E;color:#fff;font:inherit;font-size:13.5px;font-weight:700;padding:4px 12px;cursor:pointer}
+@media (prefers-color-scheme: dark){.panneau .noteAuto{background:#2E2214;border-color:#6B4A1F;color:#F3C48B}}
 .panneau .autos{margin:4px 0 6px;display:flex;flex-direction:column;gap:6px}
 .panneau .autosTitre{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
 .panneau .auto{border:1px solid var(--rule);border-radius:10px;padding:8px 10px}
@@ -1153,7 +1156,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <label class="coche long"><input type="checkbox" data-hors="1"${t.rs.horsTrain?' checked':''}><span>Pas de rappel RS ou PC si je suis en conduite à ce moment-là</span></label>`; };
     // Bandeau rouge persistant du départ des trains (téléphone en utilisation) : autorisation Android 14+
     const pleinEcranHtml=()=>{ let ok=true; try{ ok=!AND.pleinEcranAutorise || AND.pleinEcranAutorise(); }catch(e){}
-      return ok?'':'<p class="petit sousOpt">Bandeau rouge non autorisé : le rappel de départ disparaît après quelques secondes si tu utilises le téléphone. <button class="lien" data-pleinecran="1">Autoriser</button></p>'; };
+      return ok?'':'<div class="sousOpt"><div class="noteAuto">⚠️ <b>Bandeau rouge non autorisé</b> : le rappel de départ disparaît après quelques secondes si tu utilises le téléphone. <button class="btnAuto" data-pleinecran="1">Autoriser</button></div></div>'; };
     // Phrase ajoutée au rappel de départ, seulement pour les trains partant d'une gare donnée (particularité locale)
     const notesHtml=notes=>`<div class="sousOpt notesGare">${notes.map((n,i)=>`<div class="noteGare" data-i="${i}" data-gare="${esc(n.gare||'')}">
         <span>Au départ de</span> <button class="action clair bgare" data-ngare="${i}">${esc(n.gare||'choisir la gare')}</button>
@@ -1192,6 +1195,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const rsup=e.target.closest('[data-rssup]');
       if(rsup){ const t=changerT(); delete t.rs.lieux[rsup.dataset.rssup]; enregT(t); } });
     window.addEventListener('focus',()=>{ try{ dessinerT(); }catch(e){} });
+    // retour des réglages d'Android : la mention disparaît si l'autorisation vient d'être donnée
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ try{ dessinerT(); }catch(e){} } });
     remplir();
     try{ AND.reprendreNotifs(JSON.stringify(Object.assign(lire(),{taches:lireT()}))); }catch(e){}   // l'appli Android reprend les réglages
     window.addEventListener('focus',etat); document.addEventListener('visibilitychange',etat);
