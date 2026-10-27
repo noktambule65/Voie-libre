@@ -589,7 +589,8 @@ public class VoieLibreWidget extends AppWidgetProvider {
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget);
         boolean nuit = nuit(ctx);
         themeImpose = !theme(ctx).equals("auto");
-        if (themeImpose) v.setInt(R.id.racine, "setBackgroundResource", nuit ? R.drawable.fond_sombre : R.drawable.fond_clair);
+        // fond : thème imposé (clair ou sombre), sinon celui de l'appareil (fond_widget, version jour/nuit)
+        v.setImageViewResource(R.id.fond, themeImpose ? (nuit ? R.drawable.fond_sombre : R.drawable.fond_clair) : R.drawable.fond_widget);
         couleur(v, R.id.titre, BLEU, nuit);
         couleur(v, R.id.sousTitre, GRIS, nuit);
         couleur(v, R.id.statut, ENCRE, nuit);
