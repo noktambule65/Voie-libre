@@ -1419,9 +1419,9 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     if(NATIF){
       const bD=document.createElement('button'); bD.className='action clair'; bD.textContent='Journal de diagnostic';
       bD.onclick=()=>{
-        let rendu=''; try{ rendu=NATIF.diagRendu?NATIF.diagRendu():''; }catch(e){}
+        let rendu='', fil=''; try{ rendu=NATIF.diagRendu?NATIF.diagRendu():''; fil=NATIF.diagTrace?NATIF.diagTrace():''; }catch(e){}
         const L=(window.top.__vlDiag||[]).slice().reverse();
-        const txt='Voie libre · journal de diagnostic\n'+(rendu?'Dernier arrêt du moteur web : '+rendu+'\n':'Aucun arrêt du moteur web enregistré.\n')+'\n'+L.join('\n');
+        const txt='Voie libre · journal de diagnostic\n'+(rendu?'Dernier arrêt du moteur web : '+rendu+'\n':'Aucun arrêt du moteur web enregistré.\n')+(fil?'\nCôté Android (plus récent en haut) :\n'+fil+'\n':'')+'\nCôté page :\n'+L.join('\n');
         const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='diagPage'; ov.style.zIndex=30;
         ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>Journal de diagnostic</h2></div>
           <div class="pcorps"><p class="petit">Les événements les plus récents en haut. Envoie ce journal pour aider à trouver ce qui ralentit l’appli : il ne contient ni ton lien Graou ni ton planning.</p>
@@ -2601,14 +2601,16 @@ function raccordAndroid(){
   var A=window.BoulotAndroid; if(!A) return;
   // Journal de diagnostic : blocages de l'affichage, erreurs, mémoire. Gardé sur le téléphone (Paramètres › Aide).
   (function(){
-    var T=window.top, nom=(window===T?'accueil':(document.title||'cadre'));
+    var T=window.top, nom=(window===T?'accueil':((window.frameElement&&window.frameElement.title)||document.title||'cadre'));
     try{
       if(!T.__vlDiagNote){
         var L=[]; try{ var v=JSON.parse(T.localStorage.getItem('vl-diag')||'[]'); if(Array.isArray(v)) L=v.slice(-250); }catch(e){}
         T.__vlDiag=L;
         T.__vlDiagNote=function(t){ var d=new Date(), p=function(n){ return ('0'+n).slice(-2); };
           T.__vlDiag.push(p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+t);
-          if(T.__vlDiag.length>300) T.__vlDiag.splice(0,T.__vlDiag.length-300); T.__vlDiagSale=true; };
+          if(T.__vlDiag.length>300) T.__vlDiag.splice(0,T.__vlDiag.length-300); T.__vlDiagSale=true;
+          try{ T.BoulotAndroid && T.BoulotAndroid.trace && T.BoulotAndroid.trace(t); }catch(e){} };
+        T.__vlEtape=function(t){ try{ T.BoulotAndroid && T.BoulotAndroid.trace && T.BoulotAndroid.trace(t); }catch(e){} };
         T.setInterval(function(){ try{ var m=T.performance.memory; if(m) T.__vlDiagNote('mémoire JS '+Math.round(m.usedJSHeapSize/1048576)+' Mo (limite '+Math.round(m.jsHeapSizeLimit/1048576)+')'); }catch(e){} },20000);
         T.setInterval(function(){ if(T.__vlDiagSale){ T.__vlDiagSale=false; try{ T.localStorage.setItem('vl-diag',JSON.stringify(T.__vlDiag)); }catch(e){} } },2000);
         var u=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||[])[1]||'?', n=0; try{ n=T.localStorage.length; }catch(e){}
@@ -2617,6 +2619,20 @@ function raccordAndroid(){
       }
       var note=T.__vlDiagNote;
       note('page « '+nom+' » chargée');
+      // Étapes principales : entrée notée côté Android avant d'exécuter (si l'appli se fige, on sait où)
+      var envelopper=function(){ ['rendre','rendreJour','rendreEntete','rendreStatut','chargerMeteo','remplirMeteo','majDepuisLien','enregistrer','lireICS','indexer','chargerDonnees',
+       'appliquerRepos','ouvrirPanneau','montrerVolet','rubriques','graphique','rendreMois','changerMode','exporterWidget','svgVersPng','detailLignes',
+       'accueil','majService','chargerMeteoG','joursEntiers','reposInfo','tout','traiter'].forEach(function(n){
+        var f=window[n]; if(typeof f!=='function' || f.__vlTrace) return;
+        var g=function(){ var t0=performance.now(); T.__vlEtape('→ '+nom+'.'+n);
+          var r; try{ r=f.apply(this,arguments); }
+          catch(e){ T.__vlEtape('✗ '+nom+'.'+n+' '+(e&&e.message||e)); throw e; }
+          if(r && typeof r.then==='function') r.then(function(){ T.__vlEtape('← '+nom+'.'+n+' '+Math.round(performance.now()-t0)+' ms'); },function(){});
+          else T.__vlEtape('← '+nom+'.'+n+' '+Math.round(performance.now()-t0)+' ms');
+          return r; };
+        g.__vlTrace=true; try{ window[n]=g; }catch(e){}
+      }); };
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',envelopper); else envelopper();
       try{ new PerformanceObserver(function(l){ l.getEntries().forEach(function(e){ if(e.duration>=150) note('⚠ blocage '+Math.round(e.duration)+' ms (« '+nom+' »)'); }); }).observe({type:'longtask',buffered:true}); }catch(e){}
       window.addEventListener('error',function(e){ note('⚠ erreur (« '+nom+' ») '+(e.message||'')+' ligne '+(e.lineno||'?')); });
       window.addEventListener('unhandledrejection',function(e){ var r=e.reason; note('⚠ erreur de promesse (« '+nom+' ») '+String(r&&r.message||r).slice(0,150)); });

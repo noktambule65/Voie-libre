@@ -7,6 +7,9 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
@@ -307,10 +310,64 @@ public class MainActivity extends Activity {
     static volatile boolean visible = false;
 
     @Override
-    protected void onPause() { super.onPause(); visible = false; if (web != null) web.onPause(); }
+    protected void onPause() { super.onPause(); visible = false; chien.removeCallbacks(veille); if (web != null) web.onPause(); }
+
+    // ---------- Chien de garde (diagnostic) : repère une page figée ou un écran Android bloqué, et note où ----------
+    private final Handler chien = new Handler(Looper.getMainLooper());
+    private long pingEnvoye = 0;
+    private boolean pingAttente = false, figeNote = false;
+    static volatile long battement = 0;
+    private static Thread gardien;
+    private final Runnable veille = new Runnable() {
+        @Override public void run() {
+            long t = SystemClock.uptimeMillis();
+            battement = t;
+            if (web != null && visible) {
+                if (pingAttente) {
+                    if (!figeNote && t - pingEnvoye > 5000) { figeNote = true; Pont.etape(MainActivity.this, "⚠ PAGE FIGÉE depuis 5 s (le moteur web ne répond plus)", true); }
+                } else {
+                    pingAttente = true; pingEnvoye = t;
+                    web.evaluateJavascript("1", v -> {
+                        long d = SystemClock.uptimeMillis() - pingEnvoye;
+                        if (figeNote || d > 2000) Pont.etape(MainActivity.this, "page de nouveau réactive après " + (d / 100) / 10.0 + " s", true);
+                        pingAttente = false; figeNote = false;
+                    });
+                }
+            }
+            chien.postDelayed(this, 1000);
+        }
+    };
+
+    private void lancerGardien() {
+        if (gardien != null) return;
+        final android.content.Context app = getApplicationContext();
+        gardien = new Thread(() -> {
+            boolean note = false;
+            while (true) {
+                try { Thread.sleep(2000); } catch (InterruptedException e) { return; }
+                long retard = SystemClock.uptimeMillis() - battement;
+                if (visible && retard > 5000) {
+                    if (!note) {
+                        note = true;
+                        StringBuilder pile = new StringBuilder();
+                        for (StackTraceElement el : Looper.getMainLooper().getThread().getStackTrace()) {
+                            if (pile.length() > 900) break;
+                            pile.append(" < ").append(el.getClassName().replaceAll(".*\\.", "")).append('.').append(el.getMethodName());
+                        }
+                        Pont.etape(app, "⚠ ÉCRAN ANDROID BLOQUÉ depuis " + retard / 1000 + " s :" + pile, true);
+                    }
+                } else if (note) {
+                    note = false;
+                    Pont.etape(app, "écran Android de nouveau réactif", true);
+                }
+            }
+        }, "gardien");
+        gardien.setDaemon(true);
+        gardien.start();
+    }
 
     @Override
-    protected void onResume() { super.onResume(); visible = true; if (web != null) web.onResume(); }
+    protected void onResume() { super.onResume(); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume(); }
 
     @Override
     protected void onDestroy() {

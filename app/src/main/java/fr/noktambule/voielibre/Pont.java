@@ -295,6 +295,29 @@ public class Pont {
         } catch (Exception ignore) { }
     }
 
+    // ---------- Fil des étapes (diagnostic) : gardé hors de la page, survit à un gel ou une fermeture ----------
+    private static final java.util.ArrayDeque<String> FIL = new java.util.ArrayDeque<>();
+
+    static void etape(Context c, String t, boolean tout_de_suite) {
+        try {
+            String quand = new java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.FRANCE).format(new java.util.Date());
+            String texte;
+            synchronized (FIL) {
+                FIL.addFirst(quand + " " + (t.length() > 1200 ? t.substring(0, 1200) : t));
+                while (FIL.size() > 80) FIL.removeLast();
+                texte = String.join("\n", FIL);
+            }
+            android.content.SharedPreferences.Editor e = c.getApplicationContext().getSharedPreferences("diag", 0).edit().putString("fil", texte);
+            if (tout_de_suite) e.commit(); else e.apply();
+        } catch (Exception ignore) { }
+    }
+
+    @JavascriptInterface
+    public void trace(String t) { etape(ctx, t == null ? "" : t, false); }
+
+    @JavascriptInterface
+    public String diagTrace() { return ctx.getSharedPreferences("diag", 0).getString("fil", ""); }
+
     @JavascriptInterface
     public String diagRendu() { return ctx.getSharedPreferences("diag", 0).getString("rendu", ""); }
 
