@@ -578,7 +578,7 @@ function appliquerRepos(){
 const norm = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 try{ appliquerRepos(); }catch(e){}
 // position du téléphone relevée à chaque ouverture, si ce choix est fait (rien en arrière-plan sans autorisation)
-setTimeout(()=>{ try{ if(reglageRepos().gps) positionRepos(false); }catch(e){} }, 1500);
+setTimeout(()=>{ try{ const A=window.BoulotAndroid||parent.BoulotAndroid; if(reglageRepos().gps && (!A || !A.positionAutorisee || A.positionAutorisee())) positionRepos(false); }catch(e){} }, 1500);
 function lieuMeteo(nom){
   if(!norm(nom)) return null;
   return LIEUX.find(L=>L.n===String(nom).trim()) || gare(nom);
@@ -1342,6 +1342,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       if(e.target.id==='rCarte'){ const r=reglageRepos(), centre=r.la!=null&&r.la!=='';
         ouvrirCarte(centre?+r.la:46.6, centre?+r.lo:2.4, (la,lo,lieu)=>sauverRepos({gps:false, n:lieu||('Point '+la.toFixed(2)+', '+lo.toFixed(2)), la:+la.toFixed(3), lo:+lo.toFixed(3)})); }
       if(e.target.id==='rGps'){ $('rMsg').textContent='Recherche de la position…';
+        try{ const A=window.BoulotAndroid||parent.BoulotAndroid; A && A.permettreDemandePosition && A.permettreDemandePosition(); }catch(e){}
         positionRepos(true).then(ok=>{ dessinerRepos(); if(!ok) $('rMsg').textContent='Position indisponible : autorise la localisation pour Voie libre (réglages du téléphone), puis réessaie.'; }); }
     });
 

@@ -326,6 +326,14 @@ public class Pont {
     }
 
     @JavascriptInterface
+    public boolean positionAutorisee() {
+        return ctx.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+    }
+
+    @JavascriptInterface
+    public void permettreDemandePosition() { MainActivity.demandePositionPermise = true; }
+
+    @JavascriptInterface
     public void trace(String t) { etape(ctx, t == null ? "" : t, false); }
 
     @JavascriptInterface

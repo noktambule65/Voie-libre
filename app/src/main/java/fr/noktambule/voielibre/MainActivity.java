@@ -63,6 +63,8 @@ public class MainActivity extends Activity {
     /** Demande de position de la page en attente de la réponse d'Android (météo des jours de repos). */
     private String originePosition;
     private android.webkit.GeolocationPermissions.Callback rappelPosition;
+    /** Une demande d'autorisation de position n'est faite que sur un choix de l'utilisateur (Paramètres › Ma position). */
+    static volatile boolean demandePositionPermise = false;
 
     @Override
     protected void onCreate(Bundle etat) {
@@ -154,10 +156,23 @@ public class MainActivity extends Activity {
                     rappel.invoke(origine, true, false);
                     return;
                 }
+                // Une seule demande à la fois, et pas de nouvelle demande automatique après une réponse :
+                // la demande met l'appli en pause, la page se masque puis se réaffiche et redemande → boucle sans fin.
+                if (rappelPosition != null) { rappel.invoke(origine, false, false); return; }
+                if (!demandePositionPermise) {
+                    Pont.etape(MainActivity.this, "position demandée par la page, refusée sans redemander (autorisation Android absente)", false);
+                    rappel.invoke(origine, false, false);
+                    return;
+                }
+                demandePositionPermise = false;
+                Pont.etape(MainActivity.this, "demande d'autorisation de position à Android", false);
                 originePosition = origine;
                 rappelPosition = rappel;
                 requestPermissions(new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_POSITION);
             }
+
+            @Override
+            public void onGeolocationPermissionsHidePrompt() { }
 
             @Override
             public void onShowCustomView(View vue, CustomViewCallback rappel) {
@@ -310,7 +325,7 @@ public class MainActivity extends Activity {
     static volatile boolean visible = false;
 
     @Override
-    protected void onPause() { super.onPause(); visible = false; chien.removeCallbacks(veille); if (web != null) web.onPause(); }
+    protected void onPause() { super.onPause(); Pont.etape(this, "⏸ appli en pause", false); visible = false; chien.removeCallbacks(veille); if (web != null) web.onPause(); }
 
     // ---------- Chien de garde (diagnostic) : repère une page figée ou un écran Android bloqué, et note où ----------
     private final Handler chien = new Handler(Looper.getMainLooper());
@@ -375,7 +390,7 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onResume() { super.onResume(); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume(); }
+    protected void onResume() { super.onResume(); Pont.etape(this, "▶ appli au premier plan", false); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume(); }
 
     @Override
     protected void onDestroy() {
