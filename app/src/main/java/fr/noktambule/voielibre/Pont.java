@@ -297,17 +297,30 @@ public class Pont {
 
     // ---------- Fil des étapes (diagnostic) : gardé hors de la page, survit à un gel ou une fermeture ----------
     private static final java.util.ArrayDeque<String> FIL = new java.util.ArrayDeque<>();
+    private static final java.util.ArrayDeque<String> ALERTES = new java.util.ArrayDeque<>();
 
     static void etape(Context c, String t, boolean tout_de_suite) {
         try {
             String quand = new java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.FRANCE).format(new java.util.Date());
-            String texte;
+            String texte, alertes = null;
             synchronized (FIL) {
-                FIL.addFirst(quand + " " + (t.length() > 1200 ? t.substring(0, 1200) : t));
-                while (FIL.size() > 80) FIL.removeLast();
+                if (ALERTES.isEmpty()) {
+                    String av = c.getApplicationContext().getSharedPreferences("diag", 0).getString("alertes", "");
+                    if (!av.isEmpty()) for (String l : av.split("\n")) ALERTES.addLast(l);
+                }
+                String ligne = quand + " " + (t.length() > 1500 ? t.substring(0, 1500) : t);
+                FIL.addFirst(ligne);
+                while (FIL.size() > 400) FIL.removeLast();
                 texte = String.join("\n", FIL);
+                if (t.startsWith("⚠") || t.startsWith("✓")) {
+                    String d = new java.text.SimpleDateFormat("dd/MM ", java.util.Locale.FRANCE).format(new java.util.Date());
+                    ALERTES.addFirst(d + ligne);
+                    while (ALERTES.size() > 30) ALERTES.removeLast();
+                    alertes = String.join("\n", ALERTES);
+                }
             }
             android.content.SharedPreferences.Editor e = c.getApplicationContext().getSharedPreferences("diag", 0).edit().putString("fil", texte);
+            if (alertes != null) e.putString("alertes", alertes);
             if (tout_de_suite) e.commit(); else e.apply();
         } catch (Exception ignore) { }
     }
@@ -316,7 +329,17 @@ public class Pont {
     public void trace(String t) { etape(ctx, t == null ? "" : t, false); }
 
     @JavascriptInterface
-    public String diagTrace() { return ctx.getSharedPreferences("diag", 0).getString("fil", ""); }
+    public String diagTrace() {
+        android.content.SharedPreferences p = ctx.getSharedPreferences("diag", 0);
+        String al = p.getString("alertes", "");
+        return (al.isEmpty() ? "Aucun gel détecté.\n" : "GELS DÉTECTÉS (plus récent en haut) :\n" + al + "\n") + "\nÉtapes :\n" + p.getString("fil", "");
+    }
+
+    @JavascriptInterface
+    public void diagEffacer() {
+        synchronized (FIL) { FIL.clear(); ALERTES.clear(); }
+        ctx.getSharedPreferences("diag", 0).edit().clear().commit();
+    }
 
     @JavascriptInterface
     public String diagRendu() { return ctx.getSharedPreferences("diag", 0).getString("rendu", ""); }

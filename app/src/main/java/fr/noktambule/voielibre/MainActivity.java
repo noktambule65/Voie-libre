@@ -316,7 +316,8 @@ public class MainActivity extends Activity {
     private final Handler chien = new Handler(Looper.getMainLooper());
     private long pingEnvoye = 0;
     private boolean pingAttente = false, figeNote = false;
-    static volatile long battement = 0;
+    static volatile long battement = 0, tacheDepuis = 0;
+    static volatile String tacheEnCours = null;
     private static Thread gardien;
     private final Runnable veille = new Runnable() {
         @Override public void run() {
@@ -329,7 +330,7 @@ public class MainActivity extends Activity {
                     pingAttente = true; pingEnvoye = t;
                     web.evaluateJavascript("1", v -> {
                         long d = SystemClock.uptimeMillis() - pingEnvoye;
-                        if (figeNote || d > 2000) Pont.etape(MainActivity.this, "page de nouveau réactive après " + (d / 100) / 10.0 + " s", true);
+                        if (figeNote || d > 2000) Pont.etape(MainActivity.this, (figeNote ? "✓ " : "") + "page de nouveau réactive après " + (d / 100) / 10.0 + " s", true);
                         pingAttente = false; figeNote = false;
                     });
                 }
@@ -341,24 +342,31 @@ public class MainActivity extends Activity {
     private void lancerGardien() {
         if (gardien != null) return;
         final android.content.Context app = getApplicationContext();
+        // Tâche en cours sur le fil principal d'Android (pour savoir laquelle bloque)
+        Looper.getMainLooper().setMessageLogging(x -> {
+            if (x.startsWith(">")) { tacheEnCours = x; tacheDepuis = SystemClock.uptimeMillis(); } else tacheEnCours = null;
+        });
         gardien = new Thread(() -> {
-            boolean note = false;
+            boolean note = false; long prochain = 0, pire = 0;
             while (true) {
-                try { Thread.sleep(2000); } catch (InterruptedException e) { return; }
+                try { Thread.sleep(1000); } catch (InterruptedException e) { return; }
                 long retard = SystemClock.uptimeMillis() - battement;
-                if (visible && retard > 5000) {
-                    if (!note) {
-                        note = true;
+                if (visible && retard > 4000) {
+                    pire = retard;
+                    if (!note || retard > prochain) {
+                        note = true; prochain = retard + 10000;
+                        String tache = tacheEnCours;
+                        String quoi = tache == null ? " · aucune tâche en cours (attente)" : " · tâche : " + tache.replaceAll("\\s+", " ") + " (depuis " + (SystemClock.uptimeMillis() - tacheDepuis) / 1000 + " s)";
                         StringBuilder pile = new StringBuilder();
                         for (StackTraceElement el : Looper.getMainLooper().getThread().getStackTrace()) {
                             if (pile.length() > 900) break;
                             pile.append(" < ").append(el.getClassName().replaceAll(".*\\.", "")).append('.').append(el.getMethodName());
                         }
-                        Pont.etape(app, "⚠ ÉCRAN ANDROID BLOQUÉ depuis " + retard / 1000 + " s :" + pile, true);
+                        Pont.etape(app, "⚠ ÉCRAN ANDROID BLOQUÉ depuis " + retard / 1000 + " s" + quoi + " · pile :" + pile, true);
                     }
                 } else if (note) {
                     note = false;
-                    Pont.etape(app, "écran Android de nouveau réactif", true);
+                    Pont.etape(app, "✓ écran Android de nouveau réactif (bloqué au moins " + pire / 1000 + " s)", true);
                 }
             }
         }, "gardien");

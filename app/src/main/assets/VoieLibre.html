@@ -1421,7 +1421,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       bD.onclick=()=>{
         let rendu='', fil=''; try{ rendu=NATIF.diagRendu?NATIF.diagRendu():''; fil=NATIF.diagTrace?NATIF.diagTrace():''; }catch(e){}
         const L=(window.top.__vlDiag||[]).slice().reverse();
-        const txt='Voie libre · journal de diagnostic\n'+(rendu?'Dernier arrêt du moteur web : '+rendu+'\n':'Aucun arrêt du moteur web enregistré.\n')+(fil?'\nCôté Android (plus récent en haut) :\n'+fil+'\n':'')+'\nCôté page :\n'+L.join('\n');
+        const txt='Voie libre · journal de diagnostic\n'+(rendu?'Dernier arrêt du moteur web : '+rendu+'\n':'Aucun arrêt du moteur web enregistré.\n')+(fil?'\nCôté Android :\n'+fil+'\n':'')+'\nCôté page :\n'+L.join('\n');
         const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='diagPage'; ov.style.zIndex=30;
         ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>Journal de diagnostic</h2></div>
           <div class="pcorps"><p class="petit">Les événements les plus récents en haut. Envoie ce journal pour aider à trouver ce qui ralentit l’appli : il ne contient ni ton lien Graou ni ton planning.</p>
@@ -1431,7 +1431,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         ov.addEventListener('click',e=>{
           if(e.target.closest('[data-x]')) ov.remove();
           else if(e.target.closest('[data-partager]')){ try{ NATIF.partager('Voie libre · diagnostic', txt, ''); }catch(err){} }
-          else if(e.target.closest('[data-vider]')){ try{ window.top.__vlDiag.length=0; localStorage.removeItem('vl-diag'); }catch(err){} ov.remove(); }
+          else if(e.target.closest('[data-vider]')){ try{ window.top.__vlDiag.length=0; localStorage.removeItem('vl-diag'); NATIF.diagEffacer && NATIF.diagEffacer(); }catch(err){} ov.remove(); }
         });
       };
       cA.appendChild(bD);
