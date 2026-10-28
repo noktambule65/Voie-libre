@@ -1726,7 +1726,10 @@ function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
 // Gares : tableau des codes Graou de toute la France (fourni par l'accueil)
 const norm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 function lieuMeteo(nom){ if(!norm(nom)) return null; return (parent!==window && parent.vlGare) ? parent.vlGare(nom) : null; }
-function meteoCache(L){ try{ return JSON.parse(localStorage.getItem('pl-meteo2-'+L.n)||'null'); }catch(e){ return null; } }
+const METEO_DECODEE={};
+function meteoCache(L){ let s=null; try{ s=localStorage.getItem('pl-meteo2-'+L.n); }catch(e){} if(!s) return null;
+  const m=METEO_DECODEE[L.n]; if(m && m.s===s) return m.v;
+  let v=null; try{ v=JSON.parse(s); }catch(e){} METEO_DECODEE[L.n]={s,v}; return v; }
 const METEO_EN_COURS={};
 function chargerMeteo(L){
   const c=meteoCache(L);
@@ -2184,9 +2187,19 @@ function neigeSeg(x, j){
   return {date:j, seg:x.seg, code:x.code, debut:new Date(y,mo-1,d,0,p0).getTime(), gare:Lp?Lp.n:'', lieux};
 }
 let exportEnCours=null;
-window.exporterWidget=function(){
+const souffle=()=>new Promise(r=>setTimeout(r,25));   // laisse passer les touchers entre deux images
+function signatureExport(){
+  const g=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
+  const ev=g('pl-evts'), csv=g('pl-csv'); let m='';
+  try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf('pl-meteo2-')===0) m+=k+':'+g(k).slice(5,19)+';'; } }catch(e){}
+  return [ev.length, ev.slice(-200), csv.length, g('pl-statut'), g('bo-reveil').length, m, cle(new Date()), Math.floor(Date.now()/(6*3600e3))].join('|');
+}
+window.exporterWidget=function(forcer){
   const A=window.BoulotAndroid; if(!A || !A.majWidget) return Promise.resolve();
   if(exportEnCours) return exportEnCours;
+  const sig=signatureExport();
+  let avant=''; try{ avant=localStorage.getItem('vl-sig-widget')||''; }catch(e){}
+  if(!forcer && sig===avant) return Promise.resolve();
   exportEnCours=(async()=>{
     const garde=JOUR;
     try{
@@ -2199,6 +2212,7 @@ window.exporterWidget=function(){
         for(const x of INDEX[j]){
           if(!x.s || sortie.length>=30) continue;
           JOUR=j;
+          await souffle();
           const g=graphique(x,360,true); if(!g.svg) continue;
           const [y,m,d]=j.split('-').map(Number);
           const rh=x.dec && x.seg===0 && x.a && x.a.rhr ? x.a.rhr.lieu : '', Lr=rh?lieuMeteo(rh):null;
@@ -2217,18 +2231,20 @@ window.exporterWidget=function(){
       // widget : une bande par semaine, de la semaine en cours aux 12 suivantes ; le widget en assemble
       // autant que sa taille le permet (navigation semaine par semaine)
       const l0=lundiDe(now);
-      for(let k=0;k<13;k++){ const d=new Date(l0.getFullYear(),l0.getMonth(),l0.getDate()+7*k), g=moisSVG(d,360,1,true);
+      for(let k=0;k<13;k++){ await souffle(); const d=new Date(l0.getFullYear(),l0.getMonth(),l0.getDate()+7*k), g=moisSVG(d,360,1,true);
         semaines.push({lundi:d.getTime(), png:await svgVersPng(g.svg,g.W,g.H,2)}); }
       let graou=0, graouErreur=''; try{ const st=JSON.parse(localStorage.getItem('pl-statut')||'null'); if(st && st.source==='lien') graou=st.quand||0;
         if(st && st.erreur && (st.erreurQuand||0)>(st.quand||0)) graouErreur=st.erreur; }catch(e){}
       A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, neige}));
+      try{ localStorage.setItem('vl-sig-widget', signatureExport()); }catch(e){}
     }catch(e){}
     JOUR=garde; exportEnCours=null;
   })();
   return exportEnCours;
 };
 // Le planning a changé (mise à jour Graou, import) : le widget suit
-window.addEventListener('storage',e=>{ if(e.key==='pl-evts'||e.key==='pl-csv') window.exporterWidget(); });
+let minuteurExport=null;
+window.addEventListener('storage',e=>{ if(e.key==='pl-evts'||e.key==='pl-csv'){ clearTimeout(minuteurExport); minuteurExport=setTimeout(()=>window.exporterWidget(),4000); } });
 
 // Appelé par l'accueil à chaque ouverture de la rubrique : relit le planning et revient à la journée en cours ou à venir
 window.boulotMode=ouvrir;
@@ -2327,8 +2343,16 @@ const PARAMETRES={id:'param', app:'planning', mode:'param', titre:'Paramètres'}
 
 /* ---- Accueil : bandeau compte à rebours et tuiles d'informations, d'après le planning Graou ---- */
 function nomLieu(l){ const g=window.vlGare(l); return g?g.n:String(l||'').trim(); }
-function lirePl(k){ try{ return JSON.parse(localStorage.getItem(k))||[]; }catch(e){ return []; } }
-function lireObj(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+// lectures décodées gardées en mémoire tant que le texte enregistré ne change pas (évite de tout relire à chaque calcul)
+const DECODE={};
+function lireBrut(k){ let s=null; try{ s=localStorage.getItem(k); }catch(e){} const m=DECODE[k]; if(m && m.s===s) return m.v;
+  let v=null; try{ v=s?JSON.parse(s):null; }catch(e){} DECODE[k]={s,v}; return v; }
+function lirePl(k){ return lireBrut(k)||[]; }
+function lireObj(k){ return lireBrut(k); }
+// prévisions de plus de 3 jours : effacées au démarrage (la mémoire de l'appli ne grossit plus sans fin)
+try{ const vieux=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
+  if(k && k.indexOf('pl-meteo2-')===0){ const m=String(localStorage.getItem(k)||'').match(/"t":(\d+)/); if(!m || Date.now()-(+m[1])>3*864e5) vieux.push(k); } }
+  vieux.forEach(k=>localStorage.removeItem(k)); }catch(e){}
 function servicesPl(){
   const ics=lirePl('pl-evts'), csv=lirePl('pl-csv');
   const couverts=new Set(), out=[];
@@ -2547,7 +2571,7 @@ $('rubriques').addEventListener('click',e=>{
   else if(t==='param') ouvrir('param');
 });
 try{ $('jourj').textContent=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()); }catch(e){}
-majService(); setInterval(majService,30000);
+majService(); setInterval(()=>{ if(!document.hidden && $('accueil').style.display!=='none') majService(); },60000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) majService(); });
 
 // Lecture d'une appli embarquée (les balises sensibles ont été neutralisées à l'assemblage)
