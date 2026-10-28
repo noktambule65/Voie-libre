@@ -2624,7 +2624,9 @@ function raccordAndroid(){
        'appliquerRepos','ouvrirPanneau','montrerVolet','rubriques','graphique','rendreMois','changerMode','exporterWidget','svgVersPng','detailLignes',
        'accueil','majService','chargerMeteoG','joursEntiers','reposInfo','tout','traiter'].forEach(function(n){
         var f=window[n]; if(typeof f!=='function' || f.__vlTrace) return;
-        var g=function(){ var t0=performance.now(); T.__vlEtape('→ '+nom+'.'+n);
+        var g=function(){ var t0=performance.now(), qui='';
+          if(n==='rendre'){ try{ qui=' ‹ '+String(new Error().stack||'').split('\n').slice(2,5).map(function(l){ return l.replace(/^\s*at\s*/,'').replace(/\s*\(.*\)$/,'').replace(/about:srcdoc:?/,''); }).join(' ‹ '); }catch(e){} }
+          T.__vlEtape('→ '+nom+'.'+n+qui);
           var r; try{ r=f.apply(this,arguments); }
           catch(e){ T.__vlEtape('✗ '+nom+'.'+n+' '+(e&&e.message||e)); throw e; }
           if(r && typeof r.then==='function') r.then(function(){ T.__vlEtape('← '+nom+'.'+n+' '+Math.round(performance.now()-t0)+' ms'); },function(){});
@@ -2633,6 +2635,12 @@ function raccordAndroid(){
         g.__vlTrace=true; try{ window[n]=g; }catch(e){}
       }); };
       if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',envelopper); else envelopper();
+      // Gestes et événements reçus par la page (pour savoir ce qui déclenche les réaffichages)
+      var decrire=function(x){ try{ x=x&&x.closest?x.closest('button,a,[data-t],[id]')||x:x; if(!x||!x.tagName) return '?';
+        return x.tagName.toLowerCase()+(x.id?'#'+x.id:'')+(x.className&&typeof x.className==='string'?'.'+x.className.trim().split(/\s+/).slice(0,2).join('.'):'')+(x.dataset&&x.dataset.t?'['+x.dataset.t+']':''); }catch(e){ return '?'; } };
+      ['click','touchend','pointercancel'].forEach(function(ty){ document.addEventListener(ty,function(e){ T.__vlEtape('✋ '+nom+' '+ty+' sur '+decrire(e.target)+(e.isTrusted?'':' (simulé)')); },{capture:true,passive:true}); });
+      document.addEventListener('visibilitychange',function(){ T.__vlEtape('👁 '+nom+(document.hidden?' masquée':' visible')); });
+      window.addEventListener('resize',function(){ T.__vlEtape('↔ '+nom+' redimensionnée '+innerWidth+'×'+innerHeight); });
       try{ new PerformanceObserver(function(l){ l.getEntries().forEach(function(e){ if(e.duration>=150) note('⚠ blocage '+Math.round(e.duration)+' ms (« '+nom+' »)'); }); }).observe({type:'longtask',buffered:true}); }catch(e){}
       window.addEventListener('error',function(e){ note('⚠ erreur (« '+nom+' ») '+(e.message||'')+' ligne '+(e.lineno||'?')); });
       window.addEventListener('unhandledrejection',function(e){ var r=e.reason; note('⚠ erreur de promesse (« '+nom+' ») '+String(r&&r.message||r).slice(0,150)); });
