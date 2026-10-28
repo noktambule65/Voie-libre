@@ -285,6 +285,19 @@ public class Pont {
         });
     }
 
+    /** Arrêt du moteur web noté pour le journal de diagnostic (Paramètres › Aide). */
+    static void noterArret(Context c, android.webkit.RenderProcessGoneDetail d, String ou) {
+        try {
+            String quand = new java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.FRANCE).format(new java.util.Date());
+            String pourquoi = d != null && d.didCrash() ? "plantage du moteur web" : "moteur web arrêté par Android (manque de mémoire)";
+            c.getApplicationContext().getSharedPreferences("diag", 0).edit()
+                    .putString("rendu", quand + " · " + pourquoi + " · pendant : " + ou).commit();
+        } catch (Exception ignore) { }
+    }
+
+    @JavascriptInterface
+    public String diagRendu() { return ctx.getSharedPreferences("diag", 0).getString("rendu", ""); }
+
     /** Bouton « Autoriser les notifications » (Paramètres) : ouvre directement l'écran des notifications de l'appli. */
     @JavascriptInterface
     public void ouvrirReglagesNotifs() {

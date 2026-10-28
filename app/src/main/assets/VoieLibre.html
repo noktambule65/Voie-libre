@@ -923,7 +923,7 @@ $('effacer').onclick=()=>{
 const taille = o => o<1024*1024 ? Math.max(1,Math.round(o/1024))+' Ko' : virg((o/1048576).toFixed(1))+' Mo';
 
 /* ---------- Navigation ---------- */
-function bouger(sens){ etat.date=ajout(etat.date,sens); rendre(); }
+function bouger(sens){ try{ window.top.__vlDiagNote && window.top.__vlDiagNote('Météo : jour '+(sens>0?'suivant':'précédent')); }catch(e){} etat.date=ajout(etat.date,sens); rendre(); }
 $('prec').onclick=()=>bouger(-1);
 $('suiv').onclick=()=>bouger(1);
 let tx=null, ty=null;
@@ -1416,6 +1416,26 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Affichage','rAffichage'); mettre(cW, $('lTheme')); }
     else if($('lTheme')) $('lTheme').style.display='none';
     const cA=carte('💡','Aide','rAide');
+    if(NATIF){
+      const bD=document.createElement('button'); bD.className='action clair'; bD.textContent='Journal de diagnostic';
+      bD.onclick=()=>{
+        let rendu=''; try{ rendu=NATIF.diagRendu?NATIF.diagRendu():''; }catch(e){}
+        const L=(window.top.__vlDiag||[]).slice().reverse();
+        const txt='Voie libre · journal de diagnostic\n'+(rendu?'Dernier arrêt du moteur web : '+rendu+'\n':'Aucun arrêt du moteur web enregistré.\n')+'\n'+L.join('\n');
+        const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='diagPage'; ov.style.zIndex=30;
+        ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>Journal de diagnostic</h2></div>
+          <div class="pcorps"><p class="petit">Les événements les plus récents en haut. Envoie ce journal pour aider à trouver ce qui ralentit l’appli : il ne contient ni ton lien Graou ni ton planning.</p>
+          <div class="ligne2"><button class="action" data-partager="1">Partager</button><button class="action clair" data-vider="1">Effacer</button></div>
+          <pre style="white-space:pre-wrap;font-size:12px;line-height:1.4;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:10px;margin-top:10px">${esc(txt)}</pre></div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener('click',e=>{
+          if(e.target.closest('[data-x]')) ov.remove();
+          else if(e.target.closest('[data-partager]')){ try{ NATIF.partager('Voie libre · diagnostic', txt, ''); }catch(err){} }
+          else if(e.target.closest('[data-vider]')){ try{ window.top.__vlDiag.length=0; localStorage.removeItem('vl-diag'); }catch(err){} ov.remove(); }
+        });
+      };
+      cA.appendChild(bD);
+    }
     const bI=document.createElement('button'); bI.className='action clair'; bI.textContent='Revoir la présentation de Voie libre';
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);
     // « Tout effacer » remplacé par la déconnexion de Graou (carte Planning Graou)
@@ -2579,6 +2599,29 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden) majServi
 // Ne s'active que dans l'appli Android, qui fournit l'objet BoulotAndroid. Sans effet dans Chrome.
 function raccordAndroid(){
   var A=window.BoulotAndroid; if(!A) return;
+  // Journal de diagnostic : blocages de l'affichage, erreurs, mémoire. Gardé sur le téléphone (Paramètres › Aide).
+  (function(){
+    var T=window.top, nom=(window===T?'accueil':(document.title||'cadre'));
+    try{
+      if(!T.__vlDiagNote){
+        var L=[]; try{ var v=JSON.parse(T.localStorage.getItem('vl-diag')||'[]'); if(Array.isArray(v)) L=v.slice(-250); }catch(e){}
+        T.__vlDiag=L;
+        T.__vlDiagNote=function(t){ var d=new Date(), p=function(n){ return ('0'+n).slice(-2); };
+          T.__vlDiag.push(p(d.getDate())+'/'+p(d.getMonth()+1)+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+t);
+          if(T.__vlDiag.length>300) T.__vlDiag.splice(0,T.__vlDiag.length-300); T.__vlDiagSale=true; };
+        T.setInterval(function(){ try{ var m=T.performance.memory; if(m) T.__vlDiagNote('mémoire JS '+Math.round(m.usedJSHeapSize/1048576)+' Mo (limite '+Math.round(m.jsHeapSizeLimit/1048576)+')'); }catch(e){} },20000);
+        T.setInterval(function(){ if(T.__vlDiagSale){ T.__vlDiagSale=false; try{ T.localStorage.setItem('vl-diag',JSON.stringify(T.__vlDiag)); }catch(e){} } },2000);
+        var u=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||[])[1]||'?', n=0; try{ n=T.localStorage.length; }catch(e){}
+        var taille=0; try{ for(var i=0;i<T.localStorage.length;i++){ var k=T.localStorage.key(i); taille+=k.length+(T.localStorage.getItem(k)||'').length; } }catch(e){}
+        T.__vlDiagNote('— ouverture de l’appli · WebView '+u+' · stockage '+n+' clés, '+Math.round(taille/1024)+' Ko');
+      }
+      var note=T.__vlDiagNote;
+      note('page « '+nom+' » chargée');
+      try{ new PerformanceObserver(function(l){ l.getEntries().forEach(function(e){ if(e.duration>=150) note('⚠ blocage '+Math.round(e.duration)+' ms (« '+nom+' »)'); }); }).observe({type:'longtask',buffered:true}); }catch(e){}
+      window.addEventListener('error',function(e){ note('⚠ erreur (« '+nom+' ») '+(e.message||'')+' ligne '+(e.lineno||'?')); });
+      window.addEventListener('unhandledrejection',function(e){ var r=e.reason; note('⚠ erreur de promesse (« '+nom+' ») '+String(r&&r.message||r).slice(0,150)); });
+    }catch(e){}
+  })();
   // Thème de l'appli imposé (Paramètres › Affichage) : clair ou sombre quel que soit le thème du téléphone.
   // Les règles CSS « prefers-color-scheme » et les tests matchMedia de chaque rubrique suivent ce choix.
   (function(){
@@ -2734,6 +2777,7 @@ function cadre(app, pret){
 }
 
 function ouvrir(id, depuisHistorique){
+  try{ window.__vlDiagNote && window.__vlDiagNote('ouvre « '+id+' »'); }catch(e){}
   const r=id==='param'?PARAMETRES:RUBRIQUES.find(x=>x.id===id); if(!r) return;
   courante=r;
   $('titreRub').textContent=r.titre;
@@ -2791,6 +2835,7 @@ try{ if(history.state && history.state.boulot) history.replaceState(null,''); }c
 if(window.BoulotAndroid){
   const exporter=()=>cadre('journee', fj=>{ try{ fj.contentWindow.exporterWidget(); }catch(e){} });
   if(/[?&]sync=1/.test(location.search)){
+    try{ window.__vlDiagNote && window.__vlDiagNote('synchro invisible (widget ou arrière-plan)'); }catch(e){}
     // Synchro demandée par le bouton ⟳ du widget : planning Graou retéléchargé, puis journées recalculées
     const fin=ok=>cadre('journee', fj=>{
       Promise.resolve(fj.contentWindow.exporterWidget()).then(()=>{ try{ BoulotAndroid.finSync(ok); }catch(e){} });

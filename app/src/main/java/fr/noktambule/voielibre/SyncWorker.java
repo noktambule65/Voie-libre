@@ -53,6 +53,8 @@ public class SyncWorker extends Worker {
     @Override
     public Result doWork() {
         final Context ctx = getApplicationContext();
+        // L'appli ouverte se met déjà à jour elle-même ; une seconde page dans le même moteur web la ralentirait
+        if (MainActivity.visible) return Result.success();
         final Handler principal = new Handler(Looper.getMainLooper());
         final CountDownLatch fin = new CountDownLatch(1);
         final WebView[] web = new WebView[1];
@@ -82,6 +84,15 @@ public class SyncWorker extends Worker {
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                         return !MainActivity.HOTE.equals(r.getUrl().getHost());
+                    }
+
+                    @Override
+                    public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+                        Pont.noterArret(ctx, d, "synchro en arrière-plan");
+                        try { v.destroy(); } catch (Exception ignore) { }
+                        web[0] = null;
+                        fin.countDown();
+                        return true;
                     }
                 });
 

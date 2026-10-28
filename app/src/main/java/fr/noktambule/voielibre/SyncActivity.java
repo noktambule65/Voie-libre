@@ -54,6 +54,15 @@ public class SyncActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 return !MainActivity.HOTE.equals(r.getUrl().getHost());
             }
+
+            @Override
+            public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+                Pont.noterArret(SyncActivity.this, d, "synchro du widget");
+                try { v.destroy(); } catch (Exception ignore) { }
+                web = null;
+                terminer(false);
+                return true;
+            }
         });
 
         Pont pont = new Pont(this, web);

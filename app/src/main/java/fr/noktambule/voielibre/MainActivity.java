@@ -94,6 +94,15 @@ public class MainActivity extends Activity {
                 return chargeur.shouldInterceptRequest(r.getUrl());
             }
 
+            /** Moteur web arrêté (plantage ou mémoire) : on le note pour le journal de diagnostic et on relance l'écran. */
+            @Override
+            public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+                Pont.noterArret(MainActivity.this, d, "appli");
+                if (web != null) { racine.removeView(web); web.destroy(); web = null; }
+                recreate();
+                return true;
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
@@ -154,7 +163,7 @@ public class MainActivity extends Activity {
                 rappelPleinEcran = rappel;
                 racine.addView(vue, new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                web.setVisibility(View.GONE);
+                if (web != null) web.setVisibility(View.GONE);
                 barresSysteme(false);
             }
 
@@ -163,7 +172,7 @@ public class MainActivity extends Activity {
                 if (vuePleinEcran == null) return;
                 racine.removeView(vuePleinEcran);
                 vuePleinEcran = null;
-                web.setVisibility(View.VISIBLE);
+                if (web != null) web.setVisibility(View.VISIBLE);
                 barresSysteme(true);
                 if (rappelPleinEcran != null) rappelPleinEcran.onCustomViewHidden();
                 rappelPleinEcran = null;
@@ -246,6 +255,7 @@ public class MainActivity extends Activity {
                 if (r != null) titre = r.getTitle(this);
             } catch (Exception ignore) { }
         }
+        if (web == null) return;
         web.evaluateJavascript("window.__boulotSonnerie&&window.__boulotSonnerie(" + org.json.JSONObject.quote(cible) + ","
                 + org.json.JSONObject.quote(uri) + "," + org.json.JSONObject.quote(titre) + ")", null);
     }
@@ -283,21 +293,24 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (vuePleinEcran != null) { chrome.onHideCustomView(); return; }
-        if (web.canGoBack()) { web.goBack(); return; }
+        if (web != null && web.canGoBack()) { web.goBack(); return; }
         super.onBackPressed();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
-        web.saveState(out);
+        if (web != null) web.saveState(out);
     }
 
-    @Override
-    protected void onPause() { super.onPause(); web.onPause(); }
+    /** Vrai quand l'appli est à l'écran : la synchro en arrière-plan ne tourne pas en même temps (même moteur web). */
+    static volatile boolean visible = false;
 
     @Override
-    protected void onResume() { super.onResume(); web.onResume(); }
+    protected void onPause() { super.onPause(); visible = false; if (web != null) web.onPause(); }
+
+    @Override
+    protected void onResume() { super.onResume(); visible = true; if (web != null) web.onResume(); }
 
     @Override
     protected void onDestroy() {
