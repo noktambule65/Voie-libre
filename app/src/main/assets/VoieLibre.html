@@ -1435,7 +1435,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           else if(e.target.closest('[data-vider]')){ try{ window.top.__vlDiag.length=0; localStorage.removeItem('vl-diag'); NATIF.diagEffacer && NATIF.diagEffacer(); }catch(err){} ov.remove(); }
         });
       };
-      cA.appendChild(bD);
+      bD.style.display='none'; cA.appendChild(bD);
+      let nAppuis=0, tAppui=0;
+      cA.querySelector('h3').addEventListener('click',()=>{ const t=Date.now(); nAppuis=(t-tAppui<800)?nAppuis+1:1; tAppui=t;
+        if(nAppuis>=5){ nAppuis=0; bD.style.display=''; bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
     }
     const bI=document.createElement('button'); bI.className='action clair'; bI.textContent='Revoir la présentation de Voie libre';
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);
