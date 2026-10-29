@@ -2485,10 +2485,10 @@ function prochainsRappels(L, now, bloque){
   const ajouter=(d,ic,quand,txt)=>{ if(d && d.getTime()>t0 && d.getTime()<lim) L2.push({d,ic,quand,txt}); };
   // Découché
   if(N.dec){ const x=L.find(s=>s.rhr && s.d>now); if(x) ajouter(x.d,'🛏',quandJour(x.d),'Découché à '+escS(x.rhr)); }
-  // Prochaine tâche suivie d'un rappel (train conduit, EV, EQ PREND, RS/PC, fin de coupure)
+  // Tâches suivies d'un rappel (train conduit, EV, EQ PREND, RS/PC, fin de coupure) : toutes, triées avec le reste
   const NOMS={train:'🚆',ev:'🚌',eq:'👥',rs:'📋',coup:'☕'};
-  const tache=(P.taches||[]).filter(z=>z.t>t0 && T[z.type] && T[z.type].on).sort((a,b)=>a.t-b.t)[0];
-  if(tache){ const d=new Date(tache.t); ajouter(d,NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); }
+  (P.taches||[]).filter(z=>z.t>t0 && T[z.type] && T[z.type].on).forEach(tache=>{ const d=new Date(tache.t);
+    ajouter(d,NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); });
   // Réveil oublié : la veille au soir d'une PS matinale
   if(N.reveilOn){ const x=L.find(s=>s.d>now && s.d.getHours()>=N.reveilDe && s.d.getHours()<N.reveilA &&
       new Date(s.d.getFullYear(),s.d.getMonth(),s.d.getDate()-1,N.reveilHeure)>now);
