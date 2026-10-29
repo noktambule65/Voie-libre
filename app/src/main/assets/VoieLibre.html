@@ -1111,6 +1111,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <label class="coche sansCase" id="lTheme">Thème : <select id="nTheme"><option value="auto">thème de l’appareil</option><option value="clair">clair</option><option value="sombre">sombre</option></select>
         <small>pour toute l’appli et le widget ; l’appli se recharge pour l’appliquer</small></label>
       <label class="coche"><input type="checkbox" id="nSync"> Graou non mis à jour depuis <select id="nSyncH">${[6,12,24,48].map(h=>`<option value="${h}">${h} h</option>`).join('')}</select>
+        <small id="nSyncHInfo" class="petit" style="display:none"></small>
         <small>alerte si la synchro par le lien échoue depuis ce délai (réseau, Graou en maintenance, jeton régénéré) : les rappels se basent alors sur un planning peut-être périmé</small></label>
       <label class="coche"><input type="checkbox" id="nDec"> Découché : rappel la veille à <select id="nHeure">${heures}</select><small>avec la ville du découché</small></label>
       <div class="coche chg"><b>Neige sur ta journée</b> : alerte
@@ -1132,10 +1133,17 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const bA=$('nAutorise'); if(bA) bA.onclick=()=>{ try{ AND.ouvrirReglagesNotifs(); }catch(e){} };
       let dg=''; try{ dg=AND.diagWidget?AND.diagWidget():''; }catch(e){}
       $('wDiag').textContent=dg?'Widget : dernier affichage raté le '+dg+' (rattrapé automatiquement).':''; };
+    // Alerte « Graou non mis à jour » : seuil au moins double de la fréquence de synchro (un tour manqué ou retardé ne déclenche rien)
+    const seuilMin=()=>Math.max(6, Math.ceil(2*(+$('nSyncFreq').value||120)/60));
+    const ajusterSeuil=annoncer=>{ const m=seuilMin(), s=$('nSyncH'); let change=false;
+      [...s.options].forEach(op=>{ const non=+op.value<m; op.hidden=non; op.disabled=non; });
+      if(+s.value<m){ const n=[6,12,24,48].find(h=>h>=m)||48; s.value=String(n); change=true;
+        const i=$('nSyncHInfo'); if(annoncer&&i){ i.textContent='Seuil d’alerte passé à '+n+' h pour suivre la synchro automatique.'; i.style.display='block'; setTimeout(()=>{ i.style.display='none'; },6000); } }
+      return change; };
     const remplir=()=>{ const o=lire(); $('nModif').checked=!!o.modif; $('nDec').checked=!!o.dec; $('nHeure').value=String(o.heure||18);
       $('nCh3').checked=!!o.ch3; $('nChV').checked=!!o.chVeille; $('nHeureCh').value=String(o.chHeure||18);
       $('nSync').checked=!!o.sync; $('nSyncH').value=String(o.syncH);
-      $('nSyncFreq').value=String(o.syncFreq); $('nSyncPS').checked=!!o.syncPS; $('nTheme').value=o.theme; $('nModifPortee').value=o.modifPortee;
+      $('nSyncFreq').value=String(o.syncFreq); $('nSyncPS').checked=!!o.syncPS; if(ajusterSeuil(false)) setTimeout(()=>changer(),0); $('nTheme').value=o.theme; $('nModifPortee').value=o.modifPortee;
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
@@ -1184,6 +1192,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       reveilOn:$('nRv').checked, reveilHeure:+$('nRvH').value, reveilDe:+$('nRvDe').value, reveilA:Math.max(+$('nRvA').value, +$('nRvDe').value+1)};
       $('nRvA').value=String(o.reveilA);
       sauver('bo-notif',o); try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){} setTimeout(etat,1500); };
+    $('nSyncFreq').addEventListener('change',()=>ajusterSeuil(true));   // avant l'enregistrement, qui lit le seuil ajusté
     ['nModif','nDec','nHeure','nCh3','nChV','nHeureCh','nRv','nRvH','nRvDe','nRvA','nNeige','nNeigeH','nNeigeJ','nSync','nSyncH','nSyncFreq','nSyncPS','nTheme','nModifPortee'].forEach(id=>$(id).addEventListener('change',changer));
     // nouveau thème : toute l'appli est rechargée pour l'appliquer, puis rouverte sur Paramètres
     $('nTheme').addEventListener('change',()=>{ setTimeout(()=>{ try{ const T=window.top; T.location.hash='param//'; T.location.reload(); }catch(e){ location.reload(); } }, 400); });
