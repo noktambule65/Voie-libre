@@ -49,6 +49,7 @@ public class Notifs extends BroadcastReceiver {
     private static final String CANAL_SYNC = "synchro_hs";
     private static final String ACTION_SYNC = "fr.noktambule.voielibre.SYNCHRO_HS";
     private static final int ID_SYNC = 6;
+    private static final String ACTION_SYNC_PS = "fr.noktambule.voielibre.SYNCHRO_PS";
     private static final String ACTION_NEIGE = "fr.noktambule.voielibre.NEIGE";
 
     // ---------- Réglages ----------
@@ -68,6 +69,7 @@ public class Notifs extends BroadcastReceiver {
                     .putInt("chHeure", Math.max(0, Math.min(23, o.optInt("chHeure", 18))))
                     .putBoolean("sync", o.optBoolean("sync", true))
                     .putInt("syncH", Math.max(1, Math.min(168, o.optInt("syncH", 12))))
+                    .putBoolean("syncPS", o.optBoolean("syncPS", false))
                     .putBoolean("neige", o.optBoolean("neige", true))
                     .putBoolean("neigeJour", o.optBoolean("neigeJour", true))
                     .putInt("neigeHeure", Math.max(0, Math.min(23, o.optInt("neigeHeure", 18))))
@@ -269,6 +271,47 @@ public class Notifs extends BroadcastReceiver {
         try { programmerReveil(ctx); } catch (Exception ignore) { }
         try { neige(ctx); } catch (Exception ignore) { }
         try { synchro(ctx); } catch (Exception ignore) { }
+        try { programmerSyncPS(ctx); } catch (Exception ignore) { }
+    }
+
+    // ---------- Synchro en plus à l'heure de la PS et 5 min après ----------
+
+    /** Prochaine PS (ou PS + 5 min) du planning : une synchro y est lancée en plus de la synchro périodique. */
+    private static void programmerSyncPS(Context ctx) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        long now = System.currentTimeMillis(), quand = 0;
+        if (prefs(ctx).getBoolean("syncPS", false)) {
+            JSONArray jours = VoieLibreWidget.jours(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0));
+            for (int k = 0; k < jours.length(); k++) {
+                JSONObject j = jours.optJSONObject(k);
+                if (j == null) continue;
+                long ps = j.optLong("debut");
+                if (ps <= 0) continue;
+                for (long t : new long[]{ps, ps + 5 * 60000L})
+                    if (t > now + 30000 && (quand == 0 || t < quand)) quand = t;
+            }
+        }
+        Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_SYNC_PS);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3007, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if (quand == 0) { am.cancel(pi); return; }
+        try {
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        }
+    }
+
+    /** Lance tout de suite une synchro (dès que le réseau est là), sans toucher à la synchro périodique. */
+    private static void synchroMaintenant(Context ctx) {
+        androidx.work.OneTimeWorkRequest r = new androidx.work.OneTimeWorkRequest.Builder(SyncWorker.class)
+                .setConstraints(new androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build())
+                .build();
+        androidx.work.WorkManager.getInstance(ctx.getApplicationContext())
+                .enqueueUniqueWork("synchro-ps", androidx.work.ExistingWorkPolicy.REPLACE, r);
     }
 
     // ---------- Synchro Graou en panne ----------
@@ -890,6 +933,11 @@ public class Notifs extends BroadcastReceiver {
             return;
         }
         if (ACTION_NEIGE.equals(intent.getAction()) || ACTION_SYNC.equals(intent.getAction())) { programmer(ctx); return; }
+        if (ACTION_SYNC_PS.equals(intent.getAction())) {
+            if (prefs(ctx).getBoolean("syncPS", false)) try { synchroMaintenant(ctx); } catch (Exception ignore) { }
+            programmer(ctx);   // la suivante
+            return;
+        }
         if (ACTION_OK_DEPART.equals(intent.getAction())) {
             NotificationManager nm = ctx.getSystemService(NotificationManager.class);
             if (nm != null) nm.cancel(intent.getIntExtra("id", 0));

@@ -1105,8 +1105,9 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     n.innerHTML=`<label class="titreSec">Notifications</label>
       <label class="coche"><input type="checkbox" id="nModif"> Planning modifié <small>quand Graou change une journée à venir</small></label>
       <label class="coche sansCase" id="lModifPortee">signaler <select id="nModifPortee"><option value="tout">toute modification (trains, EV, coupure…)</option><option value="horaires">seulement code, PS et FS</option></select></label>
-      <label class="coche sansCase" id="lSyncFreq">Synchro automatique : toutes les <select id="nSyncFreq"><option value="30">30 min</option><option value="60">1 h</option><option value="120">2 h</option><option value="240">4 h</option></select>
+      <label class="coche sansCase" id="lSyncFreq">Synchro automatique : toutes les <select id="nSyncFreq"><option value="30">30 min</option><option value="60">1 h</option><option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option><option value="720">12 h</option><option value="1440">24 h</option></select>
         <small>avec du réseau seulement ; Android peut la décaler un peu pour économiser la batterie</small></label>
+      <label class="coche"><input type="checkbox" id="nSyncPS"> Synchro en plus à l’heure de la PS et 5 min après <small>chaque jour de service, d’après le planning</small></label>
       <label class="coche sansCase" id="lTheme">Thème : <select id="nTheme"><option value="auto">thème de l’appareil</option><option value="clair">clair</option><option value="sombre">sombre</option></select>
         <small>pour toute l’appli et le widget ; l’appli se recharge pour l’appliquer</small></label>
       <label class="coche"><input type="checkbox" id="nSync"> Graou non mis à jour depuis <select id="nSyncH">${[6,12,24,48].map(h=>`<option value="${h}">${h} h</option>`).join('')}</select>
@@ -1124,7 +1125,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <details class="sousMenu" id="nTaches"><summary>Notifications avant tâches</summary><div id="nTachesCorps"></div></details>
       <p class="petit" id="nEtat"></p><p class="petit" id="wDiag"></p>`;
     effacer.before(n);
-    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
+    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,syncPS:false,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
     const etat=()=>{ const o=lire(); let ok=true; try{ ok=AND.notifsAutorisees(); }catch(e){}
       $('nEtat').innerHTML=(AND.apercu||ok)?'':'⚠️ Android bloque les notifications de Voie libre : aucun rappel ne s’affichera.'
         +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).');
@@ -1134,7 +1135,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const remplir=()=>{ const o=lire(); $('nModif').checked=!!o.modif; $('nDec').checked=!!o.dec; $('nHeure').value=String(o.heure||18);
       $('nCh3').checked=!!o.ch3; $('nChV').checked=!!o.chVeille; $('nHeureCh').value=String(o.chHeure||18);
       $('nSync').checked=!!o.sync; $('nSyncH').value=String(o.syncH);
-      $('nSyncFreq').value=String(o.syncFreq); $('nTheme').value=o.theme; $('nModifPortee').value=o.modifPortee;
+      $('nSyncFreq').value=String(o.syncFreq); $('nSyncPS').checked=!!o.syncPS; $('nTheme').value=o.theme; $('nModifPortee').value=o.modifPortee;
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
@@ -1178,12 +1179,12 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const changer=()=>{ const o={modif:$('nModif').checked, dec:$('nDec').checked, heure:+$('nHeure').value||18,
       ch3:$('nCh3').checked, chVeille:$('nChV').checked, chHeure:+$('nHeureCh').value||18, taches:changerT(),
       sync:$('nSync').checked, syncH:+$('nSyncH').value||12,
-      syncFreq:+$('nSyncFreq').value||120, theme:$('nTheme').value, modifPortee:$('nModifPortee').value,
+      syncFreq:+$('nSyncFreq').value||120, syncPS:$('nSyncPS').checked, theme:$('nTheme').value, modifPortee:$('nModifPortee').value,
       neige:$('nNeige').checked, neigeHeure:+$('nNeigeH').value||18, neigeJour:$('nNeigeJ').checked,
       reveilOn:$('nRv').checked, reveilHeure:+$('nRvH').value, reveilDe:+$('nRvDe').value, reveilA:Math.max(+$('nRvA').value, +$('nRvDe').value+1)};
       $('nRvA').value=String(o.reveilA);
       sauver('bo-notif',o); try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){} setTimeout(etat,1500); };
-    ['nModif','nDec','nHeure','nCh3','nChV','nHeureCh','nRv','nRvH','nRvDe','nRvA','nNeige','nNeigeH','nNeigeJ','nSync','nSyncH','nSyncFreq','nTheme','nModifPortee'].forEach(id=>$(id).addEventListener('change',changer));
+    ['nModif','nDec','nHeure','nCh3','nChV','nHeureCh','nRv','nRvH','nRvDe','nRvA','nNeige','nNeigeH','nNeigeJ','nSync','nSyncH','nSyncFreq','nSyncPS','nTheme','nModifPortee'].forEach(id=>$(id).addEventListener('change',changer));
     // nouveau thème : toute l'appli est rechargée pour l'appliquer, puis rouverte sur Paramètres
     $('nTheme').addEventListener('change',()=>{ setTimeout(()=>{ try{ const T=window.top; T.location.hash='param//'; T.location.reload(); }catch(e){ location.reload(); } }, 400); });
     dessinerT(); $('nTachesCorps').addEventListener('change',changer);
