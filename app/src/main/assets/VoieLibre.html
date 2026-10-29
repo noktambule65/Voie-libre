@@ -1107,7 +1107,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <details class="sousMenu" id="nTaches"><summary>Notifications avant tâches</summary><div id="nTachesCorps"></div></details>
       <p class="petit" id="nEtat"></p><p class="petit" id="wDiag"></p>`;
     effacer.before(n);
-    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:true,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
+    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
     const etat=()=>{ const o=lire(); let ok=true; try{ ok=AND.notifsAutorisees(); }catch(e){}
       $('nEtat').innerHTML=(AND.apercu||ok)?'':'⚠️ Android bloque les notifications de Voie libre : aucun rappel ne s’affichera.'
         +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).');
@@ -1121,8 +1121,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
-    const T_DEF={train:{on:true,min:4,horsAvion:true,notes:[]}, ev:{on:true,min:15}, eq:{on:true,min:15}, coup:{on:true,min:10},
-      rs:{on:true, horsTrain:true, defaut:15, lieux:{}}};
+    const T_DEF={train:{on:true,min:4,horsAvion:true,notes:[]}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
+      rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
     const lireT=()=>{ const t=JSON.parse(JSON.stringify(T_DEF)), o=(charger('bo-notif',{})||{}).taches||{};
       ['train','ev','eq','coup','rs'].forEach(k=>{ if(o[k]) Object.assign(t[k],o[k]); }); return t; };
     const mn=(v,def)=>{ const n=Math.round(+v); return isFinite(n)&&n>=0?Math.min(180,n):def; };

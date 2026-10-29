@@ -71,7 +71,7 @@ public class Notifs extends BroadcastReceiver {
                     .putBoolean("neige", o.optBoolean("neige", true))
                     .putBoolean("neigeJour", o.optBoolean("neigeJour", true))
                     .putInt("neigeHeure", Math.max(0, Math.min(23, o.optInt("neigeHeure", 18))))
-                    .putBoolean("rv", o.optBoolean("reveilOn", true))
+                    .putBoolean("rv", o.optBoolean("reveilOn", false))
                     .putInt("rvHeure", Math.max(0, Math.min(23, o.optInt("reveilHeure", 21))))
                     .putInt("rvDe", Math.max(0, Math.min(23, o.optInt("reveilDe", 3))))
                     .putInt("rvA", Math.max(1, Math.min(24, o.optInt("reveilA", 11))))
@@ -442,7 +442,7 @@ public class Notifs extends BroadcastReceiver {
         SharedPreferences p = prefs(ctx);
         long now = System.currentTimeMillis(), quand = 0;
         String date = null;
-        if (p.getBoolean("rv", true)) {
+        if (p.getBoolean("rv", false)) {
             int heure = p.getInt("rvHeure", 21);
             JSONArray jours = VoieLibreWidget.jours(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0));
             for (int k = 0; k < jours.length(); k++) {
@@ -479,7 +479,7 @@ public class Notifs extends BroadcastReceiver {
      * programmé ; il compte s'il sonne dans les 4 h qui précèdent la PS.
      */
     private static void verifierReveil(Context ctx, String date) {
-        if (date == null || !prefs(ctx).getBoolean("rv", true)) return;
+        if (date == null || !prefs(ctx).getBoolean("rv", false)) return;
         JSONObject j = psMatinale(ctx, date);   // la journée a pu changer depuis la programmation
         if (j == null) return;
         long ps = j.optLong("debut"), now = System.currentTimeMillis();
@@ -575,12 +575,12 @@ public class Notifs extends BroadcastReceiver {
         try {
             if (t.optJSONObject("train") == null) t.put("train", new JSONObject().put("on", true).put("min", 4).put("horsAvion", true)
                     .put("notes", new JSONArray()));
-            if (t.optJSONObject("ev") == null) t.put("ev", new JSONObject().put("on", true).put("min", 15));
+            if (t.optJSONObject("ev") == null) t.put("ev", new JSONObject().put("on", false).put("min", 15));
             if (t.optJSONObject("eq") == null) t.put("eq", new JSONObject().put("on", true).put("min", 15));
-            if (t.optJSONObject("coup") == null) t.put("coup", new JSONObject().put("on", true).put("min", 10));
+            if (t.optJSONObject("coup") == null) t.put("coup", new JSONObject().put("on", false).put("min", 10));
             if (t.optJSONObject("rs") == null) {
                 // même délai pour toutes les gares par défaut : chacun ajoute ses gares dans Paramètres
-                t.put("rs", new JSONObject().put("on", true).put("horsTrain", true).put("defaut", 15).put("lieux", new JSONObject()));
+                t.put("rs", new JSONObject().put("on", false).put("horsTrain", true).put("defaut", 15).put("lieux", new JSONObject()));
             }
         } catch (Exception ignore) { }
         return t;
