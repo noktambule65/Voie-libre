@@ -1107,7 +1107,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <label class="coche sansCase" id="lModifPortee">signaler <select id="nModifPortee"><option value="tout">toute modification (trains, EV, coupure…)</option><option value="horaires">seulement code, PS et FS</option></select></label>
       <label class="coche sansCase" id="lSyncFreq">Synchro automatique : toutes les <select id="nSyncFreq"><option value="30">30 min</option><option value="60">1 h</option><option value="120">2 h</option><option value="240">4 h</option><option value="360">6 h</option><option value="720">12 h</option><option value="1440">24 h</option></select>
         <small>avec du réseau seulement ; Android peut la décaler un peu pour économiser la batterie</small></label>
-      <label class="coche"><input type="checkbox" id="nSyncPS"> Synchro en plus à l’heure de la PS et 5 min après <small>chaque jour de service, d’après le planning</small></label>
+      <label class="coche" id="lSyncPS"><input type="checkbox" id="nSyncPS"> Synchro en plus à l’heure de la PS et 5 min après <small>chaque jour de service, d’après le planning</small></label>
       <label class="coche sansCase" id="lTheme">Thème : <select id="nTheme"><option value="auto">thème de l’appareil</option><option value="clair">clair</option><option value="sombre">sombre</option></select>
         <small>pour toute l’appli et le widget ; l’appli se recharge pour l’appliquer</small></label>
       <label class="coche"><input type="checkbox" id="nSync"> Graou non mis à jour depuis <select id="nSyncH">${[6,12,24,48].map(h=>`<option value="${h}">${h} h</option>`).join('')}</select>
@@ -1273,7 +1273,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const cP=carte('📅','Planning Graou','rPlanning');
     const aide=document.createElement('button'); aide.className='lienAide'; aide.id='aideLien'; aide.textContent='❓ Où trouver mon lien d’abonnement Graou ?';
     aide.onclick=ouvrirTuto;
-    mettre(cP, $('pEtat'), pan.querySelector('label[for=url]'), $('url'), aide, $('majLien'), $('importer'), $('importer').nextElementSibling, pan.querySelector('.refPacific'), $('lSyncFreq'), $('wDiag'));
+    mettre(cP, $('pEtat'), pan.querySelector('label[for=url]'), $('url'), aide, $('majLien'), $('importer'), $('importer').nextElementSibling, pan.querySelector('.refPacific'), $('lSyncFreq'), $('lSyncPS'), $('wDiag'));
     const deco=document.createElement('button'); deco.className='action deco'; deco.id='deconnexion'; deco.textContent='Se déconnecter de Graou et repartir de zéro';
     const decoTxt=document.createElement('p'); decoTxt.className='petit'; decoTxt.textContent='Efface de ce téléphone ton lien Graou, ton planning et tous tes réglages : Voie libre redevient comme à la première ouverture.';
     mettre(cP, deco, decoTxt);
