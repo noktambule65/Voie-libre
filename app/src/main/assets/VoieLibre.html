@@ -327,7 +327,6 @@ const ajout = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x
 const lundi = d => { const x=jourSeul(d); const w=(x.getDay()+6)%7; return ajout(x,-w); };
 const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fleche = s => esc(s).replace(/\s*-&gt;\s*/g,' → ');
 
 // Heures et dates à Paris, quel que soit le réglage du téléphone
 const FMT = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
@@ -491,7 +490,6 @@ const COUL = {
   d:   {bg:'var(--dj)',  fg:'#fff', nom:'d'},
   autre:{bg:'var(--autre)', fg:'#fff', nom:'Autre'}
 };
-const court = t => t.replace(/\s+-?\d+(?:[.,]\d+)?$/,'');
 
 /* ---------- Index par jour ---------- */
 let EVTS=[], ICS=[], CSV=[], INDEX={}, BORNES=null, ROUL={};
@@ -728,11 +726,6 @@ function sejoursSeg(x, k){
   });
   return {i, sej};
 }
-function dureeMin(s){
-  let d=minutes(s.fin)-minutes(s.deb);
-  if(s.jf!==s.jd) d+=1440;
-  return d;
-}
 
 /* ---------- Vue jour ---------- */
 function htmlService(x, k){
@@ -920,7 +913,6 @@ $('effacer').onclick=()=>{
 };
 
 
-const taille = o => o<1024*1024 ? Math.max(1,Math.round(o/1024))+' Ko' : virg((o/1048576).toFixed(1))+' Mo';
 
 /* ---------- Navigation ---------- */
 function bouger(sens){ try{ window.top.__vlDiagNote && window.top.__vlDiagNote('Météo : jour '+(sens>0?'suivant':'précédent')); }catch(e){} etat.date=ajout(etat.date,sens); rendre(); }
@@ -1117,13 +1109,9 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     effacer.before(n);
     const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:true,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,theme:'auto',modifPortee:'tout'},charger('bo-notif',{}));
     const etat=()=>{ const o=lire(); let ok=true; try{ ok=AND.notifsAutorisees(); }catch(e){}
-      let pe=true; try{ pe=!AND.pleinEcranAutorise || AND.pleinEcranAutorise(); }catch(e){}
-      const ligne=(ok,titre,okTxt,koTxt,bouton,id)=>`<div class="auto ${ok?'ok':'ko'}"><div class="autoT"><b>${titre}</b><span>${ok?'✓ '+okTxt:'⚠️ Non autorisé'}</span></div>`
-        +(ok?'':`<p>${koTxt}</p>${bouton?`<button class="action autoriseNotif" id="${id}">${bouton}</button>`:''}`)+'</div>';
       $('nEtat').innerHTML=(AND.apercu||ok)?'':'⚠️ Android bloque les notifications de Voie libre : aucun rappel ne s’affichera.'
         +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).');
       const bA=$('nAutorise'); if(bA) bA.onclick=()=>{ try{ AND.ouvrirReglagesNotifs(); }catch(e){} };
-      const bP=$('pAutorise'); if(bP) bP.onclick=()=>{ try{ AND.reglerPleinEcran(); }catch(e){} };
       let dg=''; try{ dg=AND.diagWidget?AND.diagWidget():''; }catch(e){}
       $('wDiag').textContent=dg?'Widget : dernier affichage raté le '+dg+' (rattrapé automatiquement).':''; };
     const remplir=()=>{ const o=lire(); $('nModif').checked=!!o.modif; $('nDec').checked=!!o.dec; $('nHeure').value=String(o.heure||18);
@@ -2016,7 +2004,6 @@ function moisSVG(debut,W,nbSem,sansEntete){
   return {svg:o.join(''), W, H};
 }
 let MODE='jour', MOIS=null;
-const NOM_MOIS=d=>new Intl.DateTimeFormat('fr-FR',{month:'long',year:'numeric'}).format(d);
 const COURT=d=>new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short'}).format(d);
 function titreSemaines(debut,nb){ const fin=new Date(debut.getFullYear(),debut.getMonth(),debut.getDate()+(nb||SEMAINES)*7-1); return COURT(debut)+' → '+COURT(fin); }
 // Nombre de semaines qui tiennent dans l'écran, sans défiler
@@ -2366,8 +2353,8 @@ const $=id=>document.getElementById(id);
 
 // Rubriques de l'accueil. « app » = appli embarquée ; la Météo et les Paramètres partagent la même (le planning).
 const RUBRIQUES=[
-  {id:'meteo',  app:'planning', mode:'meteo', ic:'🌦️', coul:'#DCEAF8', titre:'Météo',            sous:'Météo des lieux de ta journée de service'},
-  {id:'journee', app:'journee', mode:'ouverture', ic:'📊', coul:'#E0ECFA', titre:'Voir ma journée', sous:'Ta journée de service en graphique, et tes semaines'}
+  {id:'meteo',   app:'planning', mode:'meteo',     titre:'Météo'},
+  {id:'journee', app:'journee',  mode:'ouverture', titre:'Voir ma journée'}
 ];
 
 // Paramètres (lien Graou, import du planning, notifications, réveil, météo) : volet du planning, ouvert depuis l'accueil
@@ -2833,7 +2820,6 @@ function accueil(){
   window.scrollTo(0,0);
 }
 
-$('rubriques').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(b) ouvrir(b.dataset.id); });
 // Paramètres : tuile de l'accueil, ou appui long (0,6 s) sur le bandeau bleu
 (function(){
   const h=document.querySelector('#accueil header'); let t=null, x0=0, y0=0;
