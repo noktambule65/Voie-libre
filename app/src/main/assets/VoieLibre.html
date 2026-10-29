@@ -2670,7 +2670,7 @@ const TUILES=[
   {id:'journee',  ic:'📊', coul:'#E0ECFA', titre:'Ma journée', sous:'Ta journée en graphique'},
   {id:'semaines', ic:'🗓️', coul:'#E3F1E0', titre:'Semaines',   sous:'Ton planning semaine par semaine'},
   {id:'repos',    ic:'🛋️', coul:'#E3F1E0', titre:'Prochain repos', sous:'Tes repos et congés'},
-  {id:'rappels',  ic:'🔔', coul:'#F1E6F8', titre:'Rappels',    sous:'Découché, tâches, neige…'},
+  {id:'rappels',  ic:'🔔', coul:'#F1E6F8', titre:'Prochains rappels', sous:'Découché, tâches, neige…'},
   {id:'param',    ic:'⚙️', coul:'#E3E7EE', titre:'Paramètres', sous:'Planning Graou, rappels, météo'}
 ];
 $('rubriques').innerHTML=TUILES.map(t=>`<button class="tuile" data-t="${t.id}"><span class="tt"><span class="ic" style="background:${t.coul}">${t.ic}</span><b class="ti">${t.titre}</b></span><small>${t.sous}</small></button>`).join('');
