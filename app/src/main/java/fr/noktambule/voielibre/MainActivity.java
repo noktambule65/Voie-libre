@@ -381,8 +381,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onResume() { super.onResume(); Pont.etape(this, "▶ appli au premier plan", false); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume();
-        // Mise à jour : installation en attente d'autorisation, sinon vérification (une fois par jour au plus)
-        MiseAJour.auRetour(this);
+        // Mise à jour disponible sur GitHub ? (vérification une fois par jour au plus)
         MiseAJour.aLOuverture(this, majDemandee);
         majDemandee = false;
     }

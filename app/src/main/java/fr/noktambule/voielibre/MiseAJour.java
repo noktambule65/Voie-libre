@@ -13,19 +13,12 @@ import android.content.pm.PackageInfo;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.core.content.FileProvider;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -53,7 +46,6 @@ final class MiseAJour {
     static final int OK = 0, A_JOUR = 1, RESEAU = 2, LIMITE = 3, INTROUVABLE = 4;
 
     private static final Handler PRINCIPAL = new Handler(Looper.getMainLooper());
-    private static volatile boolean enCours = false;
 
     private MiseAJour() { }
 
@@ -193,7 +185,7 @@ final class MiseAJour {
         nm.createNotificationChannel(new NotificationChannel(CANAL, "Mise à jour de Voie libre", NotificationManager.IMPORTANCE_DEFAULT));
         Intent ouvrir = new Intent(c, MainActivity.class).putExtra("maj", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pi = PendingIntent.getActivity(c, 6000, ouvrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        String texte = "La version 1." + r.info.version + " est prête. Touche pour l'installer.";
+        String texte = "La version 1." + r.info.version + " est prête. Touche pour la télécharger.";
         Notification n = new Notification.Builder(c, CANAL)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(0xFF2E7D32)
@@ -214,7 +206,6 @@ final class MiseAJour {
      * « demandee » : ouverture depuis la notification, la proposition s'affiche même si elle a été reportée.
      */
     static void aLOuverture(Activity a, boolean demandee) {
-        if (enCours) return;
         final Context c = a.getApplicationContext();
         new Thread(() -> {
             Resultat r = verifier(c, false);
@@ -226,7 +217,6 @@ final class MiseAJour {
 
     /** Bouton « Rechercher une mise à jour » (Paramètres › Aide). */
     static void manuellement(Activity a) {
-        if (enCours) return;
         final Context c = a.getApplicationContext();
         Toast.makeText(a, "Recherche d'une mise à jour…", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
@@ -248,7 +238,7 @@ final class MiseAJour {
     private static boolean ouverte(Activity a) { return a != null && !a.isFinishing() && !a.isDestroyed(); }
 
     private static void proposer(Activity a, Info i) {
-        if (!ouverte(a) || enCours) return;
+        if (!ouverte(a)) return;
         // Pas plus d'une proposition automatique toutes les 12 h, quelle que soit la réponse
         prefs(a).edit().putLong("reporteeJusqua", System.currentTimeMillis() + JOUR / 2).apply();
         StringBuilder m = new StringBuilder();
@@ -259,175 +249,30 @@ final class MiseAJour {
             String n = i.notes.length() > 700 ? i.notes.substring(0, 700) + "…" : i.notes;
             m.append("\n\n").append(n);
         }
-        m.append("\n\nTes réglages et ton planning sont conservés.");
+        m.append("\n\nLe navigateur télécharge la nouvelle version : ouvre le fichier pour l'installer. Tes réglages et ton planning sont conservés.");
         new AlertDialog.Builder(a)
                 .setTitle("Mise à jour disponible")
                 .setMessage(m.toString())
-                .setPositiveButton("Mettre à jour", (d, w) -> telecharger(a, i))
+                .setPositiveButton("Télécharger", (d, w) -> ouvrirLien(a, i))
                 .setNegativeButton("Plus tard", (d, w) ->
                         prefs(a).edit().putLong("reporteeJusqua", System.currentTimeMillis() + JOUR).apply())
                 .show();
     }
 
-    // ---------- Téléchargement et installation ----------
-
-    private static File dossier(Context c) { return new File(c.getCacheDir(), "maj"); }
-
-    private static void telecharger(Activity a, Info i) {
-        if (!ouverte(a) || enCours) return;
-        enCours = true;
-        final boolean[] annule = {false};
-
-        LinearLayout boite = new LinearLayout(a);
-        boite.setOrientation(LinearLayout.VERTICAL);
-        int marge = Math.round(24 * a.getResources().getDisplayMetrics().density);
-        boite.setPadding(marge, marge / 2, marge, 0);
-        ProgressBar barre = new ProgressBar(a, null, android.R.attr.progressBarStyleHorizontal);
-        barre.setMax(100);
-        barre.setIndeterminate(i.taille <= 0);
-        TextView texte = new TextView(a);
-        texte.setText("Démarrage…");
-        texte.setPadding(0, marge / 3, 0, 0);
-        boite.addView(barre);
-        boite.addView(texte);
-        AlertDialog fenetre = new AlertDialog.Builder(a)
-                .setTitle("Téléchargement de la version 1." + i.version)
-                .setView(boite)
-                .setCancelable(false)
-                .setNegativeButton("Annuler", (d, w) -> annule[0] = true)
-                .show();
-
-        final Context c = a.getApplicationContext();
-        new Thread(() -> {
-            File d = dossier(c);
-            d.mkdirs();
-            File partiel = new File(d, "Voie-libre-v" + i.version + ".apk.part");
-            File apk = new File(d, "Voie-libre-v" + i.version + ".apk");
-            String erreur = null;
-            HttpURLConnection h = null;
-            try {
-                String adresse = i.apk;
-                // GitHub renvoie vers un autre serveur pour le fichier lui-même : on suit les redirections
-                for (int saut = 0; saut < 6; saut++) {
-                    h = (HttpURLConnection) new URL(adresse).openConnection();
-                    h.setInstanceFollowRedirects(false);
-                    h.setConnectTimeout(15000);
-                    h.setReadTimeout(30000);
-                    h.setRequestProperty("User-Agent", "VoieLibre-Android");
-                    int s = h.getResponseCode();
-                    if (s >= 300 && s < 400 && h.getHeaderField("Location") != null) {
-                        adresse = new URL(new URL(adresse), h.getHeaderField("Location")).toString();
-                        h.disconnect();
-                        h = null;
-                        continue;
-                    }
-                    if (s != 200) throw new Exception("statut " + s);
-                    break;
-                }
-                if (h == null) throw new Exception("trop de redirections");
-                long total = h.getContentLengthLong() > 0 ? h.getContentLengthLong() : i.taille;
-                try (InputStream in = h.getInputStream(); FileOutputStream out = new FileOutputStream(partiel)) {
-                    byte[] t = new byte[32768];
-                    long recu = 0;
-                    int n, dernier = -1;
-                    while ((n = in.read(t)) > 0) {
-                        if (annule[0]) throw new InterruptedException();
-                        out.write(t, 0, n);
-                        recu += n;
-                        if (total > 0) {
-                            int pc = (int) (recu * 100 / total);
-                            if (pc != dernier) {
-                                dernier = pc;
-                                final long r = recu;
-                                PRINCIPAL.post(() -> {
-                                    barre.setIndeterminate(false);
-                                    barre.setProgress(pc);
-                                    texte.setText(String.format(java.util.Locale.FRANCE, "%.1f Mo sur %.1f Mo", r / 1048576.0, total / 1048576.0));
-                                });
-                            }
-                        }
-                    }
-                }
-                if (apk.exists()) apk.delete();
-                if (!partiel.renameTo(apk)) throw new Exception("enregistrement");
-                // Vérification : c'est bien Voie libre, et plus récente que la version installée
-                PackageInfo p = c.getPackageManager().getPackageArchiveInfo(apk.getPath(), 0);
-                if (p == null || !c.getPackageName().equals(p.packageName) || p.getLongVersionCode() <= versionInstallee(c)) {
-                    apk.delete();
-                    throw new Exception("fichier inattendu");
-                }
-            } catch (InterruptedException e) {
-                erreur = "";
-            } catch (Exception e) {
-                erreur = "Téléchargement impossible. Vérifie le réseau et réessaie.";
-            } finally {
-                if (h != null) h.disconnect();
-                partiel.delete();
-            }
-            final String err = erreur;
-            PRINCIPAL.post(() -> {
-                enCours = false;
-                try { fenetre.dismiss(); } catch (Exception ignore) { }
-                if (err != null) {
-                    if (!err.isEmpty() && ouverte(a)) Toast.makeText(a, err, Toast.LENGTH_LONG).show();
-                    return;
-                }
-                installer(a, apk);
-            });
-        }, "maj-telechargement").start();
-    }
-
-    /** Lance l'installeur d'Android, après avoir demandé l'autorisation « Installer des applis inconnues » si besoin. */
-    private static void installer(Activity a, File apk) {
-        if (!ouverte(a) || !apk.exists()) return;
-        if (!a.getPackageManager().canRequestPackageInstalls()) {
-            new AlertDialog.Builder(a)
-                    .setTitle("Une autorisation à donner")
-                    .setMessage("Pour installer ses mises à jour, Voie libre doit être autorisée par Android "
-                            + "(une seule fois).\n\nSur l'écran suivant, active « Autoriser cette source », "
-                            + "puis reviens avec la flèche retour : l'installation se lancera.")
-                    .setPositiveButton("Continuer", (d, w) -> {
-                        prefs(a).edit().putString("enAttente", apk.getPath()).apply();
-                        try {
-                            a.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                    Uri.parse("package:" + a.getPackageName())));
-                        } catch (Exception e) {
-                            prefs(a).edit().remove("enAttente").apply();
-                            Toast.makeText(a, "Réglage introuvable sur ce téléphone", Toast.LENGTH_LONG).show();
-                        }
-                    })
-                    .setNegativeButton("Annuler", null)
-                    .show();
-            return;
-        }
-        try {
-            Uri u = FileProvider.getUriForFile(a, "fr.noktambule.voielibre.fichiers", apk);
-            Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(u, TYPE_APK)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
-            a.startActivity(i);
-        } catch (Exception e) {
-            Toast.makeText(a, "Installation impossible", Toast.LENGTH_LONG).show();
-        }
-    }
+    // ---------- Téléchargement : confié au navigateur ----------
 
     /**
-     * Au retour dans l'appli : reprend l'installation laissée en attente de l'autorisation d'Android,
-     * et efface les fichiers des versions déjà installées.
+     * Ouvre le lien de l'APK dans le navigateur, qui télécharge et installe comme lors de la première
+     * installation. L'appli n'installe rien elle-même : pas d'autorisation « installer des applis »,
+     * pas de téléchargement interne (schéma signalé comme dangereux par Play Protect).
      */
-    static void auRetour(Activity a) {
-        SharedPreferences p = prefs(a);
-        String attente = p.getString("enAttente", null);
-        if (attente != null) {
-            p.edit().remove("enAttente").apply();   // une seule tentative : pas de boucle si l'installation est annulée
-            if (a.getPackageManager().canRequestPackageInstalls()) installer(a, new File(attente));
-            else Toast.makeText(a, "Autorisation non accordée : mise à jour annulée", Toast.LENGTH_LONG).show();
-            return;
+    private static void ouvrirLien(Activity a, Info i) {
+        if (!ouverte(a)) return;
+        try {
+            a.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(i.apk)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            Toast.makeText(a, "Téléchargement dans le navigateur : ouvre ensuite le fichier pour installer", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(a, "Aucun navigateur pour ouvrir le lien", Toast.LENGTH_LONG).show();
         }
-        if (enCours) return;
-        File[] l = dossier(a).listFiles();
-        if (l == null) return;
-        long installee = versionInstallee(a);
-        for (File f : l) if (numero(f.getName()) <= installee || f.getName().endsWith(".part")) f.delete();
     }
 }

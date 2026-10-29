@@ -7,8 +7,6 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Mises à jour : installer la nouvelle version téléchargée depuis GitHub (autorisation donnée une fois par l'utilisateur) -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Compte à rebours du widget, à la minute près (alarme sans réveil, seulement écran allumé) -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- Bouton ⏰ : réveils créés dans l'appli Horloge -->

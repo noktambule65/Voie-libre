@@ -13,8 +13,8 @@ changement d'heure).
    (le bouton « Où trouver mon lien d'abonnement Graou ? » explique où le trouver).
 
 Ensuite, Voie libre prévient elle-même quand une nouvelle version est prête (fenêtre à l'ouverture,
-notification) et la télécharge. La première fois, Android demande d'autoriser Voie libre à installer
-ses mises à jour. Bouton manuel : ⚙ Paramètres › Aide › « Rechercher une mise à jour ».
+notification). « Télécharger » ouvre le fichier dans le navigateur : il suffit ensuite de l'ouvrir
+pour l'installer, comme la première fois. Bouton manuel : ⚙ Paramètres › Aide › « Rechercher une mise à jour ».
 
 Le lien Graou et le planning restent sur le téléphone : ils ne sont envoyés nulle part.
 La météo vient d'Open-Meteo.
