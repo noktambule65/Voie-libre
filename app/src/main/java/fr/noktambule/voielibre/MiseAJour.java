@@ -33,6 +33,7 @@ import java.net.URL;
  *
  * Vérification au plus une fois par jour (à l'ouverture de l'appli et pendant la synchro en
  * arrière-plan), sans compte ni jeton : GitHub accepte 60 demandes par heure et par adresse.
+ * Notification à chaque nouvelle version, puis deux relances au plus (3 jours, puis 7 jours après).
  */
 final class MiseAJour {
 
@@ -173,30 +174,49 @@ final class MiseAJour {
 
     // ---------- Synchro en arrière-plan : notification ----------
 
-    /** Appelé par la synchro en arrière-plan : une notification par nouvelle version. */
+    /** Relances d'une même version, si elle n'est toujours pas installée : 3 jours après la notification, puis 7 jours après. */
+    private static final long[] RELANCES = {3 * JOUR, 7 * JOUR};
+
+    /**
+     * Appelé par la synchro en arrière-plan : une notification par nouvelle version, puis au plus deux relances
+     * (3 jours, puis 7 jours plus tard) tant qu'elle n'est pas installée. Une version plus récente repart de zéro.
+     */
     static void enArrierePlan(Context c) {
         Resultat r = verifier(c, false);
-        if (r.etat != OK || r.info == null) return;
+        if (r.etat != OK || r.info == null) return;   // à jour (ou GitHub injoignable) : rien à signaler
         SharedPreferences p = prefs(c);
-        if (p.getInt("notifiee", 0) >= r.info.version) return;
+        long maintenant = System.currentTimeMillis();
+        int notifiee = p.getInt("notifiee", 0), nb = p.getInt("notifNb", 0);
+        boolean relance;
+        if (notifiee < r.info.version) {
+            relance = false;                            // nouvelle version : première notification
+        } else if (nb >= 1 && nb <= RELANCES.length && maintenant - p.getLong("notifQuand", 0) >= RELANCES[nb - 1]) {
+            relance = true;                             // même version, toujours pas installée : relance
+        } else {
+            return;
+        }
         if (!Notifs.autorisees(c)) return;
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null) return;
         nm.createNotificationChannel(new NotificationChannel(CANAL, "Mise à jour de Voie libre", NotificationManager.IMPORTANCE_DEFAULT));
         Intent ouvrir = new Intent(c, MainActivity.class).putExtra("maj", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pi = PendingIntent.getActivity(c, 6000, ouvrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        String texte = "La version 1." + r.info.version + " est prête. Touche pour la télécharger.";
+        String titre = relance ? "Rappel : mise à jour de Voie libre" : "Mise à jour de Voie libre disponible";
+        String texte = relance
+                ? "La version 1." + r.info.version + " t'attend toujours (tu as la " + nomVersion(c) + "). Touche pour la télécharger."
+                : "La version 1." + r.info.version + " est prête. Touche pour la télécharger.";
         Notification n = new Notification.Builder(c, CANAL)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(0xFF2E7D32)
-                .setContentTitle("Mise à jour de Voie libre disponible")
+                .setContentTitle(titre)
                 .setContentText(texte)
                 .setStyle(new Notification.BigTextStyle().bigText(texte))
                 .setContentIntent(pi)
                 .setAutoCancel(true)
                 .build();
         nm.notify(ID_NOTIF, n);
-        p.edit().putInt("notifiee", r.info.version).apply();
+        p.edit().putInt("notifiee", r.info.version).putInt("notifNb", relance ? nb + 1 : 1)
+                .putLong("notifQuand", maintenant).apply();
     }
 
     // ---------- Appli ouverte : fenêtre de proposition ----------
