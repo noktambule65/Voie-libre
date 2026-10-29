@@ -2496,7 +2496,7 @@ function prochainsRappels(L, now, bloque){
   // Découché
   if(N.dec){ const x=L.find(s=>s.rhr && s.d>now); if(x) ajouter(x.d,'🛏',quandJour(x.d),'Découché à '+escS(x.rhr)); }
   // Tâches suivies d'un rappel (train conduit, EV, EQ PREND, RS/PC, fin de coupure) : toutes, triées avec le reste
-  const NOMS={train:'🚆',ev:'🚌',eq:'👥',rs:'📋',coup:'☕'};
+  const NOMS={train:'🚆',ev:'💺',eq:'👥',rs:'📋',coup:'☕'};
   (P.taches||[]).filter(z=>z.t>t0 && T[z.type] && T[z.type].on).forEach(tache=>{ const d=new Date(tache.t);
     ajouter(d,NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); });
   // Réveil oublié : la veille au soir d'une PS matinale
