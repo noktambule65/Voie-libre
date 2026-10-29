@@ -1451,6 +1451,18 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);
     if(NATIF){ const bW=document.createElement('button'); bW.className='action clair'; bW.textContent='Ajouter le widget sur l’écran d’accueil';
       bW.onclick=ouvrirTutoWidget; cA.appendChild(bW); }
+    // Contact : bug, remarque ou suggestion (ouvre l'appli de mail, version déjà indiquée)
+    const MAIL='voielibreadc@gmail.com';
+    const pC=document.createElement('p'); pC.className='petit';
+    pC.innerHTML='Un bug, une remarque, une idée ? Écris à <b>'+MAIL+'</b>';
+    const bC=document.createElement('a'); bC.className='action clair'; bC.target='_blank'; bC.rel='noopener';
+    bC.style.cssText='display:block;text-align:center;text-decoration:none;box-sizing:border-box';
+    bC.textContent='✉️ Signaler un bug ou faire une suggestion';
+    let vC=''; try{ vC=NATIF&&NATIF.versionAppli?NATIF.versionAppli():''; }catch(e){}
+    const andr=(navigator.userAgent.match(/Android [0-9.]+/)||[''])[0];
+    bC.href='mailto:'+MAIL+'?subject='+encodeURIComponent('Voie libre'+(vC?' '+vC:'')+' : ')
+      +'&body='+encodeURIComponent('\n\n\n---\nVoie libre '+(vC||'(version web)')+(andr?' · '+andr:'')+'\n(Ne colle pas ton lien Graou : il est personnel.)');
+    cA.appendChild(pC); cA.appendChild(bC);
     // « Tout effacer » remplacé par la déconnexion de Graou (carte Planning Graou)
     $('effacer').remove();
   })();
