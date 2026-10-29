@@ -48,6 +48,10 @@ button{font:inherit;color:inherit}
 .tuile small .ml .mv{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tuile small .ml .mh{flex:none;font-size:12.5px}
 .tuile small .ml.alerte{white-space:normal;display:block;line-height:1.3;margin-top:2px}
+.tuile small .rp{display:flex;gap:6px;align-items:baseline;line-height:1.3;margin:0 0 4px}
+.tuile small .rp i{font-style:normal;flex:none;width:1.3em;text-align:center}
+.tuile small .rp b{color:var(--encre);font-weight:700}
+.tuile small .rp.autres{display:block;font-size:12.5px;margin-top:2px}
 .tuile small .puces{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0 3px}
 .tuile small .puce{font-weight:800;font-size:12px;padding:1px 6px;border-radius:6px;background:#F0F2F5}
 .tuile small .pt{font-size:12.5px}
@@ -2304,6 +2308,10 @@ window.exporterWidget=function(forcer){
       let graou=0, graouErreur=''; try{ const st=JSON.parse(localStorage.getItem('pl-statut')||'null'); if(st && st.source==='lien') graou=st.quand||0;
         if(st && st.erreur && (st.erreurQuand||0)>(st.quand||0)) graouErreur=st.erreur; }catch(e){}
       A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, neige}));
+      // tuile Rappels de l'accueil : prochaines tâches et neige prévue
+      try{ localStorage.setItem('vl-prochains', JSON.stringify({maj:Date.now(),
+        taches:taches.map(z=>({type:z.type, t:z.t, quoi:z.quoi, ou:z.ou})),
+        neige:neige.map(z=>({debut:z.debut, lieux:(z.lieux||[]).map(l=>l.n)}))})); }catch(e){}
       try{ localStorage.setItem('vl-sig-widget', signatureExport()); }catch(e){}
     }catch(e){}
     JOUR=garde; exportEnCours=null;
@@ -2458,6 +2466,48 @@ const escS=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;'
 const p2=n=>String(n).padStart(2,'0');
 const hm=d=>p2(d.getHours())+':'+p2(d.getMinutes());
 const cleJ=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+/* ---- Tuile Rappels : les prochains rappels prévus, d'après les réglages (Paramètres › Notifications) ---- */
+const RAPPELS_DEF={modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,
+  neige:true,neigeHeure:18,neigeJour:true,sync:true};
+const TACHES_DEF={train:{on:true,min:4},ev:{on:false,min:15},eq:{on:true,min:15},coup:{on:false,min:10},rs:{on:false}};
+// changement d'heure : dernier dimanche de mars et d'octobre
+function prochainChangementHeure(now){
+  for(let y=now.getFullYear(); y<=now.getFullYear()+1; y++) for(const m of [2,9]){
+    const d=new Date(y,m+1,0); d.setDate(d.getDate()-d.getDay()); d.setHours(3,0,0,0);
+    if(d>now) return {d, ete:m===2}; }
+  return null;
+}
+function prochainsRappels(L, now, bloque){
+  const N=Object.assign({},RAPPELS_DEF,lireObj('bo-notif')||{});
+  const T={}; Object.keys(TACHES_DEF).forEach(k=>T[k]=Object.assign({},TACHES_DEF[k],(N.taches||{})[k]||{}));
+  const P=lireObj('vl-prochains')||{}, t0=now.getTime(), lim=t0+14*864e5, L2=[];
+  const jh=d=>quandJour(d)+' '+hm(d);
+  const ajouter=(d,ic,quand,txt)=>{ if(d && d.getTime()>t0 && d.getTime()<lim) L2.push({d,ic,quand,txt}); };
+  // Découché
+  if(N.dec){ const x=L.find(s=>s.rhr && s.d>now); if(x) ajouter(x.d,'🛏',quandJour(x.d),'Découché à '+escS(x.rhr)); }
+  // Prochaine tâche suivie d'un rappel (train conduit, EV, EQ PREND, RS/PC, fin de coupure)
+  const NOMS={train:'🚆',ev:'🚌',eq:'👥',rs:'📋',coup:'☕'};
+  const tache=(P.taches||[]).filter(z=>z.t>t0 && T[z.type] && T[z.type].on).sort((a,b)=>a.t-b.t)[0];
+  if(tache){ const d=new Date(tache.t); ajouter(d,NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); }
+  // Réveil oublié : la veille au soir d'une PS matinale
+  if(N.reveilOn){ const x=L.find(s=>s.d>now && s.d.getHours()>=N.reveilDe && s.d.getHours()<N.reveilA &&
+      new Date(s.d.getFullYear(),s.d.getMonth(),s.d.getDate()-1,N.reveilHeure)>now);
+    if(x){ const v=new Date(x.d.getFullYear(),x.d.getMonth(),x.d.getDate()-1,N.reveilHeure);
+      ajouter(v,'⏰',quandJour(v)+' '+N.reveilHeure+' h','Vérif. du réveil (PS '+hm(x.d)+')'); } }
+  // Neige prévue sur une journée de service
+  if(N.neige||N.neigeJour){ const z=(P.neige||[]).filter(n=>n.debut>t0).sort((a,b)=>a.debut-b.debut)[0];
+    if(z){ const d=new Date(z.debut); ajouter(d,'❄️',quandJour(d),'Neige prévue'+(z.lieux&&z.lieux.length?' · '+escS(z.lieux.join(', ')):'')); } }
+  // Changement d'heure
+  if(N.ch3||N.chVeille){ const c=prochainChangementHeure(now); if(c) ajouter(c.d,'🕐',quandJour(c.d),'Changement d’heure ('+(c.ete?'heure d’été':'heure d’hiver')+')'); }
+  L2.sort((a,b)=>a.d-b.d);
+  const lignes=[];
+  if(bloque) lignes.push('<span class="ml alerte">⚠️ Notifications bloquées</span>');
+  L2.slice(0,bloque?2:3).forEach(r=>lignes.push(`<span class="rp"><i>${r.ic}</i><span><b>${escS(r.quand)}</b> ${r.txt}</span></span>`));
+  if(!L2.length && !bloque) lignes.push('<span class="rp vide">Aucun rappel prévu</span>');
+  const alertes=[N.modif?'planning modifié':'', N.sync?'synchro Graou':''].filter(Boolean);
+  if(alertes.length && L2.length<3 && !bloque) lignes.push('<span class="rp autres">Alertes : '+alertes.join(', ')+'</span>');
+  return lignes.join('');
+}
 function quandJour(d){
   const a=new Date(); a.setHours(0,0,0,0); const j=new Date(d); j.setHours(0,0,0,0);
   const n=Math.round((j-a)/864e5);
@@ -2601,11 +2651,7 @@ function majService(){
     const R=reposInfo(now); T.repos=R.html; TITRES.repos=R.titre; CIBLE_REPOS=R.date;
     // Rappels
     const A=window.BoulotAndroid; let bloque=false; try{ bloque=!!(A&&A.notifsAutorisees&&!A.notifsAutorisees()); }catch(e){}
-    const dec=L.find(s=>s.rhr && s.d>now && s.d-now<14*864e5), N=lireObj('bo-notif');
-    if(bloque) T.rappels='<span class="alerte">⚠️ Notifications bloquées</span>';
-    else if(dec) T.rappels=`Découché ${quandJour(dec.d)} à ${escS(dec.rhr)}`;
-    else if(N){ const n=['modif','dec','reveilOn','sync'].filter(k=>N[k]).length+((N.neige||N.neigeJour)?1:0)+((N.ch3||N.chVeille)?1:0)+(N.taches?1:0); T.rappels=n+' rappel'+(n>1?'s':'')+' activé'+(n>1?'s':''); }
-    else T.rappels='Découché, tâches, neige…';
+    T.rappels=prochainsRappels(L, now, bloque);
     // Paramètres
     const st=lireObj('pl-statut');
     if(vide) T.param='Ajoute ton lien Graou';
