@@ -44,14 +44,17 @@ jobs:
       - name: Renommer l'APK
         run: cp app/build/outputs/apk/release/app-release.apk "Voie-libre-v${{ github.run_number }}.apk"
 
-      - name: Publier dans « Releases »
+      # Publiée en PRÉ-VERSION : les appli des collègues ne la voient pas.
+      # Feu vert après test : modifier la release sur GitHub, décocher « Set as a pre-release »
+      # et cocher « Set as the latest release ». Elle est alors proposée à tout le monde.
+      - name: Publier dans « Releases » (pré-version à tester)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "v${{ github.run_number }}" "Voie-libre-v${{ github.run_number }}.apk" \
             --title "Voie libre v${{ github.run_number }}" \
-            --notes "APK à télécharger et installer sur le téléphone Android." \
-            --latest
+            --notes "Nouvelle version de Voie libre." \
+            --prerelease
 
       - name: Effacer la clé déchiffrée
         if: always()

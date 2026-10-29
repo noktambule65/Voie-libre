@@ -65,12 +65,16 @@ public class MainActivity extends Activity {
     private android.webkit.GeolocationPermissions.Callback rappelPosition;
     /** Une demande d'autorisation de position n'est faite que sur un choix de l'utilisateur (Paramètres › Ma position). */
     static volatile boolean demandePositionPermise = false;
+    /** Ouverture depuis la notification « Mise à jour disponible » : la proposition s'affiche au premier plan. */
+    private boolean majDemandee = false;
 
     @Override
     protected void onCreate(Bundle etat) {
         super.onCreate(etat);
         SyncWorker.programmer(this);   // synchro automatique en arrière-plan (sans effet si déjà programmée)
         Notifs.programmer(this);       // prochain rappel de découché, s'il est activé
+        majDemandee = getIntent() != null && getIntent().getBooleanExtra("maj", false);
+        if (majDemandee) getIntent().removeExtra("maj");
 
         racine = new FrameLayout(this);
         web = new WebView(this);
@@ -228,6 +232,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (intent != null && intent.getBooleanExtra("maj", false)) majDemandee = true;
         String[] d = destination(intent);
         if (d != null && web != null)
             web.evaluateJavascript("window.boulotAller&&window.boulotAller(" + org.json.JSONObject.quote(d[0]) + ","
@@ -390,7 +395,12 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onResume() { super.onResume(); Pont.etape(this, "▶ appli au premier plan", false); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume(); }
+    protected void onResume() { super.onResume(); Pont.etape(this, "▶ appli au premier plan", false); visible = true; battement = SystemClock.uptimeMillis(); pingAttente = false; figeNote = false; chien.removeCallbacks(veille); chien.post(veille); lancerGardien(); if (web != null) web.onResume();
+        // Mise à jour : installation en attente d'autorisation, sinon vérification (une fois par jour au plus)
+        MiseAJour.auRetour(this);
+        MiseAJour.aLOuverture(this, majDemandee);
+        majDemandee = false;
+    }
 
     @Override
     protected void onDestroy() {

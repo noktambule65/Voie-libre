@@ -1440,6 +1440,14 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       cA.querySelector('h3').addEventListener('click',()=>{ const t=Date.now(); nAppuis=(t-tAppui<800)?nAppuis+1:1; tAppui=t;
         if(nAppuis>=5){ nAppuis=0; bD.style.display=''; bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
     }
+    if(NATIF && NATIF.verifierMaj){
+      const pV=document.createElement('p'); pV.className='petit';
+      let v=''; try{ v=NATIF.versionAppli?NATIF.versionAppli():''; }catch(e){}
+      pV.textContent='Version installée : '+(v||'?')+'. Les nouvelles versions te sont proposées automatiquement.';
+      const bM=document.createElement('button'); bM.className='action clair'; bM.textContent='Rechercher une mise à jour';
+      bM.onclick=()=>{ try{ NATIF.verifierMaj(); }catch(e){} };
+      cA.appendChild(pV); cA.appendChild(bM);
+    }
     const bI=document.createElement('button'); bI.className='action clair'; bI.textContent='Revoir la présentation de Voie libre';
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);
     // « Tout effacer » remplacé par la déconnexion de Graou (carte Planning Graou)

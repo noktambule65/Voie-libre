@@ -464,4 +464,15 @@ public class Pont {
     public void finSync(boolean ok) {
         surEcran(() -> { if (finSynchro != null) finSynchro.run(); });
     }
+
+    /** Version installée, affichée dans Paramètres › Aide (ex. « 1.42 »). */
+    @JavascriptInterface
+    public String versionAppli() { return MiseAJour.nomVersion(ctx); }
+
+    /** Bouton « Rechercher une mise à jour » (Paramètres › Aide). */
+    @JavascriptInterface
+    public void verifierMaj() {
+        if (act == null) return;
+        surEcran(() -> MiseAJour.manuellement(act));
+    }
 }

@@ -53,6 +53,8 @@ public class SyncWorker extends Worker {
     @Override
     public Result doWork() {
         final Context ctx = getApplicationContext();
+        // Nouvelle version validée sur GitHub ? (une fois par jour au plus, notification une seule fois par version)
+        try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { }
         // L'appli ouverte se met déjà à jour elle-même ; une seconde page dans le même moteur web la ralentirait
         if (MainActivity.visible) return Result.success();
         final Handler principal = new Handler(Looper.getMainLooper());
