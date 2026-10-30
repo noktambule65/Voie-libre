@@ -1519,7 +1519,6 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           <img src="${IMG.export}" alt="Onglet Export de Graou : le lien d’abonnement" width="600" height="1089"></div></div>
         <div class="etape"><b>4</b><div><p>Reviens dans Voie libre, colle le lien dans le champ <strong>Lien d’abonnement Graou</strong>, puis touche <strong>Enregistrer et mettre à jour</strong>.</p></div></div>
         <p class="attention">⚠️ Ne touche pas au bouton <strong>Jeton</strong> de Graou : il fabrique un nouveau lien, et l’ancien ne marche plus (il faudrait le recoller ici). Ton lien est personnel : ne le partage pas.</p>
-        <p class="exemple">Les captures sont des exemples : nom, matricule, planning et lien sont faux.</p>
         <button class="action" data-x="1">J’ai copié mon lien</button>
       </div>`;
     document.body.appendChild(ov);
@@ -2004,7 +2003,7 @@ function detailLignes(x){
     if(g==='cond'||g==='ev'){
       const [de,a]=String(it.lieu).split('->').map(t=>nomGare(t));
       const d=reel(rel(it.h1),rel(it.h2)), dur=(d>=60?Math.floor(d/60)+'h'+pad(d%60):d)+'min';
-      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':'🧳'}</span>
+      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':'💺'}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?it.act.replace(/^EV\s*/i,''):it.act)}</span></div>
         <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}</div></div>`);
     } else {
