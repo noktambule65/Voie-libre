@@ -462,6 +462,12 @@ public class VoieLibreWidget extends AppWidgetProvider {
 
     /** Assemble la ligne des jours et les bandes de semaines [debut, debut + n[ en une seule image. */
     private static Bitmap grilleSemaines(Context ctx, int debut, int n) {
+        Bitmap r = grilleBrute(ctx, debut, n);
+        return r == null ? null : aEchelle(r);
+    }
+
+    /** Semaines debut … debut+n-1 assemblées sous la ligne L M M J V S D, à taille réelle. */
+    private static Bitmap grilleBrute(Context ctx, int debut, int n) {
         Bitmap[] b = new Bitmap[n];
         int larg = 0, haut = ENTETE;
         for (int k = 0; k < n; k++) {
@@ -481,7 +487,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         for (int i = 0; i < 7; i++) c.drawText(String.valueOf(jours.charAt(i)), larg / 7f * (i + 0.5f), 24, t);
         int y = ENTETE;
         for (Bitmap x : b) { c.drawBitmap(x, 0, y, LISSE); y += x.getHeight(); }
-        return aEchelle(r);
+        return r;
     }
 
     // ---------- Vue journée ----------
@@ -528,32 +534,37 @@ public class VoieLibreWidget extends AppWidgetProvider {
     }
 
     /** Une ou deux journées empilées ; la deuxième porte son intitulé. */
-    private static Bitmap journees(Context ctx, JSONArray jours, int i, int n, boolean nuit) {
+    /**
+     * La journée affichée, et dessous (widget assez haut) nbSem semaines à partir de la semaine semDebut,
+     * séparées par un petit intervalle.
+     */
+    private static Bitmap journees(Context ctx, JSONArray jours, int i, int semDebut, int nbSem, boolean nuit) {
         Bitmap a = image(ctx, i + ".png");
         if (a == null) return null;
-        Bitmap b = n > 1 && i + 1 < jours.length() ? image(ctx, (i + 1) + ".png") : null;
+        Bitmap b = nbSem > 0 ? grilleBrute(ctx, semDebut, nbSem) : null;
         int larg = Math.max(a.getWidth(), b != null ? b.getWidth() : 0);
-        int haut = a.getHeight() + (b != null ? LIBELLE + b.getHeight() : 0);
+        int haut = a.getHeight() + (b != null ? ECART_SEMAINES + b.getHeight() : 0);
         Bitmap r = Bitmap.createBitmap(larg, haut, CONFIG);
         Canvas c = new Canvas(r);
         c.drawColor(0xFFFFFFFF);
         c.drawBitmap(a, 0, 0, LISSE);
-        if (b != null) {
-            JSONObject j2 = jours.optJSONObject(i + 1);
-            Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
-            t.setColor(0xFF2F5FA8);
-            t.setTextSize(23);
-            t.setTypeface(Typeface.DEFAULT_BOLD);
-            long d2 = j2.optLong("debut"), f2 = j2.optLong("fin");
-            String lib = jourTexte(d2) + " · " + titreJour(j2) + " · " + hm(d2) + " → " + hm(f2);
-            lib = Character.toUpperCase(lib.charAt(0)) + lib.substring(1);
-            c.drawText(lib, 14, a.getHeight() + LIBELLE - 11, t);
-            c.drawBitmap(b, 0, a.getHeight() + LIBELLE, LISSE);
-        }
+        if (b != null) c.drawBitmap(b, 0, a.getHeight() + ECART_SEMAINES, LISSE);
         if (nuit) { r = assombrir(r); c = new Canvas(r); }
         traitMaintenant(c, jours.optJSONObject(i), 0, a.getHeight(), nuit);
-        if (b != null) traitMaintenant(c, jours.optJSONObject(i + 1), a.getHeight() + LIBELLE, b.getHeight(), nuit);
         return aEchelle(r);
+    }
+
+    /** Espace entre la journée et les semaines dessous. */
+    private static final int ECART_SEMAINES = 16;
+
+    /** Semaine (index dans les semaines exportées) qui contient la date, bornée aux semaines disponibles. */
+    private static int semaineDe(JSONArray ss, long quand) {
+        int idx = 0;
+        for (int k = 0; k < ss.length(); k++) {
+            JSONObject s = ss.optJSONObject(k);
+            if (s != null && s.optLong("lundi") <= quand) idx = k;
+        }
+        return idx;
     }
 
     // ---------- Affichage ----------
@@ -709,16 +720,21 @@ public class VoieLibreWidget extends AppWidgetProvider {
 
         Bitmap a = image(ctx, i + ".png");
         if (a == null) noterEchec(ctx, "image de la journée " + j.optString("date") + " absente");
-        int n = 0;
+        // La journée affichée est toujours dessinée (réduite si la place manque), jamais masquée.
+        // Widget agrandi : dessous, les semaines (à partir de celle de la journée affichée), autant qu'il en tient.
+        int semDebut = 0, nbSem = 0;
         if (a != null) {
-            double[] place = placeImage(ctx, mgr, id, statut, compte);
-            // Une journée : toujours, réduite si besoin (masquée seulement si le widget est minuscule).
-            // Deux journées : seulement si elles tiennent presque à pleine largeur.
-            int deux = combien(place, (2.0 * a.getHeight() + LIBELLE) / a.getWidth(), 0, 0.1);
-            // la journée affichée est toujours dessinée (réduite si la place manque), jamais masquée
-            n = deux >= 1 && i + 1 < jours.length() ? 2 : 1;
+            JSONArray ss = semaines(p);
+            Bitmap s0 = ss.length() > 0 ? image(ctx, "s0.png") : null;
+            if (s0 != null) {
+                double[] place = placeImage(ctx, mgr, id, statut, compte);
+                double entete = (a.getHeight() + ECART_SEMAINES + ENTETE) / (double) a.getWidth();
+                int k = combien(place, (double) s0.getHeight() / s0.getWidth(), entete, 0.2);
+                semDebut = semaineDe(ss, debutJour(d));
+                nbSem = Math.max(0, Math.min(k, ss.length() - semDebut));
+            }
         }
-        Bitmap b = n > 0 ? journees(ctx, jours, i, n, nuit) : null;
+        Bitmap b = a != null ? journees(ctx, jours, i, semDebut, nbSem, nuit) : null;
         if (a != null && b == null) noterEchec(ctx, "graphique non assemblé (" + j.optString("date") + ")");
         if (b != null) {
             v.setImageViewBitmap(R.id.graphe, b);
