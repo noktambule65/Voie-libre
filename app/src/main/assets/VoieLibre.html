@@ -1875,7 +1875,10 @@ function graphique(x, largeurDispo, sansMaintenant){
   const t0=Math.floor(p0/60)*60, t1=Math.max(t0+60,Math.ceil(f0/60)*60), heures=(t1-t0)/60;
   const G=20, D=20, pxh=(largeurDispo-G-D)/heures, W=Math.round(largeurDispo);
   const X=m=>G+(m-t0)/60*pxh, Y=66, H=140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
-  const mn=m=>pad(((m%60)+60)%60), code=l=>String(l||'').trim().split(/\s+/)[0];
+  const mn=m=>pad(((m%60)+60)%60),
+    // gare écrite en bas du graphique : toujours son code court (« MBC »), même quand Graou donne le nom complet
+    // (« Marseille-Blancarde », souvent les journées sans train) ; gare introuvable : premier mot, comme avant
+    code=l=>{ const t=String(l||'').trim(), p=t.split(/\s+/)[0]; if(!t) return ''; let g=null; try{ g=lieuMeteo(t); }catch(e){} return (g&&g.c)||p; };
   const o=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="'Open Sans',Roboto,Arial,sans-serif">`,
     `<defs><pattern id="hach" width="3.2" height="10" patternUnits="userSpaceOnUse"><rect width="3.2" height="10" fill="#fff"/><rect width="1.3" height="10" fill="${ENC}"/></pattern></defs>`];
   for(let t=t0;t<=t1;t+=60){ const xx=X(t).toFixed(1);
