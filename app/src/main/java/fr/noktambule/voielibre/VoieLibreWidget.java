@@ -63,6 +63,9 @@ public class VoieLibreWidget extends AppWidgetProvider {
     private static final int[] GRIS = {0xFF8A8A8A, 0xFF9AA0A6};
     private static final int[] COMPTE = {0xFF2E7D4F, 0xFF7FE0A0};
     private static final int[] ROUGE = {0xFFD7262E, 0xFFFF8A80};
+    private static final int[] ORANGE = {0xFFB85C00, 0xFFFFB74D};
+    /** Rappel affiché en bas à gauche pendant le service (la copie Graou n'est pas la référence). */
+    private static final String PACIFIC = "⚠\uFE0F Seul Pacific fait foi";
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
@@ -325,9 +328,15 @@ public class VoieLibreWidget extends AppWidgetProvider {
         }
     }
 
-    private static void poserAlerte(RemoteViews v, String alerte) {
-        v.setTextViewText(R.id.alerte, alerte == null ? "" : alerte);
-        v.setViewVisibility(R.id.alerte, alerte == null ? View.GONE : View.VISIBLE);
+    /**
+     * Ligne du bas, à gauche : l'alerte de changement d'heure en priorité ;
+     * sinon, pendant le service, le rappel « Seul Pacific fait foi ».
+     */
+    private static void poserAlerte(RemoteViews v, String alerte, boolean enService, boolean nuit) {
+        String texte = alerte != null ? alerte : enService ? PACIFIC : null;
+        v.setTextViewText(R.id.alerte, texte == null ? "" : texte);
+        v.setViewVisibility(R.id.alerte, texte == null ? View.GONE : View.VISIBLE);
+        couleur(v, R.id.alerte, alerte != null ? ROUGE : ORANGE, nuit);
     }
 
     // ---------- Thème ----------
@@ -601,7 +610,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         couleur(v, R.id.rafraichir, ENCRE, nuit);
         couleur(v, R.id.maj, GRIS, nuit);
         couleur(v, R.id.alerte, ROUGE, nuit);
-        poserAlerte(v, alerteHeure());   // d'après la date du jour ; en vue Journée, remplacé par la journée affichée
+        poserAlerte(v, alerteHeure(), false, nuit);   // d'après la date du jour ; en vue Journée, remplacé par la journée affichée
 
         v.setOnClickPendingIntent(R.id.prec, diffusion(ctx, PREC, 1));
         v.setOnClickPendingIntent(R.id.suiv, diffusion(ctx, SUIV, 2));
@@ -637,11 +646,12 @@ public class VoieLibreWidget extends AppWidgetProvider {
         // avec compte à rebours tenu à la seconde par le lanceur lui-même (aucun réveil du téléphone)
         String statut = "";
         long cible = 0;
+        boolean enService = false;
         for (int k = 0; k < jours.length(); k++) {
             JSONObject j = jours.optJSONObject(k);
             if (j == null) continue;
             long d = j.optLong("debut"), f = j.optLong("fin");
-            if (d <= now && now < f) { statut = "En service · fin " + hm(f) + " à " + j.optString("lieuFS"); cible = f; break; }
+            if (d <= now && now < f) { statut = "En service · fin " + hm(f) + " à " + j.optString("lieuFS"); cible = f; enService = true; break; }
             if (d > now) { statut = "Prochaine reprise " + jourTexte(d) + " · PS " + hm(d) + " à " + j.optString("lieuPS"); cible = d; break; }
         }
         if (statut.isEmpty()) statut = "Aucune reprise connue · touche ⟳";
@@ -654,6 +664,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         } else {
             v.setViewVisibility(R.id.compte, View.GONE);
         }
+        poserAlerte(v, alerteHeure(), enService, nuit);
         p.edit().putLong("cible", compte ? cible : 0).apply();
         programmerBascule(ctx, cible);
         programmerMinute(ctx, compte ? cible : 0);
@@ -692,7 +703,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         long d = j.optLong("debut"), f = j.optLong("fin");
         v.setTextViewText(R.id.titre, titreJour(j));
         v.setTextViewText(R.id.sousTitre, jourTexte(d) + " · " + hm(d) + " → " + hm(f));
-        poserAlerte(v, alerteHeure(j.optString("date"), d, f));
+        poserAlerte(v, alerteHeure(j.optString("date"), d, f), enService, nuit);
         couleur(v, R.id.prec, i > 0 ? BLEU : BLEU_PALE, nuit);
         couleur(v, R.id.suiv, i < jours.length() - 1 ? BLEU : BLEU_PALE, nuit);
 
