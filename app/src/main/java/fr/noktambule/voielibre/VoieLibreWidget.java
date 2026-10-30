@@ -50,6 +50,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
     private static final String VUE = "fr.noktambule.voielibre.VUE";
     private static final String MINUTE = "fr.noktambule.voielibre.MINUTE";
     private static final String RETOUR = "fr.noktambule.voielibre.RETOUR";
+    private static final String SYNC = "fr.noktambule.voielibre.SYNC";
     /** Après avoir navigué avec ‹ ›, retour tout seul à la journée en cours (ou à la semaine en cours) au bout de 5 min. */
     private static final long DELAI_RETOUR = 5 * 60 * 1000L;
     /** Rafraîchissement de l'affichage (trait « maintenant », ligne d'état) : toutes les 5 min, sans réveiller le téléphone. */
@@ -135,6 +136,8 @@ public class VoieLibreWidget extends AppWidgetProvider {
             majTous(ctx);
         } else if (a.equals(MINUTE)) {
             minute(ctx);
+        } else if (a.equals(SYNC)) {
+            SyncWorker.synchroManuelle(ctx);
         }
     }
 
@@ -603,10 +606,9 @@ public class VoieLibreWidget extends AppWidgetProvider {
         v.setOnClickPendingIntent(R.id.prec, diffusion(ctx, PREC, 1));
         v.setOnClickPendingIntent(R.id.suiv, diffusion(ctx, SUIV, 2));
         v.setOnClickPendingIntent(R.id.titreZone, diffusion(ctx, AUTO, 3));
-        Intent sync = new Intent(ctx, SyncActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
         v.setOnClickPendingIntent(R.id.vue, diffusion(ctx, VUE, 7));
-        v.setOnClickPendingIntent(R.id.rafraichir, PendingIntent.getActivity(ctx, 4, sync,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        // ⟳ : synchro en coulisse (aucune fenêtre ouverte, l'écran reste utilisable)
+        v.setOnClickPendingIntent(R.id.rafraichir, diffusion(ctx, SYNC, 4));
         PendingIntent pAuj = ouvrirJournee(ctx, 5, null, false);
         v.setOnClickPendingIntent(R.id.statut, pAuj);
         v.setOnClickPendingIntent(R.id.compte, pAuj);

@@ -12,9 +12,14 @@ import android.webkit.WebViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.webkit.WebViewAssetLoader;
+import android.widget.Toast;
+
 import androidx.work.Constraints;
+import androidx.work.Data;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
@@ -32,6 +37,9 @@ public class SyncWorker extends Worker {
 
     private static final String NOM = "synchro-auto";
     private static final long DELAI_MAX_S = 90;
+    /** Bouton ⟳ du widget : même délai que l'ancienne fenêtre de synchro (le widget affiche « Mise à jour… » 70 s au plus). */
+    private static final long DELAI_MANUEL_S = 60;
+    private static final String MANUEL = "manuel";
 
     public SyncWorker(@NonNull Context ctx, @NonNull WorkerParameters params) { super(ctx, params); }
 
@@ -49,17 +57,48 @@ public class SyncWorker extends Worker {
                 .enqueueUniquePeriodicWork(NOM, changement ? ExistingPeriodicWorkPolicy.UPDATE : ExistingPeriodicWorkPolicy.KEEP, r);
     }
 
+    /**
+     * Bouton ⟳ du widget : synchro tout de suite, en coulisse, sans ouvrir de fenêtre
+     * (auparavant une fenêtre invisible prenait l'écran le temps de la synchro).
+     * Pas de condition de réseau : sans réseau, elle échoue vite et le dit, au lieu d'attendre.
+     */
+    static void synchroManuelle(Context ctx) {
+        android.content.SharedPreferences p = ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0);
+        if (System.currentTimeMillis() - p.getLong("syncDepuis", 0) < 70000) return;   // déjà en cours
+        p.edit().putLong("syncDepuis", System.currentTimeMillis()).apply();
+        VoieLibreWidget.majTous(ctx);   // affiche « Mise à jour… » tout de suite
+        OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
+                .setInputData(new Data.Builder().putBoolean(MANUEL, true).build())
+                .build();
+        WorkManager.getInstance(ctx.getApplicationContext())
+                .enqueueUniqueWork("synchro-widget", ExistingWorkPolicy.KEEP, r);
+    }
+
     @NonNull
     @Override
     public Result doWork() {
         final Context ctx = getApplicationContext();
+        final boolean manuel = getInputData().getBoolean(MANUEL, false);
+        try {
+            return synchroniser(ctx, manuel);
+        } finally {
+            if (manuel) {
+                ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).edit().remove("syncDepuis").apply();
+                new Handler(Looper.getMainLooper()).post(() -> VoieLibreWidget.majTous(ctx));
+            }
+        }
+    }
+
+    private Result synchroniser(Context ctx, boolean manuel) {
         // Nouvelle version validée sur GitHub ? (une fois par jour au plus, notification une seule fois par version)
-        try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { }
+        // Pas pour le bouton ⟳ : la synchro doit être rapide.
+        if (!manuel) { try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { } }
         // L'appli ouverte se met déjà à jour elle-même ; une seconde page dans le même moteur web la ralentirait
         if (MainActivity.visible) return Result.success();
         final Handler principal = new Handler(Looper.getMainLooper());
         final CountDownLatch fin = new CountDownLatch(1);
         final WebView[] web = new WebView[1];
+        final Pont[] ponts = new Pont[1];
 
         principal.post(() -> {
             try {
@@ -99,6 +138,7 @@ public class SyncWorker extends Worker {
                 });
 
                 Pont pont = new Pont(ctx, null, w);
+                ponts[0] = pont;
                 pont.finSynchro = fin::countDown;
                 w.addJavascriptInterface(pont, "BoulotAndroid");
                 w.loadUrl(MainActivity.ACCUEIL + "?sync=1");
@@ -107,7 +147,9 @@ public class SyncWorker extends Worker {
             }
         });
 
-        try { fin.await(DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
+        boolean aTemps = false;
+        try { aTemps = fin.await(manuel ? DELAI_MANUEL_S : DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
+        final boolean ok = aTemps && ponts[0] != null && ponts[0].syncOk;
 
         // Laisse le temps à la page d'envoyer les journées au widget, puis libère tout
         final CountDownLatch nettoye = new CountDownLatch(1);
@@ -117,6 +159,9 @@ public class SyncWorker extends Worker {
             nettoye.countDown();
         }, 1500);
         try { nettoye.await(10, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
+        // Même message qu'avant en cas d'échec du bouton ⟳ (réseau absent, Graou injoignable…)
+        if (manuel && !ok)
+            principal.post(() -> Toast.makeText(ctx, "Voie libre : mise à jour impossible", Toast.LENGTH_SHORT).show());
         return Result.success();
     }
 }

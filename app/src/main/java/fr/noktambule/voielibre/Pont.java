@@ -42,6 +42,8 @@ public class Pont {
     private final Handler principal = new Handler(Looper.getMainLooper());
     /** Appelé à la fin d'une synchro lancée depuis le widget ou en arrière-plan. */
     Runnable finSynchro;
+    /** Résultat de la dernière synchro signalée par la page (true = planning Graou bien récupéré). */
+    volatile boolean syncOk = false;
 
     Pont(Activity act, WebView web) { this(act, act, web); }
 
@@ -462,6 +464,7 @@ public class Pont {
     /** La page signale la fin d'une synchro demandée par le widget. */
     @JavascriptInterface
     public void finSync(boolean ok) {
+        syncOk = ok;
         surEcran(() -> { if (finSynchro != null) finSynchro.run(); });
     }
 
