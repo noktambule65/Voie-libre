@@ -1800,7 +1800,7 @@ const LIB_PONCT=a=>a.replace(/\s+[A-Z]?\d{3,}\s*$/,'').trim();
 function genre(it){
   if(!it.h2) return 'point';
   if(it.cond) return 'cond';
-  if(/^EV\b/i.test(it.act)) return 'ev';
+  if(/^(EV|TAXI)\b/i.test(it.act)) return 'ev';   // EV en taxi : Graou écrit « TAXI », affiché comme un EV (hachures)
   if(/evo/i.test(it.act)) return 'evo';
   return 'autre';
 }
@@ -2228,7 +2228,7 @@ function tachesSeg(x, j){
         taches.push({type:'train', t:a, h:it.h1, date:j, lieu:gare(de), quoi:act, ou:gare(de)+(ar?' → '+gare(ar):'')}); }
       return; }
     let m2;
-    if(it.h2 && /^EV\b/i.test(act)){
+    if(it.h2 && /^(EV|TAXI)\b/i.test(act)){
       const [de,a]=lieu.split('->').map(t=>t.trim()), n=act.replace(/^EV\s*/i,'');
       taches.push({type:'ev', t:abs(it.h1), h:it.h1, date:j, lieu:gare(de),
         quoi:'EV'+(n?' '+n:''), ou:gare(de)+(a?' → '+gare(a):'')});
