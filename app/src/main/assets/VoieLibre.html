@@ -1885,11 +1885,11 @@ function graphique(x, largeurDispo, sansMaintenant){
   items.forEach(it=>{ if(it.b===null && estReserve(it.act)){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
     it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
-  // Pause repas : Graou n'envoie que l'heure de début (« 18:30 | | pauserepas ») et la dessine sur 1 h ;
+  // Pause repas : Graou n'envoie que l'heure de début (« 18:30 | | pauserepas ») ; elle dure 45 min ;
   // raccourcie si l'élément suivant ou la FS arrive avant
   items.forEach(it=>{ if(it.b===null && estRepas(it.act)){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
-    it.b=Math.min(it.a+60, f0, ...suiv); it.g=it.b>it.a?'repas':'point'; } });
+    it.b=Math.min(it.a+45, f0, ...suiv); it.g=it.b>it.a?'repas':'point'; } });
   const t0=Math.floor(p0/60)*60, t1=Math.max(t0+60,Math.ceil(f0/60)*60), heures=(t1-t0)/60;
   const G=20, D=20, pxh=(largeurDispo-G-D)/heures, W=Math.round(largeurDispo);
   const X=m=>G+(m-t0)/60*pxh, Y=66, H=140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
