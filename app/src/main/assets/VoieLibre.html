@@ -1806,6 +1806,8 @@ function genre(it){
 }
 // En voyageur : « EV 14143 », en taxi « TAXI », en bus « bus » (affiché « BUS »), en locomotive « EVLOC 14142 »
 // (affiché « LOC14142 »), comme dans Graou
+// Réserve : Graou écrit « R » (seul) à l'heure de début
+function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
 function libEV(a){ return String(a||'').replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim(); }
 function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
@@ -1877,6 +1879,10 @@ function graphique(x, largeurDispo, sansMaintenant){
   let f0=rel(s.fs&&s.fs.h); if(f0===null) f0=p0;
   const items=s.items.map(it=>({...it,g:genre(it),a:rel(it.h1),b:it.h2?rel(it.h2):null})).filter(it=>it.a!==null);
   items.forEach(it=>{ if(it.b!==null && it.b<it.a) it.b+=1440; });
+  // Réserve : Graou n'envoie qu'une heure de début (« 13:00 | | R ») ; elle dure jusqu'à l'élément suivant, sinon jusqu'à la FS
+  items.forEach(it=>{ if(it.b===null && estReserve(it.act)){
+    const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
+    it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
   const t0=Math.floor(p0/60)*60, t1=Math.max(t0+60,Math.ceil(f0/60)*60), heures=(t1-t0)/60;
   const G=20, D=20, pxh=(largeurDispo-G-D)/heures, W=Math.round(largeurDispo);
   const X=m=>G+(m-t0)/60*pxh, Y=66, H=140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
@@ -1892,8 +1898,9 @@ function graphique(x, largeurDispo, sansMaintenant){
   // bande hors conduite de la PS à la FS, interrompue pendant les coupures envoyées par Graou
   const estCoupure=it=>it.b!==null && /^coupure\b/i.test(String(it.act||'').trim());
   const coupures=items.filter(estCoupure).map(it=>[Math.max(p0,it.a),Math.min(f0,it.b),it]).filter(c=>c[1]>c[0]).sort((a,b)=>a[0]-b[0]);
+  const reserves=items.filter(it=>it.g==='reserve').map(it=>[Math.max(p0,it.a),Math.min(f0,it.b),it]).filter(c=>c[1]>c[0]);
   let dBande=p0;
-  coupures.concat([[f0,f0,null]]).forEach(([ca,cb])=>{
+  coupures.concat(reserves).sort((a,b)=>a[0]-b[0]).concat([[f0,f0,null]]).forEach(([ca,cb])=>{
     if(ca>dBande) o.push(`<rect class="el" data-i="Hors conduite" x="${X(dBande).toFixed(1)}" y="${Y-3}" width="${Math.max(1,X(ca)-X(dBande)).toFixed(1)}" height="6" fill="#fff" stroke="${ENC}" stroke-width="0.7"/>`);
     dBande=Math.max(dBande,cb);
   });
@@ -1919,6 +1926,13 @@ function graphique(x, largeurDispo, sansMaintenant){
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="url(#hach)"/>`);
       etiquettes.push({x:mid, txt:libEV(it.act), info});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
+    } else if(it.g==='reserve'){
+      const pas=5, n=Math.max(1,Math.round(w/pas)), d=[`M${x1.toFixed(1)},${Y-1}`];
+      for(let k=1;k<=n;k++) d.push(`L${(x1+w*k/n).toFixed(1)},${k%2?Y-5:Y-1}`);
+      o.push(`<path class="el" data-i="${esc(hm(it.a)+' → '+hm(it.b)+' · Réserve'+(it.lieu?' · '+it.lieu:''))}" d="${d.join(' ')}" fill="none" stroke="${ENC}" stroke-width="0.9"/>`);
+      o.push(`<line x1="${x1.toFixed(1)}" y1="${Y-3}" x2="${(x1+w).toFixed(1)}" y2="${Y-3}" stroke="#9E9E9E" stroke-width="0.5" stroke-dasharray="2,2"/>`);
+      etiquettes.push({x:mid, txt:'RÉSERVE', info:hm(it.a)+' → '+hm(it.b)+' · Réserve'});
+      minutes.push([x1,it.a,'start']);
     } else if(it.g==='evo'){
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="#9E9E9E"/>`);
     } else if(!estCoupure(it)){
@@ -2017,6 +2031,7 @@ function detailLignes(x){
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
       if(/^marche\b/i.test(it.act)) lib='+ Marche à pieds';
+      else if(estReserve(it.act)) lib='Réserve';
       else if(/^train_evo\b|^EVO\b/i.test(it.act)) lib='Évolution';
       const h=it.h2?esc(it.h1)+'-'+esc(it.h2):esc(it.h1);
       L.push(`<div class="r pt"><span class="h"${it.h2?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span></span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
