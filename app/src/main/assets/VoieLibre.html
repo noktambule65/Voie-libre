@@ -1834,6 +1834,8 @@ function genre(it){
 function estRepas(a){ return /^pause\s*repas\b/i.test(String(a||'').trim()); }
 function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
+// Icône d'un trajet en voyageur : taxi 🚕, bus 🚌, en cabine sans conduire 🚂, sinon 💺
+function icEV(a){ const t=String(a||'').trim(); return /^TAXI\b/i.test(t)?'🚕':/^BUS\b/i.test(t)?'🚌':/^EVLOC\b/i.test(t)?'🚂':'💺'; }
 function libEV(a){ return String(a||'').replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim(); }
 function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
 /* ---- Météo simplifiée (prévisions Open-Meteo partagées avec la rubrique Météo) ---- */
@@ -2065,17 +2067,22 @@ function detailLignes(x){
     if(g==='cond'||g==='ev'){
       const [de,a]=String(it.lieu).split('->').map(t=>nomGare(t));
       const d=reel(rel(it.h1),rel(it.h2)), dur=(d>=60?Math.floor(d/60)+'h'+pad(d%60):d)+'min';
-      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':'💺'}</span>
+      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
         <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}</div></div>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
+      let fin=it.h2;
       if(/^marche\b/i.test(it.act)) lib='+ Marche à pieds';
-      else if(estReserve(it.act)) lib='Réserve';
-      else if(estRepas(it.act)) lib='🍜 Pause repas';
+      else if(estReserve(it.act)||estRepas(it.act)){
+        // fin : élément suivant ou FS (réserve), 45 min au plus (pause repas), comme sur le graphique
+        const a=rel(it.h1), f=s.fs?rel(s.fs.h):null, suiv=s.items.map(y=>rel(y.h1)).filter(v=>v!==null&&a!==null&&v>a);
+        let b=Math.min(...suiv, f===null?Infinity:f); if(estRepas(it.act)) b=Math.min(b,a+45);
+        if(!it.h2 && isFinite(b) && b>a) fin=hm(b);
+        lib=estReserve(it.act)?'⏳ Réserve':'🍜 Pause repas'; }
       else if(/^train_evo\b|^EVO\b/i.test(it.act)) lib='Évolution';
-      const h=it.h2?esc(it.h1)+'-'+esc(it.h2):esc(it.h1);
-      L.push(`<div class="r pt"><span class="h"${it.h2?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span></span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
+      const h=fin?esc(it.h1)+'-'+esc(fin):esc(it.h1);
+      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span></span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
     }
   });
   if(s.fs) L.push(`<div class="r ps"><span class="h">${esc(s.fs.h)}</span><span class="l"><b>Fin de service</b>${esc(s.fs.lieu||'')}</span></div>`);
@@ -2561,7 +2568,7 @@ function prochainsRappels(L, now, bloque){
   // Tâches suivies d'un rappel (train conduit, EV, EQ PREND, RS/PC, fin de coupure) : toutes, triées avec le reste
   const NOMS={train:'🚆',ev:'💺',eq:'👥',rs:'📋',coup:'☕'};
   (P.taches||[]).filter(z=>z.t>t0 && T[z.type] && T[z.type].on).forEach(tache=>{ const d=new Date(tache.t);
-    ajouter(d,NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); });
+    ajouter(d,(tache.type==='ev'?({TAXI:'🚕',BUS:'🚌'}[String(tache.quoi||'').replace(/^EV\s*/i,'').trim().toUpperCase()]||(/^EV\s*LOC/i.test(tache.quoi||'')?'🚂':''))||'💺':'')||NOMS[tache.type]||'🔔',jh(d),(tache.type==='train'&&/^\d/.test(tache.quoi||'')?'Train ':'')+escS(tache.quoi)+(tache.ou?' · '+escS(tache.ou):'')); });
   // Réveil oublié : la veille au soir d'une PS matinale
   if(N.reveilOn){ const x=L.find(s=>s.d>now && s.d.getHours()>=N.reveilDe && s.d.getHours()<N.reveilA &&
       new Date(s.d.getFullYear(),s.d.getMonth(),s.d.getDate()-1,N.reveilHeure)>now);
