@@ -1927,10 +1927,12 @@ function graphique(x, largeurDispo, sansMaintenant){
       etiquettes.push({x:mid, txt:libEV(it.act), info});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='reserve'){
-      const pas=5, n=Math.max(1,Math.round(w/pas)), d=[`M${x1.toFixed(1)},${Y-1}`];
-      for(let k=1;k<=n;k++) d.push(`L${(x1+w*k/n).toFixed(1)},${k%2?Y-5:Y-1}`);
-      o.push(`<path class="el" data-i="${esc(hm(it.a)+' → '+hm(it.b)+' · Réserve'+(it.lieu?' · '+it.lieu:''))}" d="${d.join(' ')}" fill="none" stroke="${ENC}" stroke-width="0.9"/>`);
-      o.push(`<line x1="${x1.toFixed(1)}" y1="${Y-3}" x2="${(x1+w).toFixed(1)}" y2="${Y-3}" stroke="#9E9E9E" stroke-width="0.5" stroke-dasharray="2,2"/>`);
+      // vaguelettes arrondies (sinusoïde), trait vertical au début et pointillés au sommet, comme Graou
+      const per=4.4, amp=1.9, mil=Y-3.2, nb=Math.max(1,Math.round(w/per)), pts=[];
+      for(let k=0;k<=nb*8;k++){ const xx=x1+w*k/(nb*8); pts.push(`${xx.toFixed(2)},${(mil+amp*Math.cos(2*Math.PI*k/8)).toFixed(2)}`); }
+      o.push(`<line x1="${x1.toFixed(1)}" y1="${(mil-amp).toFixed(1)}" x2="${(x1+w).toFixed(1)}" y2="${(mil-amp).toFixed(1)}" stroke="#9E9E9E" stroke-width="0.5" stroke-dasharray="1.5,1.5"/>`);
+      o.push(`<line x1="${x1.toFixed(1)}" y1="${(mil-amp-1.5).toFixed(1)}" x2="${x1.toFixed(1)}" y2="${(mil+amp).toFixed(1)}" stroke="${ENC}" stroke-width="0.9"/>`);
+      o.push(`<polyline class="el" data-i="${esc(hm(it.a)+' → '+hm(it.b)+' · Réserve'+(it.lieu?' · '+it.lieu:''))}" points="${pts.join(' ')}" fill="none" stroke="${ENC}" stroke-width="0.8" stroke-linejoin="round"/>`);
       etiquettes.push({x:mid, txt:'RÉSERVE', info:hm(it.a)+' → '+hm(it.b)+' · Réserve'});
       minutes.push([x1,it.a,'start']);
     } else if(it.g==='evo'){
