@@ -1776,6 +1776,29 @@ function indexer(){
   };
   ics.forEach(ev=>{ ajouter(ev); if(ev&&ev.j1) couverts.add(ev.j1); if(ev&&ev.j2) couverts.add(ev.j2); });
   csv.forEach(ev=>ajouter(ev,couverts));
+  completerEV();
+}
+
+/* ---- EV sans trajet ----
+   Le lendemain d'un découché, Graou n'envoie parfois que « 10:36 | | EV 872882 » (ni arrivée ni gares).
+   Le même train, au même horaire de départ, figure en entier ailleurs dans le planning
+   (« 10:36 -> 11:10 | LUC -> MTJ | EV 872882 », ou conduit) : on y reprend l'heure d'arrivée et le trajet. */
+function completerEV(){
+  const num=a=>{ const m=String(a||'').match(/(\d{3,})\s*$/); return m?m[1]:''; };
+  const ref=new Map();
+  const tous=[]; Object.values(INDEX).forEach(l=>l.forEach(x=>{ if(x.s && x.s.items) tous.push(...x.s.items); }));
+  tous.forEach(it=>{
+    if(!it.h2 || !it.lieu || !/->/.test(it.lieu)) return;
+    const n=num(it.act); if(!n) return;
+    const k=n+'@'+it.h1, deja=ref.get(k);
+    // priorité à un EV (même libellé que celui à compléter), sinon le train conduit
+    if(!deja || (estEV(it.act) && !estEV(deja.act))) ref.set(k,it);
+  });
+  tous.forEach(it=>{
+    if(it.h2 || it.lieu || !estEV(it.act)) return;
+    const r=ref.get(num(it.act)+'@'+it.h1); if(!r) return;
+    it.h2=r.h2; it.lieu=r.lieu;
+  });
 }
 
 /* ---- Journée à afficher par défaut : en cours, sinon la prochaine ---- */
