@@ -2189,13 +2189,17 @@ function semainesQuiTiennent(v,larg){
 // Vue semaines en défilement continu : tout le planning, de la première à la dernière semaine connue ;
 // défiler vers le bas montre la suite, vers le haut le passé. Le titre suit les semaines visibles.
 let GRILLE=null;   // {debut, nb, ch, haut} de la grille affichée
+// Semaines vides ajoutées avant / après le planning connu ; agrandies quand on approche d'un bord (sans fin, comme avant)
+let EXT_AV=4, EXT_AP=26;
 function rendreMois(){
   const v=$('vue');
   const larg=Math.max(260,Math.min((v.clientWidth||360)-32,880));
   if(!Object.keys(INDEX).length){ GRILLE=null; v.innerHTML=`<div class="msg"><b>Aucun planning</b></div>`; return; }
   const cles=Object.keys(INDEX).sort();
   const debut=lundiDe(lire(cles[0])), finP=lundiDe(lire(cles[cles.length-1]));
-  const d0=MOIS<debut?MOIS:debut, d1=MOIS>finP?MOIS:finP;
+  const sem=n=>7*n;
+  const b0=MOIS<debut?MOIS:debut, b1=MOIS>finP?MOIS:finP;
+  const d0=new Date(b0.getFullYear(),b0.getMonth(),b0.getDate()-sem(EXT_AV)), d1=new Date(b1.getFullYear(),b1.getMonth(),b1.getDate()+sem(EXT_AP));
   const nb=Math.round((d1-d0)/(7*864e5))+1;
   const g=moisSVG(d0,larg,nb,true);
   const ch=Math.round(larg/7*1.12);
@@ -2224,10 +2228,17 @@ function titreVisible(){
   $('jour').querySelector('small').textContent=vis+' semaines';
 }
 let attenteTitre=false;
-window.addEventListener('scroll',()=>{ if(MODE!=='mois'||attenteTitre) return; attenteTitre=true; requestAnimationFrame(()=>{ attenteTitre=false; titreVisible(); }); },{passive:true});
+window.addEventListener('scroll',()=>{ if(MODE!=='mois'||attenteTitre) return; attenteTitre=true; requestAnimationFrame(()=>{ attenteTitre=false; titreVisible(); etendreSiBord(); }); },{passive:true});
+// Près du bas : 26 semaines de plus après ; près du haut : 26 de plus avant (la position reste sur la même semaine)
+function etendreSiBord(){
+  if(!GRILLE) return;
+  const bas=document.documentElement.scrollHeight-(window.scrollY||0)-(window.innerHeight||640);
+  if(bas<GRILLE.ch*3){ EXT_AP+=26; rendreMois(); }
+  else if((window.scrollY||0)<GRILLE.ch*2 && EXT_AV<520){ EXT_AV+=26; rendreMois(); }
+}
 function changerMode(m){
   MODE=m; $('oJour').classList.toggle('on',m==='jour'); $('oMois').classList.toggle('on',m==='mois');
-  if(m==='mois'){ MOIS=lundiDe(lire(JOUR)); }
+  if(m==='mois'){ MOIS=lundiDe(lire(JOUR)); EXT_AV=4; EXT_AP=26; }
   rendre(); if(m!=='mois') window.scrollTo(0,0);
 }
 function rendre(){
