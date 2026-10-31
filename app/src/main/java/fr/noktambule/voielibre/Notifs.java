@@ -538,17 +538,53 @@ public class Notifs extends BroadcastReceiver {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         AlarmManager.AlarmClockInfo r = am == null ? null : am.getNextAlarmClock();
         long t = r == null ? 0 : r.getTriggerTime();
-        if (t > 0 && t <= ps && t >= ps - 4 * 3600000L) return;   // réveil réglé : rien à dire
-        String titre = "Aucun réveil avant ta PS de demain";
+        // Heure attendue : délai réglé pour la gare de PS (Paramètres › Réveil), comme le bouton ⏰.
+        // Accepté de 2 h avant jusqu'à 10 min après cette heure.
+        long attendu = heureReveilAttendue(ctx, j);
+        boolean tropTard = t > attendu + TOLERANCE_REVEIL, tropTot = t > 0 && t < attendu - AVANCE_REVEIL;
+        if (t > 0 && !tropTard && !tropTot) return;   // réveil réglé à la bonne heure : rien à dire
+        String titre = t <= 0 ? "Aucun réveil avant ta PS de demain"
+                : t > ps ? "Ton réveil sonne après ta PS de demain"
+                : tropTard ? "Ton réveil sonne trop tard pour ta PS de demain"
+                : "Aucun réveil à la bonne heure pour ta PS de demain";
         String texte = j.optString("code") + " · PS " + VoieLibreWidget.hm(ps) + " à " + j.optString("lieuPS");
-        String detail = texte + "\n" + (t > 0
+        String detail = texte + "\nRéveil prévu pour cette gare : " + VoieLibreWidget.hm(attendu)
+                + " (" + ((ps - attendu) / 60000L) + " min avant la PS)."
+                + "\n" + (t > 0
                 ? "Prochain réveil de l'Horloge : " + jourLong(new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new Date(t)))
-                  + " à " + VoieLibreWidget.hm(t) + (t > ps ? ", après ta PS." : ", trop tôt.")
+                  + " à " + VoieLibreWidget.hm(t) + (t > ps ? ", après ta PS." : tropTard ? ", trop tard." : ", trop tôt.")
                 : "Aucun réveil programmé dans l'Horloge.")
                 + "\nTouche pour ouvrir ta journée et régler le réveil (⏰).";
         Notification.Action action = actionReveil(ctx, j);
         if (action != null) montrer(ctx, 4, CANAL_REVEIL, titre, texte, detail, ouvrir(ctx, 2005, "journee", "date", date), action);
         else montrer(ctx, 4, CANAL_REVEIL, titre, texte, detail, ouvrir(ctx, 2005, "journee", "date", date));
+    }
+
+    /** Marge acceptée après l'heure de réveil prévue (un réveil un peu plus tard reste correct). */
+    private static final long TOLERANCE_REVEIL = 10 * 60000L;
+    /** Avance acceptée avant l'heure de réveil prévue ; plus tôt, le réveil est jugé trop tôt (une autre alarme). */
+    private static final long AVANCE_REVEIL = 2 * 3600000L;
+
+    /**
+     * Heure à laquelle le réveil doit sonner pour cette journée : PS moins le délai réglé pour la gare de PS
+     * (Paramètres › Réveil) ; si seule l'alarme « Départ » est choisie, c'est son délai qui compte.
+     */
+    private static long heureReveilAttendue(Context ctx, JSONObject j) {
+        long ps = j.optLong("debut");
+        try {
+            JSONObject o = reglagesReveil(ctx), lieux = o.optJSONObject("lieux"), dl = o.optJSONObject("defaut");
+            String gare = j.optString("garePS", j.optString("lieuPS"));
+            if (lieux != null) {
+                java.util.Iterator<String> it = lieux.keys();
+                while (it.hasNext()) { String g = it.next(); if (g.equalsIgnoreCase(gare)) { dl = lieux.optJSONObject(g); break; } }
+            }
+            JSONObject al = o.optJSONObject("alarmes");
+            boolean avecR = al == null || al.optBoolean("r", true) || !al.optBoolean("d", true);
+            int min = dl == null ? 60 : avecR ? dl.optInt("r", 60) : dl.optInt("d", 30);
+            return ps - min * 60000L;
+        } catch (Exception e) {
+            return ps - 60 * 60000L;
+        }
     }
 
     /** Délais et sonneries du bouton ⏰ (Paramètres › Réveil), reçus de la page ; sinon les valeurs par défaut. */
