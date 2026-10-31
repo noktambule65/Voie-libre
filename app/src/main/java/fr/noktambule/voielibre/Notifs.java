@@ -567,7 +567,7 @@ public class Notifs extends BroadcastReceiver {
 
     /**
      * Heure à laquelle le réveil doit sonner pour cette journée : PS moins le délai réglé pour la gare de PS
-     * (Paramètres › Réveil) ; si seule l'alarme « Départ » est choisie, c'est son délai qui compte.
+     * (Paramètres › Réveil), toujours celui du réveil (jamais celui du départ).
      */
     private static long heureReveilAttendue(Context ctx, JSONObject j) {
         long ps = j.optLong("debut");
@@ -578,9 +578,9 @@ public class Notifs extends BroadcastReceiver {
                 java.util.Iterator<String> it = lieux.keys();
                 while (it.hasNext()) { String g = it.next(); if (g.equalsIgnoreCase(gare)) { dl = lieux.optJSONObject(g); break; } }
             }
-            JSONObject al = o.optJSONObject("alarmes");
-            boolean avecR = al == null || al.optBoolean("r", true) || !al.optBoolean("d", true);
-            int min = dl == null ? 60 : avecR ? dl.optInt("r", 60) : dl.optInt("d", 30);
+            // Toujours le délai « Réveil », même si seule l'alarme « Départ » est choisie :
+            // se réveiller à l'heure du départ serait trop tard pour être à l'heure.
+            int min = dl == null ? 60 : dl.optInt("r", 60);
             return ps - min * 60000L;
         } catch (Exception e) {
             return ps - 60 * 60000L;
