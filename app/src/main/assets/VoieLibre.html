@@ -1665,6 +1665,8 @@ main{padding:10px 10px 30px;max-width:900px;margin:0 auto}
 .onglets button.on{background:var(--tete);border-color:var(--tete);color:#fff}
 .carte.m{padding:6px 4px 8px}
 .mlib{text-align:center;color:#8A8A8A;font-size:12.5px;padding:2px 8px 6px}
+.carte.m{overflow:visible}
+.mjours{position:sticky;z-index:1;display:grid;grid-template-columns:repeat(7,1fr);background:#fff;border-radius:12px 12px 0 0;padding:4px 0 6px;font-size:12px;color:#8A8A8A;text-align:center}
 .carte{background:#fff;border:1px solid var(--trait);border-radius:12px;overflow:hidden;margin-bottom:10px}
 .bandeau{background:var(--js);color:#fff;padding:9px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .bandeau.dec{background:#7A4FB5}
@@ -2184,19 +2186,49 @@ function semainesQuiTiennent(v,larg){
   const dispo=(window.innerHeight||640)-haut-18-14-28-12;   // en-tête des jours, cadre, légende, marge
   return Math.max(3,Math.min(12,Math.floor(dispo/ch)));
 }
+// Vue semaines en défilement continu : tout le planning, de la première à la dernière semaine connue ;
+// défiler vers le bas montre la suite, vers le haut le passé. Le titre suit les semaines visibles.
+let GRILLE=null;   // {debut, nb, ch, haut} de la grille affichée
 function rendreMois(){
   const v=$('vue');
-  const larg=Math.max(260,Math.min((v.clientWidth||360)-32,880)), nb=semainesQuiTiennent(v,larg);
-  $('jour').querySelector('b').textContent=titreSemaines(MOIS,nb);
-  $('jour').querySelector('small').textContent=nb+' semaines';
-  if(!Object.keys(INDEX).length){ v.innerHTML=`<div class="msg"><b>Aucun planning</b></div>`; return; }
-  const g=moisSVG(MOIS,larg,nb);
-  v.innerHTML=`<div class="carte m">${g.svg}<div class="mlib">Touche un jour pour voir sa journée</div></div>`;
+  const larg=Math.max(260,Math.min((v.clientWidth||360)-32,880));
+  if(!Object.keys(INDEX).length){ GRILLE=null; v.innerHTML=`<div class="msg"><b>Aucun planning</b></div>`; return; }
+  const cles=Object.keys(INDEX).sort();
+  const debut=lundiDe(lire(cles[0])), finP=lundiDe(lire(cles[cles.length-1]));
+  const d0=MOIS<debut?MOIS:debut, d1=MOIS>finP?MOIS:finP;
+  const nb=Math.round((d1-d0)/(7*864e5))+1;
+  const g=moisSVG(d0,larg,nb,true);
+  const ch=Math.round(larg/7*1.12);
+  v.innerHTML=`<div class="carte m"><div class="mjours">${'LMMJVSD'.split('').map(l=>`<span>${l}</span>`).join('')}</div>${g.svg}<div class="mlib">Touche un jour pour voir sa journée</div></div>`;
+  const o=document.querySelector('.onglets'), haut=(document.querySelector('header')||{offsetHeight:62}).offsetHeight+(o?o.offsetHeight:0);
+  v.querySelector('.mjours').style.top=haut+'px';
+  GRILLE={debut:d0, nb, ch, haut:haut+v.querySelector('.mjours').offsetHeight};
+  allerSemaine(MOIS,false);
 }
+// Haut de la grille (ligne de la première semaine) dans la page
+function hautGrille(){ const sv=$('vue').querySelector('.carte.m svg'); return sv?sv.getBoundingClientRect().top+(window.scrollY||0):0; }
+function allerSemaine(lundi,doux){
+  if(!GRILLE) return;
+  const i=Math.round((lundi-GRILLE.debut)/(7*864e5));
+  window.scrollTo({top:Math.max(0,hautGrille()+i*GRILLE.ch-GRILLE.haut), behavior:doux?'smooth':'auto'});
+  titreVisible();
+}
+// Titre : semaines actuellement visibles à l'écran
+function titreVisible(){
+  if(MODE!=='mois' || !GRILLE) return;
+  const y=(window.scrollY||0)+GRILLE.haut-hautGrille();
+  const i=Math.max(0,Math.min(GRILLE.nb-1,Math.round(y/GRILLE.ch)));
+  const vis=Math.max(1,Math.min(GRILLE.nb-i,Math.floor(((window.innerHeight||640)-GRILLE.haut)/GRILLE.ch)));
+  MOIS=new Date(GRILLE.debut.getFullYear(),GRILLE.debut.getMonth(),GRILLE.debut.getDate()+i*7);
+  $('jour').querySelector('b').textContent=titreSemaines(MOIS,vis);
+  $('jour').querySelector('small').textContent=vis+' semaines';
+}
+let attenteTitre=false;
+window.addEventListener('scroll',()=>{ if(MODE!=='mois'||attenteTitre) return; attenteTitre=true; requestAnimationFrame(()=>{ attenteTitre=false; titreVisible(); }); },{passive:true});
 function changerMode(m){
   MODE=m; $('oJour').classList.toggle('on',m==='jour'); $('oMois').classList.toggle('on',m==='mois');
   if(m==='mois'){ MOIS=lundiDe(lire(JOUR)); }
-  rendre(); window.scrollTo(0,0);
+  rendre(); if(m!=='mois') window.scrollTo(0,0);
 }
 function rendre(){
   if(MODE==='mois') return rendreMois();
@@ -2292,8 +2324,8 @@ $('vue').addEventListener('click',e=>{
   const el=e.target.closest('[data-i]'); if(!el) return;
   const box=el.closest('.carte').querySelector('.info'); box.textContent=el.getAttribute('data-i'); box.classList.remove('vide');
 });
-$('prec').onclick=()=>{ if(MODE==='mois') MOIS=new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()-7); else JOUR=cle(ajout(lire(JOUR),-1)); rendre(); };
-$('suiv').onclick=()=>{ if(MODE==='mois') MOIS=new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()+7); else JOUR=cle(ajout(lire(JOUR),1)); rendre(); };
+$('prec').onclick=()=>{ if(MODE==='mois') return allerSemaine(new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()-7),true); JOUR=cle(ajout(lire(JOUR),-1)); rendre(); };
+$('suiv').onclick=()=>{ if(MODE==='mois') return allerSemaine(new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()+7),true); JOUR=cle(ajout(lire(JOUR),1)); rendre(); };
 $('oJour').onclick=()=>changerMode('jour');
 $('oMois').onclick=()=>changerMode('mois');
 // Glisser à gauche / à droite pour changer de jour (hors graphique qui défile)
@@ -2303,7 +2335,10 @@ document.addEventListener('touchend',e=>{ if(tx===null) return; const dx=e.chang
   if(Math.abs(dx)>70 && Math.abs(dx)>2*Math.abs(dy)) (dx<0?$('suiv'):$('prec')).click(); },{passive:true});
 let largeurVue=0, hauteurVue=0;
 window.addEventListener('resize',()=>{ const l=document.documentElement.clientWidth, h=window.innerHeight;
-  if(JOUR && (l!==largeurVue || (MODE==='mois' && h!==hauteurVue))){ largeurVue=l; hauteurVue=h; rendre(); } });
+  // vue semaines : la hauteur change quand les barres du navigateur se masquent en défilant ; on ne redessine
+  // que si la largeur change, sinon seul le titre (semaines visibles) est mis à jour
+  if(JOUR && l!==largeurVue){ largeurVue=l; hauteurVue=h; rendre(); }
+  else if(MODE==='mois' && h!==hauteurVue){ hauteurVue=h; titreVisible(); } });
 
 let DEFAUT=null;
 function ouvrir(){ indexer(); DEFAUT=parDefaut(); JOUR=DEFAUT; MODE=location.hash==='#mois'?'mois':'jour'; changerMode(MODE); }
