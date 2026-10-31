@@ -611,7 +611,7 @@ public class Notifs extends BroadcastReceiver {
         return r;
     }
 
-    /** Bouton « Régler le réveil » : mêmes heures, messages et sonneries que le bouton ⏰ de la journée. */
+    /** Bouton « Régler le réveil » : mêmes heures, messages et sonneries que le bouton ⏰ de la journée, réveil toujours compris. */
     private static Notification.Action actionReveil(Context ctx, JSONObject j) {
         try {
             JSONObject o = reglagesReveil(ctx), lieux = o.optJSONObject("lieux"), dl = o.optJSONObject("defaut");
@@ -623,9 +623,10 @@ public class Notifs extends BroadcastReceiver {
             if (dl == null) dl = new JSONObject().put("r", 60).put("d", 30);
             long ps = j.optLong("debut"), tR = ps - dl.optInt("r", 60) * 60000L, tD = ps - dl.optInt("d", 30) * 60000L;
             // alarmes choisies dans Paramètres › Réveil : réveil et départ, réveil seul ou départ seul
+            // Notification « Réveil oublié » : l'alarme Réveil est toujours réglée (c'est elle qui manque),
+            // plus l'alarme Départ si elle est choisie dans Paramètres › Réveil
             JSONObject al = o.optJSONObject("alarmes");
-            boolean avecR = al == null || al.optBoolean("r", true), avecD0 = al == null || al.optBoolean("d", true);
-            if (!avecR && !avecD0) avecR = true;
+            boolean avecR = true, avecD0 = al == null || al.optBoolean("d", true);
             boolean avecD = avecD0 && (!avecR || tD > tR);
             long t1 = avecR ? tR : tD;
             if (t1 <= System.currentTimeMillis()) return null;
