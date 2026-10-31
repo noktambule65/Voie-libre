@@ -538,10 +538,10 @@ public class Notifs extends BroadcastReceiver {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         AlarmManager.AlarmClockInfo r = am == null ? null : am.getNextAlarmClock();
         long t = r == null ? 0 : r.getTriggerTime();
-        // Heure attendue : délai réglé pour la gare de PS (Paramètres › Réveil), comme le bouton ⏰.
-        // Accepté de 2 h avant jusqu'à 10 min après cette heure.
+        // Réveil correct : au plus tard à l'heure prévue pour la gare de PS (Paramètres › Réveil),
+        // et dans les 4 h qui précèdent la PS
         long attendu = heureReveilAttendue(ctx, j);
-        boolean tropTard = t > attendu + TOLERANCE_REVEIL, tropTot = t > 0 && t < attendu - AVANCE_REVEIL;
+        boolean tropTard = t > attendu, tropTot = t > 0 && t < ps - FENETRE_REVEIL;
         if (t > 0 && !tropTard && !tropTot) return;   // réveil réglé à la bonne heure : rien à dire
         String titre = t <= 0 ? "Aucun réveil avant ta PS de demain"
                 : t > ps ? "Ton réveil sonne après ta PS de demain"
@@ -560,10 +560,8 @@ public class Notifs extends BroadcastReceiver {
         else montrer(ctx, 4, CANAL_REVEIL, titre, texte, detail, ouvrir(ctx, 2005, "journee", "date", date));
     }
 
-    /** Marge acceptée après l'heure de réveil prévue (un réveil un peu plus tard reste correct). */
-    private static final long TOLERANCE_REVEIL = 10 * 60000L;
-    /** Avance acceptée avant l'heure de réveil prévue ; plus tôt, le réveil est jugé trop tôt (une autre alarme). */
-    private static final long AVANCE_REVEIL = 2 * 3600000L;
+    /** Un réveil plus de 4 h avant la PS est jugé trop tôt (sans doute une autre alarme). */
+    private static final long FENETRE_REVEIL = 4 * 3600000L;
 
     /**
      * Heure à laquelle le réveil doit sonner pour cette journée : PS moins le délai réglé pour la gare de PS
