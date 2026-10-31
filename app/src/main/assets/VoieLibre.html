@@ -1800,10 +1800,13 @@ const LIB_PONCT=a=>a.replace(/\s+[A-Z]?\d{3,}\s*$/,'').trim();
 function genre(it){
   if(!it.h2) return 'point';
   if(it.cond) return 'cond';
-  if(/^(EV|TAXI)\b/i.test(it.act)) return 'ev';   // EV en taxi : Graou écrit « TAXI », affiché comme un EV (hachures)
+  if(estEV(it.act)) return 'ev';
   if(/evo/i.test(it.act)) return 'evo';
   return 'autre';
 }
+// En voyageur : « EV 14143 », en taxi « TAXI », en locomotive « EVLOC 14142 » (affiché « LOC14142 », comme Graou)
+function estEV(a){ return /^(EV|TAXI|EVLOC)\b/i.test(String(a||'')); }
+function libEV(a){ return String(a||'').replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,''); }
 function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
 /* ---- Météo simplifiée (prévisions Open-Meteo partagées avec la rubrique Météo) ---- */
 // Gares : tableau des codes Graou de toute la France (fourni par l'accueil)
@@ -1913,7 +1916,7 @@ function graphique(x, largeurDispo, sansMaintenant){
     } else if(it.g==='ev'){
       o.push(`<line x1="${x1.toFixed(1)}" y1="22" x2="${(x1+w).toFixed(1)}" y2="22" stroke="#9E9E9E" stroke-width="1"/>`);
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="url(#hach)"/>`);
-      etiquettes.push({x:mid, txt:it.act.replace(/^EV\s*/i,''), info});
+      etiquettes.push({x:mid, txt:libEV(it.act), info});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='evo'){
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="#9E9E9E"/>`);
@@ -2008,7 +2011,7 @@ function detailLignes(x){
       const [de,a]=String(it.lieu).split('->').map(t=>nomGare(t));
       const d=reel(rel(it.h1),rel(it.h2)), dur=(d>=60?Math.floor(d/60)+'h'+pad(d%60):d)+'min';
       L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':'💺'}</span>
-        <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?it.act.replace(/^EV\s*/i,''):it.act)}</span></div>
+        <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
         <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}</div></div>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
@@ -2228,8 +2231,8 @@ function tachesSeg(x, j){
         taches.push({type:'train', t:a, h:it.h1, date:j, lieu:gare(de), quoi:act, ou:gare(de)+(ar?' → '+gare(ar):'')}); }
       return; }
     let m2;
-    if(it.h2 && /^(EV|TAXI)\b/i.test(act)){
-      const [de,a]=lieu.split('->').map(t=>t.trim()), n=act.replace(/^EV\s*/i,'');
+    if(it.h2 && /^(EV|TAXI|EVLOC)\b/i.test(act)){   // EV, EV en taxi, EV en locomotive
+      const [de,a]=lieu.split('->').map(t=>t.trim()), n=act.replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'');
       taches.push({type:'ev', t:abs(it.h1), h:it.h1, date:j, lieu:gare(de),
         quoi:'EV'+(n?' '+n:''), ou:gare(de)+(a?' → '+gare(a):'')});
     } else if((m2=act.match(/^EQ\s+PREND\b\s*(\S*)/i))){
