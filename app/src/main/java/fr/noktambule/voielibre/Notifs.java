@@ -154,6 +154,14 @@ public class Notifs extends BroadcastReceiver {
                 .setStyle(new Notification.BigTextStyle().bigText(detail != null ? detail : texte))
                 .setContentIntent(pi)
                 .setAutoCancel(true);
+        // Écran allumé : Android affiche la notification flottante en version compacte (une seule ligne).
+        // On lui donne sa propre mise en page, titre et texte en gros sur un bandeau bleu, pour qu'elle se voie.
+        try {
+            android.widget.RemoteViews flottante = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_rappel);
+            flottante.setTextViewText(R.id.rTitre, titre);
+            flottante.setTextViewText(R.id.rTexte, detail != null ? detail : texte);
+            b.setCustomHeadsUpContentView(flottante);
+        } catch (Exception ignore) { }
         for (Notification.Action a : actions) b.addAction(a);
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(id, b.build());
