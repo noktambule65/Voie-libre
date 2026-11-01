@@ -2049,7 +2049,7 @@ function picto(code,jour){
 // Picto météo touchable : ouvre la Météo du jour, sur ce lieu et cette heure (zone tactile plus large que le dessin)
 function pictoTouchable(svgTexte, lieu, m, x, y, larg, ancre){
   const L=lieuMeteo(lieu); if(!L) return svgTexte;
-  const [a,b,c]=JOUR.split('-').map(Number), t=new Date(a,b-1,c,0,Math.round(m));
+  const [a,b,c]=jg().split('-').map(Number), t=new Date(a,b-1,c,0,Math.round(m));
   const cible=cle(t)+'|'+t.getHours()+'|'+L.n;
   const x0=ancre==='end'?x-larg-6:ancre==='middle'?x-larg/2-6:x-6;
   return `<g class="meteoT" data-meteo="${esc(cible)}"><rect x="${x0.toFixed(1)}" y="${(y-20).toFixed(1)}" width="${(larg+12).toFixed(1)}" height="28" fill="transparent"/>${svgTexte}</g>`;
@@ -2058,7 +2058,7 @@ function pictoTouchable(svgTexte, lieu, m, x, y, larg, ancre){
 function meteoA(lieu, m){
   const L=lieuMeteo(lieu); if(!L) return null;
   const c=meteoCache(L); if(!c||!c.time) return null;
-  let r=Math.round(m/60), d=lire(JOUR); d=ajout(d,Math.floor(r/24)); r=((r%24)+24)%24;
+  let r=Math.round(m/60), d=lire(jg()); d=ajout(d,Math.floor(r/24)); r=((r%24)+24)%24;
   const i=c.time.indexOf(cle(d)+'T'+pad(r)+':00'); if(i<0||c.T[i]==null) return null;
   return {ic:picto(c.W[i],!!c.D[i]), T:Math.round(c.T[i])};
 }
@@ -2070,7 +2070,7 @@ function lieuxDuJour(x){
   return [...L.values()];
 }
 
-function reel(a,b){ const [y,m,d]=JOUR.split('-').map(Number); return Math.round((new Date(y,m-1,d,0,b)-new Date(y,m-1,d,0,a))/60000); }
+function reel(a,b){ const [y,m,d]=jg().split('-').map(Number); return Math.round((new Date(y,m-1,d,0,b)-new Date(y,m-1,d,0,a))/60000); }
 function graphique(x, largeurDispo, sansMaintenant){
   // Reproduction du graphique de journée de Graou
   const s=x.s, p0=min(s.ps&&s.ps.h); if(p0===null) return {svg:''};
@@ -2228,9 +2228,9 @@ function graphique(x, largeurDispo, sansMaintenant){
     (s.ps&&s.ps.lieu)||gPS,p0,X(t0)+gPS.length*12.5+5,H-13,46,'start'));
   if(mFS) o.push(pictoTouchable(`<text x="${(X(t1)-gFS.length*12.5-5).toFixed(1)}" y="${H-13}" font-size="14.5" fill="${ENC}" text-anchor="end">${mFS.ic}${mFS.T}°</text>`,
     (s.fs&&s.fs.lieu)||gFS,f0,X(t1)-gFS.length*12.5-5,H-13,46,'end'));
-  const now=new Date(), decal=Math.round((lire(cle(now))-lire(JOUR))/864e5)*1440, nm=now.getHours()*60+now.getMinutes()+decal;
+  const now=new Date(), decal=Math.round((lire(cle(now))-lire(jg()))/864e5)*1440, nm=now.getHours()*60+now.getMinutes()+decal;
   // repère du changement d'heure (heure affichée avant le changement)
-  [0,1].forEach(j=>{ const k=cle(ajout(lire(JOUR),j)), c=changementHeure(k); if(!c) return;
+  [0,1].forEach(j=>{ const k=cle(ajout(lire(jg()),j)), c=changementHeure(k); if(!c) return;
     const mc=j*1440+c.avant*60; if(mc<t0||mc>t1) return; const xx=X(mc).toFixed(1);
     o.push(`<line x1="${xx}" y1="13" x2="${xx}" y2="${H-3}" stroke="#E8902E" stroke-width="1.2" stroke-dasharray="3,2"/><text class="el" data-i="${esc(texteChangement(c,'à '+c.avant+' h'))}" x="${(+xx+2).toFixed(1)}" y="${Y-26}" font-size="8" fill="#E8902E">🕐 ${c.hiver?'−':'+'}1 h</text>`); });
   if(!sansMaintenant && nm>=t0 && nm<=t1){ const xx=X(nm).toFixed(1); o.push(`<line x1="${xx}" y1="13" x2="${xx}" y2="${H-3}" stroke="#5C6BC0" stroke-width="2.2"/>`); }
@@ -2278,6 +2278,9 @@ function detailLignes(x){
 
 /* ---- Affichage d'un jour ---- */
 let JOUR=null;
+// Jour utilisé seulement le temps de dessiner un graphique pour le widget (le jour affiché n'est jamais touché)
+let JOUR_G=null;
+const jg=()=>JOUR_G||JOUR;
 /* ---- Vue mois (dans l'esprit de l'agenda Graou) ---- */
 const COUL_CAT={js:'#2F5FA8',dec:'#2F5FA8',rp:'#3A902D',ca:'#5BB7D5',abs:'#DE8AEA',d:'#333333',autre:'#E87722'};
 // Grille de semaines complètes (lundi → dimanche), sans s'arrêter au mois calendaire
@@ -2352,7 +2355,9 @@ function rendreMois(){
   v.innerHTML=`<div class="carte m"><div class="mjours">${'LMMJVSD'.split('').map(l=>`<span>${l}</span>`).join('')}</div>${g.svg}<div class="mlib">Touche un jour pour voir sa journée</div></div>`;
   const o=document.querySelector('.onglets'), haut=(document.querySelector('header')||{offsetHeight:62}).offsetHeight+(o?o.offsetHeight:0);
   v.querySelector('.mjours').style.top=haut+'px';
-  GRILLE={debut:d0, nb, ch, haut:haut+v.querySelector('.mjours').offsetHeight};
+  // la grille est étirée à la largeur de la carte : on mesure la hauteur réelle d'une semaine
+  const svM=v.querySelector('.carte.m svg'), hM=svM?svM.getBoundingClientRect().height:0, chR=hM>0?hM/nb:ch;
+  GRILLE={debut:d0, nb, ch:chR, haut:haut+v.querySelector('.mjours').offsetHeight};
   allerSemaine(MOIS,false);
 }
 // Haut de la grille (ligne de la première semaine) dans la page
@@ -2587,7 +2592,6 @@ window.exporterWidget=function(forcer){
   let avant=''; try{ avant=localStorage.getItem('vl-sig-widget')||''; }catch(e){}
   if(!forcer && sig===avant) return Promise.resolve();
   exportEnCours=(async()=>{
-    const garde=JOUR;
     try{
       indexer();
       const now=new Date(), deb=cle(ajout(now,-1)), fin=cle(ajout(now,45)), sortie=[], taches=[], cond=[], neige=[];
@@ -2597,9 +2601,9 @@ window.exporterWidget=function(forcer){
       for(const j of Object.keys(INDEX).filter(k=>k>=deb && k<=fin).sort()){
         for(const x of INDEX[j]){
           if(!x.s || sortie.length>=30) continue;
-          JOUR=j;
           await souffle();
-          const g=graphique(x,360,true); if(!g.svg) continue;
+          JOUR_G=j; let g; try{ g=graphique(x,360,true); }finally{ JOUR_G=null; }
+          if(!g.svg) continue;
           const [y,m,d]=j.split('-').map(Number);
           const rh=x.dec && x.seg===0 && x.a && x.a.rhr ? x.a.rhr.lieu : '', Lr=rh?lieuMeteo(rh):null;
           // déroulé complet, pour signaler toute modification de la journée (trains, EV, coupure…)
@@ -2628,7 +2632,7 @@ window.exporterWidget=function(forcer){
         neige:neige.map(z=>({debut:z.debut, lieux:(z.lieux||[]).map(l=>l.n)}))})); }catch(e){}
       try{ localStorage.setItem('vl-sig-widget', signatureExport()); }catch(e){}
     }catch(e){}
-    JOUR=garde; exportEnCours=null;
+    exportEnCours=null;
   })();
   return exportEnCours;
 };
