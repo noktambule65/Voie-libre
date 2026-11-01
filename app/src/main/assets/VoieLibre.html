@@ -1798,7 +1798,10 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .gtete{text-align:center;padding:12px 10px 2px;display:flex;justify-content:center;align-items:center;gap:8px}
 .gcode{font-size:24px;font-weight:700;color:#2F5FA8;letter-spacing:.3px}
 .gdate{text-align:center;color:#8A8A8A;font-size:15px;font-weight:300;padding:0 10px 10px}
-.grhr{margin:0 10px 8px;background:#7B83EB;color:#fff;text-align:center;font-size:13px;padding:6px;border-radius:2px;letter-spacing:.3px}
+.grhr{display:block;margin:0 10px 8px;background:#7B83EB;color:#fff;text-align:center;font-size:13px;padding:6px;border-radius:2px;letter-spacing:.3px;text-decoration:none}
+.grhr .galV{margin-left:8px;font-size:11px;opacity:.9;letter-spacing:0;text-decoration:underline}
+.gl a.tr{display:block;color:inherit;text-decoration:none}
+.gl .tr.galT .galV{float:right;font-size:11.5px;color:#2F5FA8;text-decoration:underline}
 .gtab{width:calc(100% - 20px);table-layout:auto;margin:0 10px 6px;border-collapse:collapse;font-size:12.5px;color:#333}
 .gtab th{background:#F2F2F2;font-weight:700;border:1px solid #DDD;padding:5px 3px}
 .gtab td{border:1px solid #DDD;padding:5px 3px;text-align:center;white-space:nowrap}
@@ -1981,6 +1984,8 @@ function estRepas(a){ return /^pause\s*repas\b/i.test(String(a||'').trim()); }
 function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
 // Icône d'un trajet en voyageur : taxi 🚕, bus 🚌, en cabine sans conduire 🚂, sinon 💺
+// Réservations de taxi et d'hôtel (site interne SNCF) : ouvert depuis un taxi ou le bandeau RHR de la journée
+const GALACSI='https://galacsimobile.sncf.fr';
 function icEV(a){ const t=String(a||'').trim(); return /^TAXI\b/i.test(t)?'🚕':/^BUS\b/i.test(t)?'🚌':/^EVLOC\b/i.test(t)?'🚂':'💺'; }
 function libEV(a){ return String(a||'').replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim(); }
 function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
@@ -2213,9 +2218,11 @@ function detailLignes(x){
     if(g==='cond'||g==='ev'){
       const [de,a]=String(it.lieu).split('->').map(t=>nomGare(t));
       const d=reel(rel(it.h1),rel(it.h2)), dur=(d>=60?Math.floor(d/60)+'h'+pad(d%60):d)+'min';
-      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
+      // taxi : la carte ouvre Galacsi (réservations de taxi et d'hôtel)
+      const taxi=g==='ev' && /^TAXI\b/i.test(String(it.act).trim()), bal=taxi?'a':'div';
+      L.push(`<${bal} class="tr ${g}${taxi?' galT':''}"${taxi?` href="${GALACSI}" target="_blank" rel="noopener"`:''}><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
-        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}</div></div>`);
+        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
       let fin=it.h2;
@@ -2367,7 +2374,7 @@ function rendre(){
     h+=`<div class="carte g">
       <div class="gtete"><span class="gcode">${esc(x.code)}</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div>
       <div class="gdate">${dateLongue}</div>
-      ${x.dec&&rhr?`<div class="grhr">🛏 RHR ${esc(String(rhr.lieu).toUpperCase())} · ${x.seg===0?'ALLER':'RETOUR'}</div>`:''}
+      ${x.dec&&rhr?`<a class="grhr" href="${GALACSI}" target="_blank" rel="noopener">🛏 RHR ${esc(String(rhr.lieu).toUpperCase())} · ${x.seg===0?'ALLER':'RETOUR'}<span class="galV">réservation ↗</span></a>`:''}
       <table class="gtab"><tr><th colspan="2">PS</th><th colspan="2">FS</th><th>Durée</th>${x.dec?'<th>Découché</th>':''}</tr>
         <tr><td>${hm(g.p0)}</td><td>${esc(g.gPS)}</td><td>${hm(g.f0)}</td><td>${esc(g.gFS)}</td>
         <td class="dur">${pad(Math.floor(g.duree/60))}:${pad(g.duree%60)}${g.nbTrains?` <span class="gcond"><svg width="9" height="10" viewBox="0 0 9 10" style="vertical-align:-1px"><circle cx="4.5" cy="2.4" r="2" fill="#555"/><path d="M0.6 10 C0.8 6 2.4 5.2 4.5 5.2 S8.2 6 8.4 10Z" fill="#555"/><rect x="2" y="0.2" width="5" height="1.2" fill="#555"/></svg> ${duree(g.conduite)}</span>`:''}</td>${x.dec?`<td>${decTxt}</td>`:''}</tr></table>
