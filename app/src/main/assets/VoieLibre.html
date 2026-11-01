@@ -1284,6 +1284,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           </ul>
           <h3 class="avT">Tuto : mise en place avec MacroDroid</h3>
           <p class="petit">Une dizaine de minutes, une seule fois. Suis les étapes dans l’ordre : la zone entourée en rouge est celle à toucher.</p>
+          <div class="etape"><b>📍</b><div><p><strong>Pour revenir sur cette page à tout moment</strong> : depuis l’accueil de Voie libre, touche la tuile <strong>Paramètres</strong>, descends jusqu’à la carte <strong>Options avancées</strong>, puis touche <strong>Mode avion automatique au départ des trains (MacroDroid)</strong>. Tu peux aussi passer par <strong>Paramètres › Aide › Tuto mode avion</strong>.</p></div></div>
           <div class="etape"><b>1</b><div><p>Installe <strong>MacroDroid</strong> depuis le Play Store, ouvre-le et accepte ses premières demandes.</p></div></div>
           <div class="etape"><b>2</b><div><p>Sur l’accueil de MacroDroid, touche <strong>Ajouter une macro</strong>.</p><img class="avImg" src="data:image/webp;base64,${TUTO_AV[0]}" alt=""></div></div>
           <div class="etape"><b>3</b><div><p>Touche le <strong>+</strong> rouge des <strong>Déclencheurs</strong>.</p><img class="avImg" src="data:image/webp;base64,${TUTO_AV[1]}" alt=""></div></div>
@@ -1606,6 +1607,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);
     if(NATIF){ const bW=document.createElement('button'); bW.className='action clair'; bW.textContent='Ajouter le widget sur l’écran d’accueil';
       bW.onclick=ouvrirTutoWidget; cA.appendChild(bW); }
+    if(ouvrirModeAvion){ const bAv=document.createElement('button'); bAv.className='action clair'; bAv.textContent='✈️ Tuto mode avion automatique';
+      bAv.onclick=ouvrirModeAvion; cA.appendChild(bAv); }
     // Contact : bug, remarque ou suggestion (ouvre l'appli de mail, version déjà indiquée)
     const MAIL='voielibreadc@gmail.com';
     const pC=document.createElement('p'); pC.className='petit';
