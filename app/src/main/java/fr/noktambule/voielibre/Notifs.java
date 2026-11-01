@@ -753,7 +753,6 @@ public class Notifs extends BroadcastReceiver {
         boolean evloc = m.optBoolean("evloc", false);
         boolean dep = sousOn(m, "dep", true), arr = sousOn(m, "arr", false), encha = sousOn(m, "encha", true);
         long avant = sousMin(m, "dep", 0) * 60000L, apres = sousMin(m, "arr", 0) * 60000L, ecart = sousMin(m, "encha", 20) * 60000L;
-        JSONArray g = m.optJSONArray("gares");
         java.util.List<Integer> pris = new java.util.ArrayList<>();
         java.util.List<Long> departs = new java.util.ArrayList<>();
         for (int k = 0; k < taches.length(); k++) {
@@ -761,12 +760,7 @@ public class Notifs extends BroadcastReceiver {
             if (t == null || t.optLong("t") <= 0) continue;
             String type = t.optString("type");
             if (!"train".equals(type) && !(evloc && estEvLoc(t))) continue;
-            departs.add(t.optLong("t"));   // les enchaînements comptent tous les trains suivis, quelle que soit la gare
-            if (g != null && g.length() > 0) {
-                boolean ok = false;
-                for (int i = 0; i < g.length(); i++) if (g.optString(i).equalsIgnoreCase(t.optString("lieu"))) { ok = true; break; }
-                if (!ok) continue;
-            }
+            departs.add(t.optLong("t"));
             pris.add(k);
         }
         for (int k : pris) {
