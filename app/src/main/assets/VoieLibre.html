@@ -1554,6 +1554,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     }
     const cA=carte('💡','Aide','rAide');
     const cV=NATIF?carte('🔄','Version et mises à jour','rVersion'):null;
+    let basculerTesteur=null;
     if(NATIF){
       const bD=document.createElement('button'); bD.className='action clair'; bD.textContent='Journal de diagnostic';
       bD.onclick=()=>{
@@ -1573,9 +1574,11 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         });
       };
       bD.style.display='none'; cV.appendChild(bD);
+      // Titre de la carte : 5 appuis rapides → journal de diagnostic ; en continuant jusqu'à 7 → mode testeur
       let nAppuis=0, tAppui=0;
       cV.querySelector('h3').addEventListener('click',()=>{ const t=Date.now(); nAppuis=(t-tAppui<800)?nAppuis+1:1; tAppui=t;
-        if(nAppuis>=5){ nAppuis=0; bD.style.display=''; bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
+        if(nAppuis===5){ bD.style.display=''; }
+        if(nAppuis>=7){ nAppuis=0; if(basculerTesteur) basculerTesteur(); } });
     }
     if(NATIF && NATIF.verifierMaj){
       const pV=document.createElement('p'); pV.className='petit';
@@ -1593,6 +1596,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           pT.style.display=(msg||on)?'flex':'none'; };
         const basculer=()=>{ const on=!actif(); try{ NATIF.reglerTesteur(on); }catch(e){}
           dessinerT(on?'🧪 Mode testeur activé : tu recevras aussi les pré-versions.':'Mode testeur désactivé.'); setTimeout(()=>dessinerT(),3000); };
+        basculerTesteur=basculer;
         pT.addEventListener('click',e=>{ if(e.target.closest('[data-tdes]')) basculer(); });
         let n=0, t0=0;
         pV.addEventListener('click',()=>{ const t=Date.now(); if(t-t0>3000){ n=0; t0=t; } if(++n>=7){ n=0; t0=0; basculer(); } });
