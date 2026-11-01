@@ -1064,6 +1064,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 #pageAvion .etape>div{flex:1;min-width:0}
 #pageAvion .avT{margin:22px 0 8px;font-size:17px}
 #pageAvion .avCode{font-family:monospace;font-size:14px;background:rgba(127,127,127,.15);padding:8px 10px;border-radius:8px;word-break:break-all;user-select:all}
+#pageAvion .avSig{font-size:13px;color:var(--soft);margin:-6px 0 12px 32px}
+#pageAvion .avSig .avCode{display:block;margin-top:4px;font-size:13px;padding:6px 8px}
 #pageAvion .avTest{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 #pageAvion .avListe{padding-left:20px;margin:0}
 #pageAvion .avListe li{margin-bottom:8px}
@@ -1184,7 +1186,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const T_DEF={train:{on:true,min:4,horsAvion:true,notes:[]}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
       rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
     // Mode avion automatique (Options avancées) : signal aux applis d'automatisation, désactivé par défaut
-    const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, ev:false, gares:[]};
+    const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, evloc:false, gares:[]};
     const lireT=()=>{ const t=JSON.parse(JSON.stringify(T_DEF)), o=(charger('bo-notif',{})||{}).taches||{};
       ['train','ev','eq','coup','rs'].forEach(k=>{ if(o[k]) Object.assign(t[k],o[k]); });
       t.macro=Object.assign(JSON.parse(JSON.stringify(M_DEF)), o.macro||{});
@@ -1256,9 +1258,11 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         ov.querySelector('.avReg').innerHTML=`<label class="coche long"><input type="checkbox" data-m="on"${m.on?' checked':''}><span><b>Activer le signal aux applis d’automatisation</b></span></label>
         <div class="avOpts${m.on?'':' avOff'}"><p class="petit">${m.on?'Signaux envoyés :':'Signal désactivé : coche la case ci-dessus pour l’activer. Tu peux préparer les réglages dès maintenant.'}</p>
         <label class="coche long"><input type="checkbox" data-m="dep.on"${m.dep.on?' checked':''}><span>Au départ de chaque train conduit : ${selM('dep.min',m.dep.min,[0,1,2,3,4,5,10],n=>n?n+' min avant':'à l’heure exacte')}</span></label>
+        <p class="avSig">Signal à copier dans MacroDroid : <span class="avCode">voielibre.DEPART_TRAIN</span></p>
         <label class="coche long"><input type="checkbox" data-m="arr.on"${m.arr.on?' checked':''}><span>À l’arrivée : ${selM('arr.min',m.arr.min,[0,5,10,15,20,30,45,60],n=>n?n+' min après':'à l’heure prévue')}</span></label>
         <label class="coche long sousOpt"><input type="checkbox" data-m="encha.on"${m.encha.on?' checked':''}><span>Pas de signal d’arrivée si le train suivant part moins de ${selM('encha.min',m.encha.min,[10,15,20,30,45,60,90,120],n=>n+' min')} après</span></label>
-        <label class="coche long"><input type="checkbox" data-m="ev"${m.ev?' checked':''}><span>Aussi pour les EV</span></label>
+        <p class="avSig">Signal à copier dans MacroDroid : <span class="avCode">voielibre.ARRIVEE_TRAIN</span></p>
+        <label class="coche long"><input type="checkbox" data-m="evloc"${m.evloc?' checked':''}><span>Aussi pour les EV loc (en cabine, sans conduire)</span></label>
         <div class="notesGare"><p class="petit">${m.gares.length?'Seulement les trains au départ de :':'Trains au départ de toutes les gares.'}</p>
           ${m.gares.map((g,i)=>`<div class="noteGare"><button class="action clair bgare" data-mgare="${i}">${esc(g)}</button><button class="lien" data-mgsup="${i}" aria-label="Retirer">✕</button></div>`).join('')}
           <button class="action clair" data-mgajout="1">+ Limiter à une gare de départ</button></div>
@@ -1284,7 +1288,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
             <li><b>Le mode avion ne se désactive pas tout seul</b> à l’arrivée (les retards rendent l’heure d’arrivée incertaine). Le signal d’arrivée existe pour ceux qui veulent le gérer eux-mêmes dans MacroDroid (déclencheur <code>voielibre.ARRIVEE_TRAIN</code>).</li>
             <li><b>MacroDroid devient ton assistant par défaut</b> : Google Assistant ou Gemini ne se lancent plus par l’appui long ou à la voix, mais restent disponibles depuis leur icône. « Entourer pour chercher » continue de fonctionner. Pour revenir en arrière : même chemin qu’à l’étape 4.</li>
             <li><b>Teste de temps en temps</b>, surtout après une mise à jour du téléphone : il arrive qu’Android remette Google comme assistant par défaut, et le mode avion ne s’active alors plus, sans prévenir.</li>
-            <li>Pour les plus curieux : le signal contient aussi le train, le type (<code>conduite</code> ou <code>ev</code>), les gares de départ et d’arrivée, l’heure et la date (extras <code>train</code>, <code>type</code>, <code>depart</code>, <code>arrivee</code>, <code>heure</code>, <code>date</code>), utilisables dans d’autres macros.</li>
+            <li>Pour les plus curieux : le signal contient aussi le train, le type (<code>conduite</code> ou <code>evloc</code>), les gares de départ et d’arrivée, l’heure et la date (extras <code>train</code>, <code>type</code>, <code>depart</code>, <code>arrivee</code>, <code>heure</code>, <code>date</code>), utilisables dans d’autres macros.</li>
           </ul>
           <p class="petit">Les noms des menus de MacroDroid et des Paramètres peuvent varier un peu selon la version et la marque du téléphone.</p>
           <button class="action" data-x="1">Fermer</button>

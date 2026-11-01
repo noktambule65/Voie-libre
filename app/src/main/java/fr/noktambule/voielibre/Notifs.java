@@ -749,7 +749,8 @@ public class Notifs extends BroadcastReceiver {
         JSONArray taches = donnees(ctx).optJSONArray("taches");
         if (taches == null) return l;
         JSONObject m = reglagesMacro(ctx);
-        boolean ev = m.optBoolean("ev", false);
+        // EV en cabine (EV loc) seulement, en option : ce sont des trajets en locomotive, pas en voiture voyageurs
+        boolean evloc = m.optBoolean("evloc", false);
         boolean dep = sousOn(m, "dep", true), arr = sousOn(m, "arr", false), encha = sousOn(m, "encha", true);
         long avant = sousMin(m, "dep", 0) * 60000L, apres = sousMin(m, "arr", 0) * 60000L, ecart = sousMin(m, "encha", 20) * 60000L;
         JSONArray g = m.optJSONArray("gares");
@@ -759,7 +760,7 @@ public class Notifs extends BroadcastReceiver {
             JSONObject t = taches.optJSONObject(k);
             if (t == null || t.optLong("t") <= 0) continue;
             String type = t.optString("type");
-            if (!"train".equals(type) && !(ev && "ev".equals(type))) continue;
+            if (!"train".equals(type) && !(evloc && estEvLoc(t))) continue;
             departs.add(t.optLong("t"));   // les enchaînements comptent tous les trains suivis, quelle que soit la gare
             if (g != null && g.length() > 0) {
                 boolean ok = false;
@@ -781,9 +782,14 @@ public class Notifs extends BroadcastReceiver {
         return l;
     }
 
+    /** EV en locomotive : Graou écrit « EVLOC 14142 », la page en fait la tâche « EV LOC14142 ». */
+    private static boolean estEvLoc(JSONObject t) {
+        return "ev".equals(t.optString("type")) && t.optString("quoi").toUpperCase(Locale.FRANCE).replace(" ", "").startsWith("EVLOC");
+    }
+
     /** Signal envoyé aux applis d'automatisation. */
     static void envoyerSignal(Context ctx, boolean depart, JSONObject t) {
-        String type = "ev".equals(t.optString("type")) ? "ev" : "conduite";
+        String type = estEvLoc(t) ? "evloc" : "conduite";
         ctx.sendBroadcast(new Intent(depart ? SIGNAL_DEPART : SIGNAL_ARRIVEE)
                 .putExtra("train", t.optString("quoi"))
                 .putExtra("type", type)
