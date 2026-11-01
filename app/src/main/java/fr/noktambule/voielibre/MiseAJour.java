@@ -39,6 +39,8 @@ import java.net.URL;
 final class MiseAJour {
 
     private static final String API = "https://api.github.com/repos/noktambule65/Voie-libre/releases/latest";
+    /** Mode testeur (caché : 7 appuis sur le numéro de version) : toutes les versions, pré-versions comprises. */
+    private static final String API_TOUTES = "https://api.github.com/repos/noktambule65/Voie-libre/releases?per_page=15";
     private static final String PREFS = "maj";
     private static final long JOUR = 86400000L;
     private static final String CANAL = "mise_a_jour";
@@ -80,13 +82,25 @@ final class MiseAJour {
         catch (Exception e) { return "?"; }
     }
 
+    // ---------- Mode testeur ----------
+
+    static boolean testeur(Context c) { return prefs(c).getBoolean("testeur", false); }
+
+    /** Active ou désactive le mode testeur ; la prochaine vérification interroge GitHub sans attendre. */
+    static void reglerTesteur(Context c, boolean on) {
+        prefs(c).edit().putBoolean("testeur", on).remove("quand").remove("version").apply();
+        VoieLibreWidget.majTous(c.getApplicationContext());
+        new Thread(() -> { try { verifier(c, true); } catch (Exception ignore) { } }, "maj").start();
+    }
+
     // ---------- Vérification ----------
 
     /** Interroge GitHub. À appeler hors du fil principal. */
     private static Resultat interroger(Context c) {
         HttpURLConnection h = null;
         try {
-            h = (HttpURLConnection) new URL(API).openConnection();
+            boolean toutes = testeur(c);
+            h = (HttpURLConnection) new URL(toutes ? API_TOUTES : API).openConnection();
             h.setConnectTimeout(15000);
             h.setReadTimeout(20000);
             h.setRequestProperty("Accept", "application/vnd.github+json");
@@ -96,8 +110,22 @@ final class MiseAJour {
             if (statut == 403 || statut == 429) return new Resultat(LIMITE, null);
             if (statut == 404) return new Resultat(INTROUVABLE, null);
             if (statut != 200) return new Resultat(RESEAU, null);
-            JSONObject o = new JSONObject(lire(h.getInputStream()));
-            if (o.optBoolean("prerelease") || o.optBoolean("draft")) return new Resultat(INTROUVABLE, null);
+            String corps = lire(h.getInputStream());
+            JSONObject o;
+            if (toutes) {
+                // la version la plus récente, pré-versions comprises (brouillons exclus)
+                JSONArray l = new JSONArray(corps);
+                o = null;
+                for (int k = 0; k < l.length(); k++) {
+                    JSONObject r = l.optJSONObject(k);
+                    if (r == null || r.optBoolean("draft")) continue;
+                    if (o == null || numero(r.optString("tag_name")) > numero(o.optString("tag_name"))) o = r;
+                }
+                if (o == null) return new Resultat(INTROUVABLE, null);
+            } else {
+                o = new JSONObject(corps);
+                if (o.optBoolean("prerelease") || o.optBoolean("draft")) return new Resultat(INTROUVABLE, null);
+            }
             Info i = new Info();
             i.version = numero(o.optString("tag_name"));
             i.notes = o.optString("body", "").trim();

@@ -1584,6 +1584,20 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const bM=document.createElement('button'); bM.className='action clair'; bM.textContent='Rechercher une mise à jour';
       bM.onclick=()=>{ try{ NATIF.verifierMaj(); }catch(e){} };
       const premier=cV.querySelector('button'); cV.insertBefore(pV,premier); cV.insertBefore(bM,premier);
+      // Mode testeur, caché : 7 appuis rapides sur la ligne de version (pré-versions proposées aussi)
+      if(NATIF.reglerTesteur){
+        const pT=document.createElement('div'); pT.className='petit'; pT.style.cssText='display:flex;align-items:center;gap:8px;margin:4px 0 8px';
+        const actif=()=>{ try{ return !!NATIF.testeur(); }catch(e){ return false; } };
+        const dessinerT=msg=>{ const on=actif();
+          pT.innerHTML=msg?`<span>${msg}</span>`:(on?'<span style="flex:1">🧪 Mode testeur actif : les pré-versions te sont proposées.</span><button class="lien" data-tdes="1">Désactiver</button>':'');
+          pT.style.display=(msg||on)?'flex':'none'; };
+        const basculer=()=>{ const on=!actif(); try{ NATIF.reglerTesteur(on); }catch(e){}
+          dessinerT(on?'🧪 Mode testeur activé : tu recevras aussi les pré-versions.':'Mode testeur désactivé.'); setTimeout(()=>dessinerT(),3000); };
+        pT.addEventListener('click',e=>{ if(e.target.closest('[data-tdes]')) basculer(); });
+        let n=0, t0=0;
+        pV.addEventListener('click',()=>{ const t=Date.now(); if(t-t0>3000){ n=0; t0=t; } if(++n>=7){ n=0; t0=0; basculer(); } });
+        pV.after(pT); dessinerT();
+      }
     }
     const bI=document.createElement('button'); bI.className='action clair'; bI.textContent='Revoir la présentation de Voie libre';
     bI.onclick=()=>{ try{ parent.vlIntro(); }catch(e){} }; cA.appendChild(bI);

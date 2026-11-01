@@ -472,6 +472,13 @@ public class Pont {
     @JavascriptInterface
     public void signalTest(String quoi) { Notifs.signalTest(ctx, !"arr".equals(quoi)); }
 
+    /** Mode testeur (caché) : pré-versions proposées aussi. */
+    @JavascriptInterface
+    public boolean testeur() { return MiseAJour.testeur(ctx); }
+
+    @JavascriptInterface
+    public void reglerTesteur(boolean on) { MiseAJour.reglerTesteur(ctx, on); }
+
     /** Version installée, affichée dans Paramètres › Aide (ex. « 1.42 »). */
     @JavascriptInterface
     public String versionAppli() { return MiseAJour.nomVersion(ctx); }
