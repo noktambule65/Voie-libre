@@ -66,6 +66,8 @@ public class VoieLibreWidget extends AppWidgetProvider {
     private static final int[] ORANGE = {0xFFB85C00, 0xFFFFB74D};
     /** Rappel affiché en bas à gauche pendant le service (la copie Graou n'est pas la référence). */
     private static final String PACIFIC = "⚠\uFE0F Seul Pacific fait foi";
+    /** Nouvelle version disponible (hors service), en bas à gauche. */
+    private static final String MAJ = "⬆\uFE0F Mise à jour dispo";
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
@@ -332,11 +334,16 @@ public class VoieLibreWidget extends AppWidgetProvider {
      * Ligne du bas, à gauche : l'alerte de changement d'heure en priorité ;
      * sinon, pendant le service, le rappel « Seul Pacific fait foi ».
      */
-    private static void poserAlerte(RemoteViews v, String alerte, boolean enService, boolean nuit) {
-        String texte = alerte != null ? alerte : enService ? PACIFIC : null;
+    private static void poserAlerte(Context ctx, RemoteViews v, String alerte, boolean enService, boolean nuit) {
+        // hors service : nouvelle version publiée et pas encore installée (touche : proposition de mise à jour)
+        boolean maj = alerte == null && !enService && MiseAJour.disponible(ctx);
+        String texte = alerte != null ? alerte : enService ? PACIFIC : maj ? MAJ : null;
         v.setTextViewText(R.id.alerte, texte == null ? "" : texte);
         v.setViewVisibility(R.id.alerte, texte == null ? View.GONE : View.VISIBLE);
-        couleur(v, R.id.alerte, alerte != null ? ROUGE : ORANGE, nuit);
+        couleur(v, R.id.alerte, alerte != null ? ROUGE : maj ? BLEU : ORANGE, nuit);
+        v.setOnClickPendingIntent(R.id.alerte, maj ? PendingIntent.getActivity(ctx, 6001,
+                new Intent(ctx, MainActivity.class).putExtra("maj", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE) : null);
     }
 
     // ---------- Thème ----------
@@ -621,7 +628,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         couleur(v, R.id.rafraichir, ENCRE, nuit);
         couleur(v, R.id.maj, GRIS, nuit);
         couleur(v, R.id.alerte, ROUGE, nuit);
-        poserAlerte(v, alerteHeure(), false, nuit);   // d'après la date du jour ; en vue Journée, remplacé par la journée affichée
+        poserAlerte(ctx, v, alerteHeure(), false, nuit);   // d'après la date du jour ; en vue Journée, remplacé par la journée affichée
 
         v.setOnClickPendingIntent(R.id.prec, diffusion(ctx, PREC, 1));
         v.setOnClickPendingIntent(R.id.suiv, diffusion(ctx, SUIV, 2));
@@ -675,7 +682,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         } else {
             v.setViewVisibility(R.id.compte, View.GONE);
         }
-        poserAlerte(v, alerteHeure(), enService, nuit);
+        poserAlerte(ctx, v, alerteHeure(), enService, nuit);
         p.edit().putLong("cible", compte ? cible : 0).apply();
         programmerBascule(ctx, cible);
         programmerMinute(ctx, compte ? cible : 0);
@@ -714,7 +721,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         long d = j.optLong("debut"), f = j.optLong("fin");
         v.setTextViewText(R.id.titre, titreJour(j));
         v.setTextViewText(R.id.sousTitre, jourTexte(d) + " · " + hm(d) + " → " + hm(f));
-        poserAlerte(v, alerteHeure(j.optString("date"), d, f), enService, nuit);
+        poserAlerte(ctx, v, alerteHeure(j.optString("date"), d, f), enService, nuit);
         couleur(v, R.id.prec, i > 0 ? BLEU : BLEU_PALE, nuit);
         couleur(v, R.id.suiv, i < jours.length() - 1 ? BLEU : BLEU_PALE, nuit);
 

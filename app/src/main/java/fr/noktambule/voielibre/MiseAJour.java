@@ -33,7 +33,8 @@ import java.net.URL;
  *
  * Vérification au plus une fois par jour (à l'ouverture de l'appli et pendant la synchro en
  * arrière-plan), sans compte ni jeton : GitHub accepte 60 demandes par heure et par adresse.
- * Notification à chaque nouvelle version, puis deux relances au plus (3 jours, puis 7 jours après).
+ * Notification à chaque nouvelle version, puis relances (3 jours, puis tous les 7 jours) tant qu'elle n'est pas installée.
+ * Le widget l'indique aussi en bas, hors service (« Mise à jour dispo »).
  */
 final class MiseAJour {
 
@@ -145,6 +146,7 @@ final class MiseAJour {
             if (r.etat != RESEAU) {
                 SharedPreferences.Editor e = p.edit().putLong("quand", maintenant);
                 if (r.etat == OK) {
+                    if (p.getInt("version", 0) != r.info.version) PRINCIPAL.post(() -> VoieLibreWidget.majTous(c.getApplicationContext()));
                     e.putInt("version", r.info.version).putString("apk", r.info.apk).putLong("taille", r.info.taille)
                             .putString("notes", r.info.notes).putString("page", r.info.page);
                 } else if (r.etat == INTROUVABLE) {
@@ -172,14 +174,19 @@ final class MiseAJour {
         return i.apk.isEmpty() ? null : i;
     }
 
+    /** Une version plus récente que celle installée est connue (pour le widget). */
+    static boolean disponible(Context c) {
+        try { return memorisee(c) != null; } catch (Exception e) { return false; }
+    }
+
     // ---------- Synchro en arrière-plan : notification ----------
 
-    /** Relances d'une même version, si elle n'est toujours pas installée : 3 jours après la notification, puis 7 jours après. */
-    private static final long[] RELANCES = {3 * JOUR, 7 * JOUR};
+    /** Relances d'une même version, si elle n'est toujours pas installée : 3 jours après la notification, puis tous les 7 jours. */
+    private static long delaiRelance(int nb) { return nb <= 1 ? 3 * JOUR : 7 * JOUR; }
 
     /**
-     * Appelé par la synchro en arrière-plan : une notification par nouvelle version, puis au plus deux relances
-     * (3 jours, puis 7 jours plus tard) tant qu'elle n'est pas installée. Une version plus récente repart de zéro.
+     * Appelé par la synchro en arrière-plan : une notification par nouvelle version, puis des relances
+     * (3 jours, puis tous les 7 jours) tant qu'elle n'est pas installée. Une version plus récente repart de zéro.
      */
     static void enArrierePlan(Context c) {
         Resultat r = verifier(c, false);
@@ -190,7 +197,7 @@ final class MiseAJour {
         boolean relance;
         if (notifiee < r.info.version) {
             relance = false;                            // nouvelle version : première notification
-        } else if (nb >= 1 && nb <= RELANCES.length && maintenant - p.getLong("notifQuand", 0) >= RELANCES[nb - 1]) {
+        } else if (nb >= 1 && maintenant - p.getLong("notifQuand", 0) >= delaiRelance(nb)) {
             relance = true;                             // même version, toujours pas installée : relance
         } else {
             return;
