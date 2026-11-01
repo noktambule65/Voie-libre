@@ -29,7 +29,8 @@ import java.util.TreeSet;
 /**
  * Notifications facultatives, activées dans les Paramètres de Voie libre :
  *  - « Planning modifié » : une journée à venir a changé dans Graou (détecté à chaque mise à jour des journées) ;
- *  - « Découché » : la veille d'un aller en découché, à l'heure choisie, avec la ville du découché.
+ *  - « Découché » : la veille d'un aller en découché, à l'heure choisie, avec la ville du découché ;
+ *    si on est encore en service à cette heure, le rappel est décalé à 15 min après la fin de service.
  */
 public class Notifs extends BroadcastReceiver {
 
@@ -999,7 +1000,7 @@ public class Notifs extends BroadcastReceiver {
             for (int k = 0; k < jours.length(); k++) {
                 JSONObject j = jours.optJSONObject(k);
                 if (j == null || !j.optBoolean("dec") || j.optInt("seg") != 0) continue;
-                long t = veille(j.optString("date"), heure);
+                long t = apresService(jours, veille(j.optString("date"), heure), j.optLong("debut"));
                 if (t > now && (quand == 0 || t < quand)) { quand = t; date = j.optString("date"); }
             }
         }
@@ -1007,6 +1008,25 @@ public class Notifs extends BroadcastReceiver {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (quand == 0) { am.cancel(pi); return; }
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+    }
+
+    /**
+     * Pas de rappel de découché pendant le service : si t tombe dans une journée de service (de la PS à la FS),
+     * il est décalé à 15 min après la FS. Sans effet si le décalage dépasserait la PS de l'aller (limite).
+     */
+    private static long apresService(JSONArray jours, long t, long limite) {
+        long r = t;
+        for (int passe = 0; passe < 5; passe++) {
+            boolean change = false;
+            for (int k = 0; k < jours.length(); k++) {
+                JSONObject z = jours.optJSONObject(k);
+                if (z == null) continue;
+                long d = z.optLong("debut"), f = z.optLong("fin");
+                if (d <= r && r < f) { r = f + 15 * 60000L; change = true; }
+            }
+            if (!change) break;
+        }
+        return (limite <= 0 || r < limite) ? r : t;
     }
 
     private static long veille(String date, int heure) {
@@ -1135,7 +1155,9 @@ public class Notifs extends BroadcastReceiver {
                 if (j == null || !date.equals(j.optString("date")) || !j.optBoolean("dec") || j.optInt("seg") != 0) continue;
                 String ville = j.optString("rhr", "");
                 long d = j.optLong("debut");
-                String titre = "Demain : découché" + (ville.isEmpty() ? "" : " à " + ville);
+                // décalé après minuit (fin de service tardive) : le découché est alors « aujourd'hui »
+                boolean jourJ = date.equals(new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new Date()));
+                String titre = (jourJ ? "Aujourd'hui : découché" : "Demain : découché") + (ville.isEmpty() ? "" : " à " + ville);
                 String texte = j.optString("code") + " · PS " + VoieLibreWidget.hm(d) + " à " + j.optString("lieuPS");
                 PendingIntent pi = ouvrir(ctx, 2002, "journee", "date", date);
                 montrer(ctx, 2, CANAL_DEC, titre, texte, null, pi);

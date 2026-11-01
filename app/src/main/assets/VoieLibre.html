@@ -1160,7 +1160,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <label class="coche"><input type="checkbox" id="nSync"> Graou non mis à jour depuis <select id="nSyncH">${[6,12,24,48].map(h=>`<option value="${h}">${h} h</option>`).join('')}</select>
         <small id="nSyncHInfo" class="petit" style="display:none"></small>
         <small>alerte si la synchro par le lien échoue depuis ce délai (réseau, Graou en maintenance, jeton régénéré) : les rappels se basent alors sur un planning peut-être périmé</small></label>
-      <label class="coche"><input type="checkbox" id="nDec"> Découché : rappel la veille à <select id="nHeure">${heures}</select><small>avec la ville du découché</small></label>
+      <label class="coche"><input type="checkbox" id="nDec"> Découché : rappel la veille à <select id="nHeure">${heures}</select><small>avec la ville du découché. Si tu es encore en service à cette heure, le rappel est décalé à 15 min après ta fin de service.</small></label>
       <div class="coche chg"><b>Neige sur ta journée</b> : alerte
         <span class="chgCases neigeCases"><label><input type="checkbox" id="nNeige"> la veille à <select id="nNeigeH">${heures}</select></label>
         <label><input type="checkbox" id="nNeigeJ"> le jour même, à l’heure de la PS</label></span>
