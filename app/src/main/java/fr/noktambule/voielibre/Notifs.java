@@ -45,6 +45,10 @@ public class Notifs extends BroadcastReceiver {
     private static final String ACTION_TACHE = "fr.noktambule.voielibre.TACHE";
     private static final String CANAL_REVEIL = "reveil_oublie";
     private static final String ACTION_REVEIL = "fr.noktambule.voielibre.REVEIL_OUBLIE";
+    private static final String ACTION_MACRO = "fr.noktambule.voielibre.MACRO";
+    /** Signaux envoyés aux applis d'automatisation (MacroDroid, Tasker…) au départ et à l'arrivée des trains conduits. */
+    static final String SIGNAL_DEPART = "fr.noktambule.voielibre.DEPART_TRAIN";
+    static final String SIGNAL_ARRIVEE = "fr.noktambule.voielibre.ARRIVEE_TRAIN";
     private static final String CANAL_NEIGE = "neige";
     private static final String CANAL_SYNC = "synchro_hs";
     private static final String ACTION_SYNC = "fr.noktambule.voielibre.SYNCHRO_HS";
@@ -276,6 +280,7 @@ public class Notifs extends BroadcastReceiver {
         try { programmerDecouche(ctx); } catch (Exception ignore) { }
         try { programmerHeure(ctx); } catch (Exception ignore) { }
         try { programmerTaches(ctx); } catch (Exception ignore) { }
+        try { programmerMacro(ctx); } catch (Exception ignore) { }
         try { programmerReveil(ctx); } catch (Exception ignore) { }
         try { neige(ctx); } catch (Exception ignore) { }
         try { synchro(ctx); } catch (Exception ignore) { }
@@ -715,6 +720,126 @@ public class Notifs extends BroadcastReceiver {
         return q;
     }
 
+    // ---------- Mode avion automatique (Options avancées) : signal aux applis d'automatisation (MacroDroid…)
+    // au départ et à l'arrivée de chaque train conduit ----------
+
+    private static JSONObject reglagesMacro(Context ctx) {
+        JSONObject m = reglagesTaches(ctx).optJSONObject("macro");
+        return m != null ? m : new JSONObject();
+    }
+
+    private static boolean macroActive(Context ctx) { return reglagesMacro(ctx).optBoolean("on", false); }
+
+    private static boolean sousOn(JSONObject m, String k, boolean def) {
+        JSONObject o = m.optJSONObject(k);
+        return o == null ? def : o.optBoolean("on", def);
+    }
+
+    private static int sousMin(JSONObject m, String k, int def) {
+        JSONObject o = m.optJSONObject(k);
+        return Math.max(0, Math.min(180, o == null ? def : o.optInt("min", def)));
+    }
+
+    /**
+     * Signaux à envoyer : {instant, 1 = départ / 0 = arrivée, indice de la tâche}, triés
+     * (à la même minute, l'arrivée passe avant le départ suivant). Décalages et filtres de Paramètres appliqués.
+     */
+    private static java.util.List<long[]> evenementsMacro(Context ctx) {
+        java.util.List<long[]> l = new java.util.ArrayList<>();
+        JSONArray taches = donnees(ctx).optJSONArray("taches");
+        if (taches == null) return l;
+        JSONObject m = reglagesMacro(ctx);
+        boolean ev = m.optBoolean("ev", false);
+        boolean dep = sousOn(m, "dep", true), arr = sousOn(m, "arr", false), encha = sousOn(m, "encha", true);
+        long avant = sousMin(m, "dep", 0) * 60000L, apres = sousMin(m, "arr", 0) * 60000L, ecart = sousMin(m, "encha", 20) * 60000L;
+        JSONArray g = m.optJSONArray("gares");
+        java.util.List<Integer> pris = new java.util.ArrayList<>();
+        java.util.List<Long> departs = new java.util.ArrayList<>();
+        for (int k = 0; k < taches.length(); k++) {
+            JSONObject t = taches.optJSONObject(k);
+            if (t == null || t.optLong("t") <= 0) continue;
+            String type = t.optString("type");
+            if (!"train".equals(type) && !(ev && "ev".equals(type))) continue;
+            departs.add(t.optLong("t"));   // les enchaînements comptent tous les trains suivis, quelle que soit la gare
+            if (g != null && g.length() > 0) {
+                boolean ok = false;
+                for (int i = 0; i < g.length(); i++) if (g.optString(i).equalsIgnoreCase(t.optString("lieu"))) { ok = true; break; }
+                if (!ok) continue;
+            }
+            pris.add(k);
+        }
+        for (int k : pris) {
+            JSONObject t = taches.optJSONObject(k);
+            if (dep) l.add(new long[]{t.optLong("t") - avant, 1, k});
+            long fin = t.optLong("fin");
+            if (!arr || fin <= 0) continue;
+            boolean suivi = false;
+            if (encha) for (long d : departs) if (d >= fin && d - fin < ecart) { suivi = true; break; }
+            if (!suivi) l.add(new long[]{fin + apres, 0, k});
+        }
+        java.util.Collections.sort(l, (x, y) -> x[0] != y[0] ? Long.compare(x[0], y[0]) : Long.compare(x[1], y[1]));
+        return l;
+    }
+
+    /** Signal envoyé aux applis d'automatisation. */
+    static void envoyerSignal(Context ctx, boolean depart, JSONObject t) {
+        String type = "ev".equals(t.optString("type")) ? "ev" : "conduite";
+        ctx.sendBroadcast(new Intent(depart ? SIGNAL_DEPART : SIGNAL_ARRIVEE)
+                .putExtra("train", t.optString("quoi"))
+                .putExtra("type", type)
+                .putExtra("depart", t.optString("lieu"))
+                .putExtra("arrivee", t.optString("arr"))
+                .putExtra("heure", depart ? t.optString("h") : t.optString("hFin"))
+                .putExtra("date", t.optString("date"))
+                .addFlags(Intent.FLAG_RECEIVER_FOREGROUND));
+    }
+
+    /** Bouton « Tester » de Paramètres : signal immédiat avec un train fictif. */
+    static void signalTest(Context ctx, boolean depart) {
+        try {
+            String h = new java.text.SimpleDateFormat("HH:mm", Locale.FRANCE).format(new java.util.Date());
+            JSONObject t = new JSONObject().put("type", "train").put("quoi", "TEST").put("lieu", "Test")
+                    .put("arr", "Test").put("h", h).put("hFin", h)
+                    .put("date", new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new java.util.Date()));
+            envoyerSignal(ctx, depart, t);
+        } catch (Exception ignore) { }
+    }
+
+    /** Prochain signal (un seul à la fois ; le suivant est programmé quand il part). */
+    private static void programmerMacro(Context ctx) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3010, new Intent(ctx, Notifs.class).setAction(ACTION_MACRO),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        long quand = 0;
+        if (macroActive(ctx)) {
+            long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("macroVu", 0);
+            for (long[] e : evenementsMacro(ctx)) if (e[0] > now && e[0] > vu) { quand = e[0]; break; }
+        }
+        if (quand == 0) { am.cancel(pi); return; }
+        try {
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        }
+    }
+
+    /** Envoie les signaux arrivés à échéance (moins de 10 min de retard), sans jamais répéter le même. */
+    private static void envoyerMacro(Context ctx) {
+        if (!macroActive(ctx)) return;
+        JSONArray taches = donnees(ctx).optJSONArray("taches");
+        if (taches == null) return;
+        long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("macroVu", 0), max = vu;
+        for (long[] e : evenementsMacro(ctx)) {
+            if (e[0] <= vu || e[0] > now + 30000 || e[0] < now - 600000) continue;
+            envoyerSignal(ctx, e[1] == 1, taches.optJSONObject((int) e[2]));
+            if (e[0] > max) max = e[0];
+        }
+        if (max > vu) prefs(ctx).edit().putLong("macroVu", max).apply();
+    }
+
     private static JSONObject donnees(Context ctx) {
         try { return new JSONObject(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).getString("donnees", "{}")); }
         catch (Exception e) { return new JSONObject(); }
@@ -988,6 +1113,11 @@ public class Notifs extends BroadcastReceiver {
         }
         if (ACTION_REVEIL.equals(intent.getAction())) {
             try { verifierReveil(ctx, intent.getStringExtra("date")); } catch (Exception ignore) { }
+            programmer(ctx);
+            return;
+        }
+        if (ACTION_MACRO.equals(intent.getAction())) {
+            try { envoyerMacro(ctx); } catch (Exception ignore) { }
             programmer(ctx);
             return;
         }

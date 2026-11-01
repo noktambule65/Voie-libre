@@ -1059,7 +1059,14 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 #tutoGraou{z-index:30}
 #tutoWidget{z-index:30}
 #tutoWidget .intro{font-size:15px;line-height:1.45;margin:2px 0 14px}
-#tutoWidget .etape{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}
+#tutoWidget .etape,#pageAvion .etape{display:flex;gap:12px;align-items:flex-start;margin-bottom:18px}
+#pageAvion .etape>b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--head);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;margin-top:2px}
+#pageAvion .etape>div{flex:1;min-width:0}
+#pageAvion .avT{margin:22px 0 8px;font-size:17px}
+#pageAvion .avCode{font-family:monospace;font-size:14px;background:rgba(127,127,127,.15);padding:8px 10px;border-radius:8px;word-break:break-all;user-select:all}
+#pageAvion .avTest{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#pageAvion .avListe{padding-left:20px;margin:0}
+#pageAvion .avListe li{margin-bottom:8px}
 #tutoWidget .etape>b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--head);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;margin-top:2px}
 #tutoWidget .etape>div{flex:1;min-width:0}
 #tutoWidget .tailleT{margin:22px 0 4px;font-size:17px}
@@ -1114,6 +1121,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
   const AND=NATIF||{apercu:true, reglerNotifs:rien, reprendreNotifs:rien, notifsAutorisees:()=>true, pleinEcranAutorise:()=>true,
     reglerPleinEcran:rien, diagWidget:()=>'', reveils:()=>false, reglerReveils:rien, choisirSonnerie:rien};
   const effacer=$('effacer').parentNode;   // la ligne « Tout effacer · Fermer »
+  let ouvrirModeAvion=null;   // page Options avancées › Mode avion automatique (définie avec les réglages de notifications)
   if(AND && AND.reglerNotifs){
     const n=document.createElement('div'); n.setAttribute('data-sec','notif');
     const heures=[16,17,18,19,20,21].map(h=>`<option value="${h}">${h} h</option>`).join('');
@@ -1164,8 +1172,13 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
     const T_DEF={train:{on:true,min:4,horsAvion:true,notes:[]}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
       rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
+    // Mode avion automatique (Options avancées) : signal aux applis d'automatisation, désactivé par défaut
+    const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, ev:false, gares:[]};
     const lireT=()=>{ const t=JSON.parse(JSON.stringify(T_DEF)), o=(charger('bo-notif',{})||{}).taches||{};
-      ['train','ev','eq','coup','rs'].forEach(k=>{ if(o[k]) Object.assign(t[k],o[k]); }); return t; };
+      ['train','ev','eq','coup','rs'].forEach(k=>{ if(o[k]) Object.assign(t[k],o[k]); });
+      t.macro=Object.assign(JSON.parse(JSON.stringify(M_DEF)), o.macro||{});
+      ['dep','arr','encha'].forEach(k=>{ t.macro[k]=Object.assign({}, M_DEF[k], (o.macro||{})[k]||{}); });
+      return t; };
     const mn=(v,def)=>{ const n=Math.round(+v); return isFinite(n)&&n>=0?Math.min(180,n):def; };
     const champ=(k,v)=>`<input type="number" min="0" max="180" step="5" inputmode="numeric" data-t="${k}" value="${v}"> min`;
     const dessinerT=()=>{ const t=lireT();
@@ -1224,6 +1237,58 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           if(!(g.n in t.rs.lieux)) t.rs.lieux[g.n]=t.rs.defaut; enregT(t); }); return; }
       const rsup=e.target.closest('[data-rssup]');
       if(rsup){ const t=changerT(); delete t.rs.lieux[rsup.dataset.rssup]; enregT(t); } });
+    // ---- Options avancées › Mode avion automatique (MacroDroid) : réglages et tuto ----
+    ouvrirModeAvion=()=>{
+      const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='pageAvion';
+      const selM=(k,v,vals,fmt)=>`<select data-m="${k}">${vals.map(n=>`<option value="${n}"${n===v?' selected':''}>${fmt(n)}</option>`).join('')}</select>`;
+      const dessiner=()=>{ const m=lireT().macro;
+        ov.querySelector('.avReg').innerHTML=`<label class="coche long"><input type="checkbox" data-m="on"${m.on?' checked':''}><span><b>Activer le signal aux applis d’automatisation</b></span></label>
+        ${m.on?`<label class="coche long"><input type="checkbox" data-m="dep.on"${m.dep.on?' checked':''}><span>Au départ de chaque train conduit : ${selM('dep.min',m.dep.min,[0,1,2,3,4,5,10],n=>n?n+' min avant':'à l’heure exacte')}</span></label>
+        <label class="coche long"><input type="checkbox" data-m="arr.on"${m.arr.on?' checked':''}><span>À l’arrivée : ${selM('arr.min',m.arr.min,[0,5,10,15,20,30,45,60],n=>n?n+' min après':'à l’heure prévue')}</span></label>
+        <label class="coche long sousOpt"><input type="checkbox" data-m="encha.on"${m.encha.on?' checked':''}><span>Pas de signal d’arrivée si le train suivant part moins de ${selM('encha.min',m.encha.min,[10,15,20,30,45,60,90,120],n=>n+' min')} après</span></label>
+        <label class="coche long"><input type="checkbox" data-m="ev"${m.ev?' checked':''}><span>Aussi pour les EV</span></label>
+        <div class="notesGare"><p class="petit">${m.gares.length?'Seulement les trains au départ de :':'Trains au départ de toutes les gares.'}</p>
+          ${m.gares.map((g,i)=>`<div class="noteGare"><button class="action clair bgare" data-mgare="${i}">${esc(g)}</button><button class="lien" data-mgsup="${i}" aria-label="Retirer">✕</button></div>`).join('')}
+          <button class="action clair" data-mgajout="1">+ Limiter à une gare de départ</button></div>
+        ${AND.signalTest?'<div class="avTest"><button class="action clair" data-mtest="dep">Tester le signal de départ</button><button class="action clair" data-mtest="arr">Tester le signal d’arrivée</button></div>':''}`:''}`; };
+      const enreg=maj=>{ const t=lireT(); maj(t.macro); const o=charger('bo-notif',{})||{}; o.taches=t; sauver('bo-notif',o); changer(); dessiner(); };
+      ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>Mode avion automatique</h2></div>
+        <div class="pcorps">
+          <p class="attention"><b>Option pour utilisateurs avertis.</b> La mise en place est un peu complexe : elle demande une autre appli (MacroDroid) et quelques réglages du téléphone. Suis le tuto ci-dessous pas à pas.</p>
+          <p class="intro">Android ne permet pas à une appli comme Voie libre de passer elle-même le téléphone en mode avion. Voie libre envoie donc un <b>signal</b> au départ de chaque train conduit, et c’est <b>MacroDroid</b>, une appli d’automatisation gratuite, qui active le mode avion en le recevant.</p>
+          <h3 class="avT">Réglages</h3>
+          <div class="avReg"></div>
+          <h3 class="avT">Tuto : mise en place avec MacroDroid</h3>
+          <div class="etape"><b>1</b><div><p>Installe <strong>MacroDroid</strong> depuis le Play Store, ouvre-le et accepte ses premières demandes d’autorisation.</p></div></div>
+          <div class="etape"><b>2</b><div><p>Dans MacroDroid, touche <strong>Ajouter une macro</strong>, puis le <strong>+</strong> des déclencheurs : <strong>Connectivité › Intent reçu</strong>. Dans « Action », écris exactement :</p>
+            <p class="avCode">fr.noktambule.voielibre.DEPART_TRAIN</p></div></div>
+          <div class="etape"><b>3</b><div><p>Touche le <strong>+</strong> des actions : <strong>Connectivité › Mode avion</strong>, puis <strong>Activer</strong>. MacroDroid propose de devenir l’<strong>appli d’assistance par défaut</strong> (sans root, c’est la seule façon pour lui de changer le mode avion) : accepte.</p></div></div>
+          <div class="etape"><b>4</b><div><p>Si MacroDroid ne t’y emmène pas tout seul : <strong>Paramètres du téléphone › Applications › Choisir les applis par défaut › Appli d’assistance numérique</strong>, et choisis <strong>MacroDroid</strong>.</p></div></div>
+          <div class="etape"><b>5</b><div><p>Donne un nom à la macro (par exemple « Voie libre – mode avion »), enregistre-la, puis reviens ici et active le signal dans les réglages ci-dessus.</p></div></div>
+          <div class="etape"><b>6</b><div><p>Touche <strong>Tester le signal de départ</strong> : le téléphone doit passer en mode avion. Si rien ne se passe, reprends les étapes 2 à 4.</p></div></div>
+          <h3 class="avT">À savoir</h3>
+          <ul class="avListe">
+            <li><b>En mode avion, ton téléphone est injoignable</b> (appels, SMS). Active cette option en connaissance de cause.</li>
+            <li><b>Le mode avion ne se désactive pas tout seul</b> à l’arrivée (les retards rendent l’heure d’arrivée incertaine). Le signal d’arrivée existe pour ceux qui veulent le gérer eux-mêmes dans MacroDroid (déclencheur <code>fr.noktambule.voielibre.ARRIVEE_TRAIN</code>).</li>
+            <li><b>MacroDroid devient ton assistant par défaut</b> : Google Assistant ou Gemini ne se lancent plus par l’appui long ou à la voix, mais restent disponibles depuis leur icône. « Entourer pour chercher » continue de fonctionner. Pour revenir en arrière : même chemin qu’à l’étape 4.</li>
+            <li><b>Teste de temps en temps</b>, surtout après une mise à jour du téléphone : il arrive qu’Android remette Google comme assistant par défaut, et le mode avion ne s’active alors plus, sans prévenir.</li>
+            <li>Pour les plus curieux : le signal contient aussi le train, le type (<code>conduite</code> ou <code>ev</code>), les gares de départ et d’arrivée, l’heure et la date (extras <code>train</code>, <code>type</code>, <code>depart</code>, <code>arrivee</code>, <code>heure</code>, <code>date</code>), utilisables dans d’autres macros.</li>
+          </ul>
+          <p class="petit">Les noms des menus de MacroDroid et des Paramètres peuvent varier un peu selon la version et la marque du téléphone.</p>
+          <button class="action" data-x="1">Fermer</button>
+        </div>`;
+      document.body.appendChild(ov); dessiner();
+      ov.addEventListener('change',e=>{ const i=e.target.closest('[data-m]'); if(!i) return;
+        const [a,b]=i.dataset.m.split('.'), v=i.type==='checkbox'?i.checked:+i.value;
+        enreg(m=>{ if(b) m[a][b]=v; else m[a]=v; }); });
+      ov.addEventListener('click',e=>{
+        if(e.target.closest('[data-x]')){ ov.remove(); return; }
+        const mt=e.target.closest('[data-mtest]'); if(mt){ try{ AND.signalTest(mt.dataset.mtest); }catch(err){} mt.textContent='✔ Signal envoyé'; setTimeout(dessiner,2000); return; }
+        const mgs=e.target.closest('[data-mgsup]'); if(mgs){ enreg(m=>m.gares.splice(+mgs.dataset.mgsup,1)); return; }
+        const mga=e.target.closest('[data-mgajout]'), mg=e.target.closest('[data-mgare]');
+        if(mga||mg) choisirGare('Gare de départ du train').then(g=>{ if(!g) return;
+          enreg(m=>{ if(mga){ if(!m.gares.includes(g.n)) m.gares.push(g.n); } else m.gares[+mg.dataset.mgare]=g.n; }); }); });
+    };
     window.addEventListener('focus',()=>{ try{ dessinerT(); }catch(e){} });
     // retour des réglages d'Android : la mention disparaît si l'autorisation vient d'être donnée
     document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ try{ dessinerT(); }catch(e){} } });
@@ -1447,6 +1512,13 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     // 5. Affichage
     if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Affichage','rAffichage'); mettre(cW, $('lTheme')); }
     else if($('lTheme')) $('lTheme').style.display='none';
+    // Options avancées (utilisateurs avertis) : chaque option ouvre sa propre page
+    if(ouvrirModeAvion){
+      const cO=carte('🛠️','Options avancées','rAvance');
+      const p=document.createElement('p'); p.className='petit'; p.textContent='Pour utilisateurs avertis : options plus techniques, qui demandent d’autres applis ou des réglages du téléphone.';
+      const b=document.createElement('button'); b.className='action clair'; b.textContent='✈️ Mode avion automatique au départ des trains (MacroDroid)';
+      b.onclick=ouvrirModeAvion; mettre(cO, p, b);
+    }
     const cA=carte('💡','Aide','rAide');
     const cV=NATIF?carte('🔄','Version et mises à jour','rVersion'):null;
     if(NATIF){
@@ -2375,15 +2447,18 @@ function tachesSeg(x, j){
   (x.s.items||[]).forEach(it=>{
     const act=String(it.act||'').trim(), lieu=String(it.lieu||'').trim();
     if(it.cond){ const a=abs(it.h1), b=abs(it.h2); if(a!==null && b!==null) cond.push([a, b>a?b:b+864e5]);
-      // départ d'un train conduit (jamais les EV)
+      // départ d'un train conduit (jamais les EV) ; arrivée gardée pour le signal aux applis d'automatisation
       if(a!==null){ const [de,ar]=lieu.split('->').map(t=>t.trim());
-        taches.push({type:'train', t:a, h:it.h1, date:j, lieu:gare(de), quoi:act, ou:gare(de)+(ar?' → '+gare(ar):'')}); }
+        taches.push({type:'train', t:a, h:it.h1, date:j, lieu:gare(de), quoi:act, ou:gare(de)+(ar?' → '+gare(ar):''),
+          fin:b===null?0:(b>a?b:b+864e5), hFin:it.h2||'', arr:ar?gare(ar):''}); }
       return; }
     let m2;
     if(it.h2 && /^(EV|TAXI|BUS|EVLOC)\b/i.test(act)){   // EV, EV en taxi, en bus, en locomotive
       const [de,a]=lieu.split('->').map(t=>t.trim()), n=act.replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim();
-      taches.push({type:'ev', t:abs(it.h1), h:it.h1, date:j, lieu:gare(de),
-        quoi:'EV'+(n?' '+n:''), ou:gare(de)+(a?' → '+gare(a):'')});
+      const t1=abs(it.h1), t2=abs(it.h2);
+      taches.push({type:'ev', t:t1, h:it.h1, date:j, lieu:gare(de),
+        quoi:'EV'+(n?' '+n:''), ou:gare(de)+(a?' → '+gare(a):''),
+        fin:(t1===null||t2===null)?0:(t2>t1?t2:t2+864e5), hFin:it.h2||'', arr:a?gare(a):''});
     } else if((m2=act.match(/^EQ\s+PREND\b\s*(\S*)/i))){
       taches.push({type:'eq', t:abs(it.h1), h:it.h1, date:j, lieu:gare(lieu), quoi:'EQ PREND'+(m2[1]?' '+m2[1]:''), ou:gare(lieu)});
     } else if((m2=act.match(/^(RS|PC)\b/i))){

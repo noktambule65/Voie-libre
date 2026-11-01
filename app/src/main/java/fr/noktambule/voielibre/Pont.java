@@ -468,6 +468,10 @@ public class Pont {
         surEcran(() -> { if (finSynchro != null) finSynchro.run(); });
     }
 
+    /** Bouton « Tester le signal » (Options avancées › Mode avion automatique) : « dep » ou « arr ». */
+    @JavascriptInterface
+    public void signalTest(String quoi) { Notifs.signalTest(ctx, !"arr".equals(quoi)); }
+
     /** Version installée, affichée dans Paramètres › Aide (ex. « 1.42 »). */
     @JavascriptInterface
     public String versionAppli() { return MiseAJour.nomVersion(ctx); }
