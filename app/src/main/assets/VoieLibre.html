@@ -1067,6 +1067,17 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 #pageAvion .avTest{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 #pageAvion .avListe{padding-left:20px;margin:0}
 #pageAvion .avListe li{margin-bottom:8px}
+#pageAvion label.coche{display:flex;align-items:center;gap:10px;font-size:15px;margin:12px 0;cursor:pointer}
+#pageAvion label.coche span{flex:1}
+#pageAvion label.coche input[type=checkbox]{flex:none;width:22px;height:22px;margin:0;accent-color:var(--head)}
+#pageAvion label.coche select{font:inherit;font-size:15px;padding:4px 6px;border:1.5px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
+#pageAvion .avOpts{border-left:3px solid var(--rule);padding-left:12px;margin:4px 0 0 10px}
+#pageAvion .avOpts.avOff{opacity:.6}
+#pageAvion label.coche.sousOpt{padding-left:30px;font-size:14px;margin-top:-4px}
+#pageAvion .noteGare{display:flex;align-items:center;gap:6px;margin:6px 0}
+#pageAvion .noteGare .bgare{width:auto;flex:0 1 auto;margin:0;padding:6px 10px;font-size:14px}
+#pageAvion .noteGare .lien{margin-left:auto;font-size:16px;padding:2px 8px}
+#pageAvion .avTest .action{flex:1 1 140px}
 #tutoWidget .etape>b{flex:none;width:30px;height:30px;border-radius:50%;background:var(--head);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;margin-top:2px}
 #tutoWidget .etape>div{flex:1;min-width:0}
 #tutoWidget .tailleT{margin:22px 0 4px;font-size:17px}
@@ -1243,14 +1254,15 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const selM=(k,v,vals,fmt)=>`<select data-m="${k}">${vals.map(n=>`<option value="${n}"${n===v?' selected':''}>${fmt(n)}</option>`).join('')}</select>`;
       const dessiner=()=>{ const m=lireT().macro;
         ov.querySelector('.avReg').innerHTML=`<label class="coche long"><input type="checkbox" data-m="on"${m.on?' checked':''}><span><b>Activer le signal aux applis d’automatisation</b></span></label>
-        ${m.on?`<label class="coche long"><input type="checkbox" data-m="dep.on"${m.dep.on?' checked':''}><span>Au départ de chaque train conduit : ${selM('dep.min',m.dep.min,[0,1,2,3,4,5,10],n=>n?n+' min avant':'à l’heure exacte')}</span></label>
+        <div class="avOpts${m.on?'':' avOff'}"><p class="petit">${m.on?'Signaux envoyés :':'Signal désactivé : coche la case ci-dessus pour l’activer. Tu peux préparer les réglages dès maintenant.'}</p>
+        <label class="coche long"><input type="checkbox" data-m="dep.on"${m.dep.on?' checked':''}><span>Au départ de chaque train conduit : ${selM('dep.min',m.dep.min,[0,1,2,3,4,5,10],n=>n?n+' min avant':'à l’heure exacte')}</span></label>
         <label class="coche long"><input type="checkbox" data-m="arr.on"${m.arr.on?' checked':''}><span>À l’arrivée : ${selM('arr.min',m.arr.min,[0,5,10,15,20,30,45,60],n=>n?n+' min après':'à l’heure prévue')}</span></label>
         <label class="coche long sousOpt"><input type="checkbox" data-m="encha.on"${m.encha.on?' checked':''}><span>Pas de signal d’arrivée si le train suivant part moins de ${selM('encha.min',m.encha.min,[10,15,20,30,45,60,90,120],n=>n+' min')} après</span></label>
         <label class="coche long"><input type="checkbox" data-m="ev"${m.ev?' checked':''}><span>Aussi pour les EV</span></label>
         <div class="notesGare"><p class="petit">${m.gares.length?'Seulement les trains au départ de :':'Trains au départ de toutes les gares.'}</p>
           ${m.gares.map((g,i)=>`<div class="noteGare"><button class="action clair bgare" data-mgare="${i}">${esc(g)}</button><button class="lien" data-mgsup="${i}" aria-label="Retirer">✕</button></div>`).join('')}
           <button class="action clair" data-mgajout="1">+ Limiter à une gare de départ</button></div>
-        ${AND.signalTest?'<div class="avTest"><button class="action clair" data-mtest="dep">Tester le signal de départ</button><button class="action clair" data-mtest="arr">Tester le signal d’arrivée</button></div>':''}`:''}`; };
+        ${AND.signalTest?'<div class="avTest"><button class="action clair" data-mtest="dep">Tester le signal de départ</button><button class="action clair" data-mtest="arr">Tester le signal d’arrivée</button></div>':''}</div>`; };
       const enreg=maj=>{ const t=lireT(); maj(t.macro); const o=charger('bo-notif',{})||{}; o.taches=t; sauver('bo-notif',o); changer(); dessiner(); };
       ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>Mode avion automatique</h2></div>
         <div class="pcorps">
