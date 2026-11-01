@@ -1985,7 +1985,7 @@ function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); 
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
 // Icône d'un trajet en voyageur : taxi 🚕, bus 🚌, en cabine sans conduire 🚂, sinon 💺
 // Réservations de taxi et d'hôtel (site interne SNCF) : ouvert depuis un taxi ou le bandeau RHR de la journée
-const GALACSI='https://galacsimobile.sncf.fr';
+const GALACSI='https://www.galacsimobile.sncf.fr';
 function icEV(a){ const t=String(a||'').trim(); return /^TAXI\b/i.test(t)?'🚕':/^BUS\b/i.test(t)?'🚌':/^EVLOC\b/i.test(t)?'🚂':'💺'; }
 function libEV(a){ return String(a||'').replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim(); }
 function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
