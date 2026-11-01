@@ -2078,7 +2078,9 @@ function graphique(x, largeurDispo, sansMaintenant){
   items.forEach(it=>{ if(it.b===null && estReserve(it.act)){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
     it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
-  // Pause repas : Graou n'envoie que l'heure de début (« 18:30 | | pauserepas ») ; elle dure 45 min ;
+  // Pause repas avec heure de fin (« 12:30 -> 13:30 | TE | pauserepas », lieu renseigné dans Graou) : durée réelle
+  items.forEach(it=>{ if(it.b!==null && estRepas(it.act)) it.g=it.b>it.a?'repas':'point'; });
+  // Pause repas sans lieu : Graou n'envoie que l'heure de début (« 18:30 | | pauserepas ») ; repli à 45 min ;
   // raccourcie si l'élément suivant ou la FS arrive avant
   items.forEach(it=>{ if(it.b===null && estRepas(it.act)){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
