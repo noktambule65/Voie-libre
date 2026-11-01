@@ -36,6 +36,7 @@ button{font:inherit;color:inherit}
 #accueil.sansTitre .service{margin-top:0}
 #accueil .svB{display:flex;align-items:center;gap:14px}
 #accueil .svG{flex:none}
+#accueil .svJ{font-size:14px;font-weight:500;opacity:.75;text-transform:capitalize;margin-bottom:6px}
 #accueil .svD{flex:1;min-width:0;border-left:2px solid rgba(255,255,255,.18);padding-left:14px;display:flex;flex-direction:column;gap:5px}
 #accueil .svL{display:flex;justify-content:space-between;gap:10px;font-size:14.5px}
 #accueil .svL span{opacity:.72;font-weight:500;white-space:nowrap}
@@ -2943,12 +2944,13 @@ function majService(){
     // Bandeau : compte à rebours à gauche, petit tableau à droite (tout en blanc)
     const prochT=z=>{ for(const t of (z.trs||[])){ const [hh,mm]=t.h.split(':').map(Number), [y,mo,da]=z.j.split('-').map(Number);
       let dt=new Date(y,mo-1,da,hh,mm); if(dt<z.d) dt=new Date(dt.getTime()+864e5); if(dt>now) return {dt,n:t.n}; } return null; };
+    let aujDate=''; try{ aujDate=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(now); }catch(e){}
     const ligne=(a,b)=>`<div class="svL"><span>${a}</span><b>${b}</b></div>`;
     const tab=(z,prem)=>ligne('Journée',escS(z.code))+ligne('PS',hm(z.d)+(z.ps?' '+escS(z.ps):''))+(z.f?ligne('FS',hm(z.f)+(z.fs?' '+escS(z.fs):'')):'')+prem;
     if(en){ const nt=prochT(en);
-      bandeau=`<div class="svB"><div class="svG"><div class="lab">Fin de service dans</div><div class="gros">${rebours(en.f-now)}</div></div><div class="svD">${tab(en,nt?ligne('Prochain train',(nt.n?escS(nt.n)+' · ':'')+hm(nt.dt)):'')}</div></div>`; }
+      bandeau=`<div class="svB"><div class="svG"><div class="svJ">${aujDate}</div><div class="lab">Fin de service dans</div><div class="gros">${rebours(en.f-now)}</div></div><div class="svD">${tab(en,nt?ligne('Prochain train',(nt.n?escS(nt.n)+' · ':'')+hm(nt.dt)):'')}</div></div>`; }
     else if(p){ const jr=new Intl.DateTimeFormat('fr-FR',{weekday:'short',day:'numeric',month:'short'}).format(p.d);
-      bandeau=`<div class="svB"><div class="svG"><div class="lab">Reprise dans</div><div class="gros">${rebours(p.d-now)}</div></div><div class="svD">${ligne('Jour',escS(jr))+ligne('PS',hm(p.d)+(p.ps?' '+escS(p.ps):''))+(p.f?ligne('FS',hm(p.f)+(p.fs?' '+escS(p.fs):'')):'')+ligne('Journée',escS(p.code))}</div></div>`; }
+      bandeau=`<div class="svB"><div class="svG"><div class="svJ">${aujDate}</div><div class="lab">Reprise dans</div><div class="gros">${rebours(p.d-now)}</div></div><div class="svD">${ligne('Jour',escS(jr))+ligne('PS',hm(p.d)+(p.ps?' '+escS(p.ps):''))+(p.f?ligne('FS',hm(p.f)+(p.fs?' '+escS(p.fs):'')):'')+ligne('Journée',escS(p.code))}</div></div>`; }
     else if(!vide) bandeau=`<div class="sous">Aucun service à venir dans ton planning.</div>`;
     // Météo : chaque gare de la journée, à l'heure où on y est (la dernière à l'heure de la FS)
     TITRES.meteo=x?(en?'Météo sur la JS en cours':'Météo sur la prochaine JS'):'Météo';
