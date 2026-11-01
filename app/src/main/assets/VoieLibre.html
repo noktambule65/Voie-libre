@@ -1997,6 +1997,8 @@ function genre(it){
 // (affiché « LOC14142 »), comme dans Graou
 // Réserve : Graou écrit « R » (seul) à l'heure de début
 // Pause repas : Graou écrit « pauserepas » à l'heure de début
+// Manœuvre : Graou écrit « 07:00 -> 07:15 | TS | Manoeuvre » (barre noire à points blancs)
+function estManoeuvre(a){ return /^man[oœ]e?uvres?\b/i.test(String(a||'').trim()); }
 function estRepas(a){ return /^pause\s*repas\b/i.test(String(a||'').trim()); }
 function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
@@ -2078,6 +2080,7 @@ function graphique(x, largeurDispo, sansMaintenant){
   items.forEach(it=>{ if(it.b===null && estReserve(it.act)){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
     it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
+  items.forEach(it=>{ if(it.b!==null && it.b>it.a && estManoeuvre(it.act)) it.g='manoeuvre'; });
   // Réserve avec heure de fin (« 06:10 -> 13:20 | TS | R », lieu renseigné dans Graou) : durée réelle
   items.forEach(it=>{ if(it.b!==null && estReserve(it.act)) it.g=it.b>it.a?'reserve':'point'; });
   // Pause repas avec heure de fin (« 12:30 -> 13:30 | TE | pauserepas », lieu renseigné dans Graou) : durée réelle
@@ -2146,6 +2149,12 @@ function graphique(x, largeurDispo, sansMaintenant){
       o.push(`<g class="el" data-i="${inf}" transform="translate(${mid.toFixed(1)},${Y-6})" fill="none" stroke="${ENC}" stroke-width="0.7" stroke-linecap="round">`
         +`<path d="M-5,-2.5 H5 A5,4 0 0 1 -5,-2.5 Z" fill="#fff"/><path d="M-3.2,-0.6 H3.2 M-2.4,0.9 H2.4"/><path d="M-6,1.6 H6"/>`
         +`<path d="M-2,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4 M0.3,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4 M2.6,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4" stroke-width="0.5"/></g>`);
+      minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
+    } else if(it.g==='manoeuvre'){
+      // barre noire posée sur la ligne, une rangée de points blancs au milieu, comme Graou
+      const yb=Y-13, nb=Math.max(1,Math.floor(w/4.2)), pas=w/nb;
+      o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${yb}" width="${w.toFixed(1)}" height="9" fill="${ENC}"/>`);
+      for(let k=0;k<nb;k++) o.push(`<circle cx="${(x1+pas*(k+0.5)).toFixed(1)}" cy="${yb+4.5}" r="1.15" fill="#fff"/>`);
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='evo'){
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="#9E9E9E"/>`);
