@@ -47,8 +47,8 @@ public class Notifs extends BroadcastReceiver {
     private static final String ACTION_REVEIL = "fr.noktambule.voielibre.REVEIL_OUBLIE";
     private static final String ACTION_MACRO = "fr.noktambule.voielibre.MACRO";
     /** Signaux envoyés aux applis d'automatisation (MacroDroid, Tasker…) au départ et à l'arrivée des trains conduits. */
-    static final String SIGNAL_DEPART = "fr.noktambule.voielibre.DEPART_TRAIN";
-    static final String SIGNAL_ARRIVEE = "fr.noktambule.voielibre.ARRIVEE_TRAIN";
+    static final String SIGNAL_DEPART = "voielibre.DEPART_TRAIN";
+    static final String SIGNAL_ARRIVEE = "voielibre.ARRIVEE_TRAIN";
     private static final String CANAL_NEIGE = "neige";
     private static final String CANAL_SYNC = "synchro_hs";
     private static final String ACTION_SYNC = "fr.noktambule.voielibre.SYNCHRO_HS";
