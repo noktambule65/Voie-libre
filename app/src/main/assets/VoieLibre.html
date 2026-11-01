@@ -1999,6 +1999,8 @@ function genre(it){
 // Pause repas : Graou écrit « pauserepas » à l'heure de début
 // Manœuvre : Graou écrit « 07:00 -> 07:15 | TS | Manoeuvre » (barre noire à points blancs)
 function estManoeuvre(a){ return /^man[oœ]e?uvres?\b/i.test(String(a||'').trim()); }
+// Chauffage : repère « # » à l'heure dite sur le graphique, comme Graou
+function estChauffage(a){ return /^chauffage\b/i.test(String(a||'').trim()); }
 function estRepas(a){ return /^pause\s*repas\b/i.test(String(a||'').trim()); }
 function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
 function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
@@ -2081,6 +2083,7 @@ function graphique(x, largeurDispo, sansMaintenant){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
     it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
   items.forEach(it=>{ if(it.b!==null && it.b>it.a && estManoeuvre(it.act)) it.g='manoeuvre'; });
+  items.forEach(it=>{ if(estChauffage(it.act)){ it.b=null; it.g='point'; } });
   // Réserve avec heure de fin (« 06:10 -> 13:20 | TS | R », lieu renseigné dans Graou) : durée réelle
   items.forEach(it=>{ if(it.b!==null && estReserve(it.act)) it.g=it.b>it.a?'reserve':'point'; });
   // Pause repas avec heure de fin (« 12:30 -> 13:30 | TE | pauserepas », lieu renseigné dans Graou) : durée réelle
@@ -2203,6 +2206,7 @@ function graphique(x, largeurDispo, sansMaintenant){
         (num?`<text transform="translate(${(xx+1.5).toFixed(1)},${haut-1}) rotate(-55)" font-size="8" fill="${ENC}">${esc(num)}</text>`:'')+`</g>`);
       return;
     }
+    if(estChauffage(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${xx.toFixed(1)}" y="${Y-6}" font-size="12" fill="${ENC}" text-anchor="middle">#</text>`); return; }
     const lib=LIB_PONCT(it.act)||it.act, num=(it.act.match(/([A-Z]?\d{3,})\s*$/)||[])[1]||'';
     const lw=Math.max(16,lib.length*5.4+6), cx=Math.min(Math.max(xx+lw/2-4,G+lw/2),W-D-lw/2);
     let r=rangs.findIndex(v=>cx-lw/2>v+2); if(r<0) r=rangs.indexOf(Math.min(...rangs));
