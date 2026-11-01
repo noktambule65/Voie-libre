@@ -2154,10 +2154,10 @@ function graphique(x, largeurDispo, sansMaintenant){
         +`<path d="M-2,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4 M0.3,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4 M2.6,-4.5 q-1,-1.2 0,-2.4 q1,-1.2 0,-2.4" stroke-width="0.5"/></g>`);
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='manoeuvre'){
-      // barre noire posée sur la ligne, une rangée de points blancs au milieu, comme Graou
-      const yb=Y-13, nb=Math.max(1,Math.floor(w/4.2)), pas=w/nb;
-      o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${yb}" width="${w.toFixed(1)}" height="9" fill="${ENC}"/>`);
-      for(let k=0;k<nb;k++) o.push(`<circle cx="${(x1+pas*(k+0.5)).toFixed(1)}" cy="${yb+4.5}" r="1.15" fill="#fff"/>`);
+      // barre noire en tirets posée sur la ligne, comme Graou (un tiret toutes les ~13 min)
+      const yb=Y-13, per=pxh*0.222, seg=per*0.83;
+      o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${yb}" width="${w.toFixed(1)}" height="9" fill="transparent"/>`);
+      o.push(`<line x1="${x1.toFixed(1)}" y1="${yb+4.5}" x2="${(x1+w).toFixed(1)}" y2="${yb+4.5}" stroke="${ENC}" stroke-width="9" stroke-dasharray="${seg.toFixed(1)},${(per-seg).toFixed(1)}"/>`);
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='evo'){
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="#9E9E9E"/>`);
