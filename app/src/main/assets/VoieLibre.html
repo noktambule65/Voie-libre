@@ -1203,12 +1203,14 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
-    const T_DEF={train:{on:true,min:4,horsAvion:true,plein:true,notes:[],noteMin:10,notesArr:[],noteArrMin:5}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
+    const T_DEF={train:{on:true,min:4,horsAvion:true,plein:true,notes:[],noteMin:10,notesArr:[],noteArrMin:5}, ev:{on:false,min:15}, evloc:{on:false,min:15}, taxi:{on:false,min:15}, bus:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
       rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
     // Mode avion automatique (Options avancées) : signal aux applis d'automatisation, désactivé par défaut
     const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, evloc:false};
     const lireT=()=>{ const t=JSON.parse(JSON.stringify(T_DEF)), o=(charger('bo-notif',{})||{}).taches||{};
       ['train','ev','eq','coup','rs'].forEach(k=>{ if(o[k]) Object.assign(t[k],o[k]); });
+      // EV loc, taxi et bus ont leur propre réglage ; tant qu'il n'est pas touché, il reprend celui de « EV »
+      ['evloc','taxi','bus'].forEach(k=>{ Object.assign(t[k], o.ev||{}, o[k]||{}); });
       t.macro=Object.assign(JSON.parse(JSON.stringify(M_DEF)), o.macro||{});
       ['dep','arr','encha'].forEach(k=>{ t.macro[k]=Object.assign({}, M_DEF[k], (o.macro||{})[k]||{}); });
       return t; };
@@ -1224,7 +1226,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <div class="sousTitreP">Phrases par gare</div>
         ${notesHtml(t.train)}
         <div class="sousTitreP">Autres rappels</div>
-        <label class="coche"><input type="checkbox" data-on="ev"${t.ev.on?' checked':''}> Train EV ${champ('ev',t.ev.min)} avant</label>
+        <label class="coche"><input type="checkbox" data-on="ev"${t.ev.on?' checked':''}> EV en voyageur ${champ('ev',t.ev.min)} avant</label>
+        <label class="coche"><input type="checkbox" data-on="evloc"${t.evloc.on?' checked':''}> EV loc (en cabine) ${champ('evloc',t.evloc.min)} avant</label>
+        <label class="coche"><input type="checkbox" data-on="taxi"${t.taxi.on?' checked':''}> EV taxi ${champ('taxi',t.taxi.min)} avant</label>
+        <label class="coche"><input type="checkbox" data-on="bus"${t.bus.on?' checked':''}> EV bus ${champ('bus',t.bus.min)} avant</label>
         <label class="coche"><input type="checkbox" data-on="eq"${t.eq.on?' checked':''}> EQ PREND ${champ('eq',t.eq.min)} avant</label>
         <label class="coche"><input type="checkbox" data-on="coup"${t.coup.on?' checked':''}> Fin de coupure ${champ('coup',t.coup.min)} avant</label>
         <label class="coche"><input type="checkbox" data-on="rs"${t.rs.on?' checked':''}> RS et PC, selon la gare :</label>
@@ -2596,7 +2601,7 @@ function tachesSeg(x, j){
     if(it.h2 && /^(EV|TAXI|BUS|EVLOC)\b/i.test(act)){   // EV, EV en taxi, en bus, en locomotive
       const [de,a]=lieu.split('->').map(t=>t.trim()), n=act.replace(/^EVLOC\s*/i,'LOC').replace(/^EV\s*/i,'').replace(/^(taxi|bus)\b/i,m=>m.toUpperCase()).trim();
       const t1=abs(it.h1), t2=abs(it.h2);
-      taches.push({type:'ev', t:t1, h:it.h1, date:j, lieu:gare(de),
+      taches.push({type:'ev', sous:/^EVLOC/i.test(act)?'evloc':/^TAXI/i.test(act)?'taxi':/^BUS/i.test(act)?'bus':'ev', t:t1, h:it.h1, date:j, lieu:gare(de),
         quoi:'EV'+(n?' '+n:''), ou:gare(de)+(a?' → '+gare(a):''),
         fin:(t1===null||t2===null)?0:(t2>t1?t2:t2+864e5), hFin:it.h2||'', arr:a?gare(a):''});
     } else if((m2=act.match(/^EQ\s+PREND\b\s*(\S*)/i))){

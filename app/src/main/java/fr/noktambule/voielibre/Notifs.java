@@ -681,6 +681,9 @@ public class Notifs extends BroadcastReceiver {
             if (t.optJSONObject("train") == null) t.put("train", new JSONObject().put("on", true).put("min", 4).put("horsAvion", true)
                     .put("plein", true).put("notes", new JSONArray()));
             if (t.optJSONObject("ev") == null) t.put("ev", new JSONObject().put("on", false).put("min", 15));
+            // EV loc, taxi et bus : réglages propres ; à défaut, ceux de « EV »
+            for (String k : new String[]{"evloc", "taxi", "bus"})
+                if (t.optJSONObject(k) == null) t.put(k, new JSONObject(t.optJSONObject("ev").toString()));
             if (t.optJSONObject("eq") == null) t.put("eq", new JSONObject().put("on", true).put("min", 15));
             if (t.optJSONObject("coup") == null) t.put("coup", new JSONObject().put("on", false).put("min", 10));
             if (t.optJSONObject("rs") == null) {
@@ -694,7 +697,8 @@ public class Notifs extends BroadcastReceiver {
     /** Minutes d'avance pour une tâche, ou -1 si ce type de rappel est désactivé. */
     private static int avance(JSONObject r, JSONObject tache) {
         String type = tache.optString("type");
-        JSONObject c = r.optJSONObject(type);
+        String sous = tache.optString("sous");
+        JSONObject c = r.optJSONObject("ev".equals(type) && !sous.isEmpty() ? sous : type);
         if (c == null || !c.optBoolean("on", true)) return -1;
         if (!"rs".equals(type)) return c.optInt("min", 15);
         JSONObject l = c.optJSONObject("lieux");
