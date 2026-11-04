@@ -44,6 +44,7 @@ public class Notifs extends BroadcastReceiver {
     private static final String CANAL_DEPART = "depart_train";
     private static final String ACTION_OK_DEPART = "fr.noktambule.voielibre.OK_DEPART";
     private static final String ACTION_TACHE = "fr.noktambule.voielibre.TACHE";
+    private static final String ACTION_NOTE = "fr.noktambule.voielibre.NOTE";
     private static final String CANAL_REVEIL = "reveil_oublie";
     private static final String ACTION_REVEIL = "fr.noktambule.voielibre.REVEIL_OUBLIE";
     private static final String ACTION_MACRO = "fr.noktambule.voielibre.MACRO";
@@ -281,7 +282,7 @@ public class Notifs extends BroadcastReceiver {
      * l'heure du téléphone, puis reprogramme les alarmes.
      */
     static void reinitialiserVus(Context ctx) {
-        prefs(ctx).edit().remove("tacheVu").remove("macroVu").apply();
+        prefs(ctx).edit().remove("tacheVu").remove("macroVu").remove("noteVu").apply();
         programmer(ctx);
     }
 
@@ -292,6 +293,7 @@ public class Notifs extends BroadcastReceiver {
         try { programmerDecouche(ctx); } catch (Exception ignore) { }
         try { programmerHeure(ctx); } catch (Exception ignore) { }
         try { programmerTaches(ctx); } catch (Exception ignore) { }
+        try { programmerNotes(ctx); } catch (Exception ignore) { }
         try { programmerMacro(ctx); } catch (Exception ignore) { }
         try { programmerReveil(ctx); } catch (Exception ignore) { }
         try { neige(ctx); } catch (Exception ignore) { }
@@ -908,7 +910,7 @@ public class Notifs extends BroadcastReceiver {
                     : "ev".equals(type) || "train".equals(type) ? "Départ " + h + (ou.isEmpty() ? "" : " · " + ou)
                     : h + (ou.isEmpty() ? "" : " à " + ou);
             int id = 100 + (int) ((t.optLong("t") / 60000L) % 100000L);
-            String note = "train".equals(type) ? noteDepart(ctx, t.optString("lieu")) : "";
+            String note = "";   // la phrase de la gare est une notification à part (rappelNotes)
             // écran éteint ou verrouillé : écran rouge plein écran aussi (réglable), comme le bandeau quand le téléphone est utilisé
             JSONObject rtp = reglagesTaches(ctx).optJSONObject("train");
             boolean pleinHorsUsage = rtp == null || rtp.optBoolean("plein", true);
@@ -923,16 +925,83 @@ public class Notifs extends BroadcastReceiver {
         if (max > vu) prefs(ctx).edit().putLong("tacheVu", max).apply();
     }
 
-    /** Phrase ajoutée au rappel de départ pour un train partant de cette gare (Paramètres), ou chaîne vide. */
-    private static String noteDepart(Context ctx, String gare) {
+    /** Phrases de Paramètres pour cette gare (liste « notes » au départ, « notesArr » à l'arrivée), ou chaîne vide. */
+    private static String phrase(Context ctx, String liste, String gare) {
         JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
-        JSONArray l = rt == null ? null : rt.optJSONArray("notes");
+        JSONArray l = rt == null ? null : rt.optJSONArray(liste);
         List<String> r = new ArrayList<>();
         for (int k = 0; l != null && k < l.length(); k++) {
             JSONObject n = l.optJSONObject(k);
             if (n != null && n.optString("gare").equalsIgnoreCase(gare) && !n.optString("texte").trim().isEmpty()) r.add(n.optString("texte").trim());
         }
         return String.join(" · ", r);
+    }
+
+    /** Rappels des phrases : {instant, 1 = départ / 0 = arrivée, indice de la tâche}, triés. */
+    private static java.util.List<long[]> evenementsNotes(Context ctx) {
+        java.util.List<long[]> l = new java.util.ArrayList<>();
+        JSONArray taches = donnees(ctx).optJSONArray("taches");
+        if (taches == null) return l;
+        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
+        long avDep = Math.max(0, Math.min(180, rt == null ? 10 : rt.optInt("noteMin", 10))) * 60000L;
+        long avArr = Math.max(0, Math.min(180, rt == null ? 5 : rt.optInt("noteArrMin", 5))) * 60000L;
+        for (int k = 0; k < taches.length(); k++) {
+            JSONObject t = taches.optJSONObject(k);
+            if (t == null || !"train".equals(t.optString("type")) || t.optLong("t") <= 0) continue;
+            if (!phrase(ctx, "notes", t.optString("lieu")).isEmpty()) l.add(new long[]{t.optLong("t") - avDep, 1, k});
+            if (t.optLong("fin") > 0 && !phrase(ctx, "notesArr", t.optString("arr")).isEmpty())
+                l.add(new long[]{t.optLong("fin") - avArr, 0, k});
+        }
+        java.util.Collections.sort(l, (x, y) -> Long.compare(x[0], y[0]));
+        return l;
+    }
+
+    /** Prochain rappel de phrase (un seul à la fois ; le suivant est programmé quand il sonne). */
+    private static void programmerNotes(Context ctx) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("noteVu", 0), quand = 0;
+        for (long[] e : evenementsNotes(ctx)) if (e[0] > now && e[0] > vu) { quand = e[0]; break; }
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3011, new Intent(ctx, Notifs.class).setAction(ACTION_NOTE),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if (quand == 0) { am.cancel(pi); return; }
+        try {
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        }
+    }
+
+    /** Montre les phrases arrivées à échéance (départ ou arrivée d'un train), sans jamais répéter la même. */
+    private static void rappelNotes(Context ctx) {
+        JSONArray taches = donnees(ctx).optJSONArray("taches");
+        if (taches == null) return;
+        long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("noteVu", 0), max = vu;
+        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
+        boolean avion = android.provider.Settings.Global.getInt(ctx.getContentResolver(), android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
+        for (long[] e : evenementsNotes(ctx)) {
+            long quand = e[0];
+            if (quand <= vu || quand > now + 30000 || quand < now - 600000) continue;
+            if (quand > max) max = quand;
+            JSONObject t = taches.optJSONObject((int) e[2]);
+            if (t == null) continue;
+            boolean depart = e[1] == 1;
+            // départ : même choix que le rappel de départ (pas de notification en mode avion) ; à l'arrivée, toujours (c'est en conduite)
+            if (depart && avion && (rt == null || rt.optBoolean("horsAvion", true))) continue;
+            String gare = depart ? t.optString("lieu") : t.optString("arr");
+            String texte = phrase(ctx, depart ? "notes" : "notesArr", gare);
+            long cible = depart ? t.optLong("t") : t.optLong("fin");
+            long dans = Math.max(0, Math.round((cible - now) / 60000.0));
+            String h = depart ? t.optString("h") : t.optString("hFin");
+            String detail = (depart ? "Départ " : "Arrivée ") + h + " · " + gare + " · " + t.optString("quoi");
+            String quandTxt = dans > 0 ? (depart ? "Départ dans " : "Arrivée dans ") + dans + " min" : (depart ? "Départ maintenant" : "Arrivée maintenant");
+            int id = 700000 + (int) ((cible / 60000L) % 100000L) * 2 + (depart ? 1 : 0);
+            montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
+                    ouvrir(ctx, 2004, "journee", "date", t.optString("date")));
+        }
+        if (max > vu) prefs(ctx).edit().putLong("noteVu", max).apply();
     }
 
     /** Écran allumé et déverrouillé : le téléphone est en cours d'utilisation. */
@@ -1152,6 +1221,11 @@ public class Notifs extends BroadcastReceiver {
         }
         if (ACTION_MACRO.equals(intent.getAction())) {
             try { envoyerMacro(ctx); } catch (Exception ignore) { }
+            programmer(ctx);
+            return;
+        }
+        if (ACTION_NOTE.equals(intent.getAction())) {
+            try { rappelNotes(ctx); } catch (Exception ignore) { }
             programmer(ctx);
             return;
         }
