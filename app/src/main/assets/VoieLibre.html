@@ -1673,12 +1673,12 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const retourP=document.createElement('button'); retourP.id='retourP'; retourP.className='action clair'; retourP.textContent='‹ Paramètres'; retourP.style.display='none';
     const premiere=pan.querySelector('.carteP'); premiere.before(retourP); premiere.before(menuP);
     const versMenu=()=>{ pan.querySelectorAll('.carteP').forEach(c=>c.classList.remove('ouverteP')); menuP.style.display=''; retourP.style.display='none'; pan.scrollTop=0; };
-    const ouvrirCarte=id=>{ const c=$(id); if(!c){ versMenu(); return; } pan.querySelectorAll('.carteP').forEach(x=>x.classList.toggle('ouverteP',x===c));
+    const ouvrirRubrique=id=>{ const c=$(id); if(!c){ versMenu(); return; } pan.querySelectorAll('.carteP').forEach(x=>x.classList.toggle('ouverteP',x===c));
       menuP.style.display='none'; retourP.style.display=''; pan.scrollTop=0; try{ window.scrollTo(0,0); }catch(e){} };
-    menuP.addEventListener('click',e=>{ const b=e.target.closest('[data-carte]'); if(b) ouvrirCarte(b.dataset.carte); });
+    menuP.addEventListener('click',e=>{ const b=e.target.closest('[data-carte]'); if(b) ouvrirRubrique(b.dataset.carte); });
     retourP.onclick=versMenu;
     // à l'ouverture de Paramètres : le menu, ou la rubrique demandée (après le rechargement du thème, par « Prochains rappels »…)
-    window.vlParamOuvrir=id=>{ let c=id; if(!c){ try{ c=localStorage.getItem('vl-carteP'); localStorage.removeItem('vl-carteP'); }catch(e){} } if(c) ouvrirCarte(c); else versMenu(); };
+    window.vlParamOuvrir=id=>{ let c=id; if(!c){ try{ c=localStorage.getItem('vl-carteP'); localStorage.removeItem('vl-carteP'); }catch(e){} } if(c) ouvrirRubrique(c); else versMenu(); };
     versMenu();
   })();
 
