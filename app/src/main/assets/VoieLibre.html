@@ -1869,6 +1869,14 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .el{cursor:pointer}
 .info{margin:0 12px 10px;padding:9px 12px;border-radius:9px;background:#F1F5FA;font-size:14px;min-height:38px;color:var(--encre)}
 .info.vide{color:var(--doux);font-style:italic}
+#cadreMeteo{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+#cadreMeteo .cmF{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+#cadreMeteo .cmC{position:relative;width:100%;max-width:340px;box-sizing:border-box;background:#fff;color:#14243A;border:1.5px solid #C9D3DE;border-radius:14px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.4);font-size:15px;line-height:1.5}
+#cadreMeteo .cmT{display:flex;align-items:baseline;gap:8px}#cadreMeteo .cmT b{font-size:18px}#cadreMeteo .cmT span{color:#55657A}
+#cadreMeteo .cmX{margin-left:auto;border:0;background:none;font-size:18px;color:inherit;padding:2px 6px}
+#cadreMeteo .cmG{display:flex;align-items:center;gap:12px;margin:8px 0}#cadreMeteo .cmI{font-size:34px}#cadreMeteo .cmG b{font-size:24px}#cadreMeteo small{color:#55657A;font-size:13px}
+#cadreMeteo .cmP{display:block;width:100%;margin-top:10px;padding:9px;border:1.5px solid #C9D3DE;border-radius:10px;background:none;color:inherit;font:inherit;font-size:14px}
+@media (prefers-color-scheme: dark){#cadreMeteo .cmC{background:#1A2332;color:#E8EEF7;border-color:#2C3A50}#cadreMeteo small,#cadreMeteo .cmT span{color:#8FA1BA}#cadreMeteo .cmP{border-color:#2C3A50}}
 .resume{display:flex;flex-wrap:wrap;gap:6px 16px;padding:0 14px 10px;font-size:13.5px;color:var(--doux)}
 .resume b{color:var(--encre)}
 .legende{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 14px 12px;font-size:12px;color:var(--doux)}
@@ -2543,12 +2551,28 @@ function banniereHeure(liste){
   return t?`<div class="chgHeure">${esc(t)}</div>`:'';
 }
 function brancherRetour(){ const b=$('revenir'); if(b) b.onclick=()=>{ JOUR=DEFAUT; rendre(); window.scrollTo(0,0); }; }
+const WMO_TXT={0:'Ciel dégagé',1:'Plutôt dégagé',2:'Partiellement nuageux',3:'Couvert',45:'Brouillard',48:'Brouillard givrant',51:'Bruine faible',53:'Bruine',55:'Bruine forte',56:'Bruine verglaçante',57:'Bruine verglaçante forte',61:'Pluie faible',63:'Pluie',65:'Pluie forte',66:'Pluie verglaçante',67:'Pluie verglaçante forte',71:'Neige faible',73:'Neige',75:'Neige forte',77:'Grains de neige',80:'Averses faibles',81:'Averses',82:'Averses violentes',85:'Averses de neige',86:'Fortes averses de neige',95:'Orage',96:'Orage avec grêle',99:'Orage violent avec grêle'};
+function cadreMeteo(cible){
+  const [k,h,lieu]=cible.split('|'), L=lieuMeteo(lieu), c=L?meteoCache(L):null;
+  const i=c&&c.time?c.time.indexOf(k+'T'+pad(+h)+':00'):-1;
+  const v=(a,u,r)=>a&&a[i]!=null?(r?Math.round(a[i]):a[i])+u:'–';
+  const ancien=document.getElementById('cadreMeteo'); if(ancien) ancien.remove();
+  const d=document.createElement('div'); d.id='cadreMeteo';
+  d.innerHTML=`<div class="cmF"></div><div class="cmC" role="dialog" aria-label="Météo à ${esc(lieu)}">
+    <div class="cmT"><b>${esc(lieu)}</b><span>${h} h</span><button class="cmX" aria-label="Fermer">✕</button></div>
+    ${i<0?'<p>Météo indisponible pour cette heure.</p>':`<div class="cmG"><span class="cmI">${picto(c.W[i],!!c.D[i])}</span><span><b>${v(c.T,'°',1)}</b> <small>ressenti ${v(c.R,'°',1)}</small><br><small>${esc(WMO_TXT[c.W[i]]||'')}</small></span></div>
+    <div class="cmL">💨 Vent ${v(c.V,' km/h',1)} · rafales ${v(c.G,' km/h',1)}<br>🌧️ Pluie ${v(c.P,' %',1)}${c.MM&&c.MM[i]>0?' · '+c.MM[i]+' mm':''}</div>`}
+    <button class="cmP">Voir la météo complète</button></div>`;
+  document.body.appendChild(d);
+  const f=()=>d.remove();
+  d.querySelector('.cmF').onclick=f; d.querySelector('.cmX').onclick=f;
+  d.querySelector('.cmP').onclick=()=>{ f(); try{ parent.boulotAller('meteo', k, lieu+'@'+h); }catch(err){} };
+}
 $('vue').addEventListener('click',e=>{
   const jd=e.target.closest('[data-date]'); if(jd){ JOUR=jd.getAttribute('data-date'); changerMode('jour'); return; }
-  // picto météo du graphique : page Météo du jour, placée sur ce lieu et cette heure
+  // picto météo du graphique : cadre avec le détail de ce lieu à cette heure (lien vers la page Météo complète)
   const mz=e.target.closest('[data-meteo]');
-  if(mz){ const [k,h,lieu]=mz.getAttribute('data-meteo').split('|');
-    try{ parent.boulotAller('meteo', k, lieu+'@'+h); }catch(err){} return; }
+  if(mz){ cadreMeteo(mz.getAttribute('data-meteo')); return; }
   const el=e.target.closest('[data-i]'); if(!el) return;
   const box=el.closest('.carte').querySelector('.info'); box.textContent=el.getAttribute('data-i'); box.classList.remove('vide');
 });
