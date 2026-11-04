@@ -2100,7 +2100,7 @@ function graphique(x, largeurDispo, sansMaintenant){
     const suiv=items.filter(y=>y!==it && y.a>it.a).map(y=>y.a);
     it.b=suiv.length?Math.min(...suiv):f0; it.g=it.b>it.a?'reserve':'point'; } });
   items.forEach(it=>{ if(it.b!==null && it.b>it.a && estManoeuvre(it.act)) it.g='manoeuvre'; });
-  items.forEach(it=>{ if(estChauffage(it.act)){ it.b=null; it.g='point'; } });
+  items.forEach(it=>{ if(estChauffage(it.act)||/^marche\b/i.test(String(it.act||'').trim())){ it.b=null; it.g='point'; } });   // chauffage et marche : repère à l'heure de début, même avec une heure de fin
   // Réserve avec heure de fin (« 06:10 -> 13:20 | TS | R », lieu renseigné dans Graou) : durée réelle
   items.forEach(it=>{ if(it.b!==null && estReserve(it.act)) it.g=it.b>it.a?'reserve':'point'; });
   // Pause repas avec heure de fin (« 12:30 -> 13:30 | TE | pauserepas », lieu renseigné dans Graou) : durée réelle
