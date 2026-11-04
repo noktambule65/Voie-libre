@@ -20,6 +20,9 @@ public class DepartActivity extends Activity {
     protected void onCreate(Bundle etat) {
         super.onCreate(etat);
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
+        // l'écran reste allumé tant que l'alerte est affichée ; elle se ferme toute seule 3 min après (comme la notification)
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, 3 * 60 * 1000L);
         int id = getIntent().getIntExtra("id", 0);
         LinearLayout l = new LinearLayout(this);
         l.setOrientation(LinearLayout.VERTICAL);

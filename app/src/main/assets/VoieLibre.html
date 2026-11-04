@@ -1194,7 +1194,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
-    const T_DEF={train:{on:true,min:4,horsAvion:true,notes:[]}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
+    const T_DEF={train:{on:true,min:4,horsAvion:true,plein:true,notes:[]}, ev:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
       rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
     // Mode avion automatique (Options avancées) : signal aux applis d'automatisation, désactivé par défaut
     const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, evloc:false};
@@ -1209,6 +1209,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nTachesCorps').innerHTML=`<p class="petit">Un rappel avant chaque tâche de la journée, d’après le déroulé Graou.</p>
         <label class="coche"><input type="checkbox" data-on="train"${t.train.on?' checked':''}> Train conduit ${champ('train',t.train.min)} avant</label>
         <label class="coche long sousOpt"><input type="checkbox" data-avion="1"${t.train.horsAvion?' checked':''}><span>Pas de notification si le téléphone est en mode avion</span></label>
+        <label class="coche long sousOpt"><input type="checkbox" data-plein="1"${t.train.plein!==false?' checked':''}><span>Écran rouge plein écran quand l’écran est éteint ou verrouillé<small>L’écran s’allume avec « Départ dans X min » en gros, jusqu’à OK. Téléphone en cours d’utilisation, le bandeau rouge reste affiché jusqu’à OK (Android n’autorise pas mieux).</small></span></label>
         ${pleinEcranHtml()}
         ${notesHtml(t.train.notes||[])}
         <label class="coche"><input type="checkbox" data-on="ev"${t.ev.on?' checked':''}> Train EV ${champ('ev',t.ev.min)} avant</label>
@@ -1234,6 +1235,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       c.querySelectorAll('[data-g]').forEach(i=>{ const g=i.dataset.g; if(g){ t.rs.lieux[g]=mn(i.value,t.rs.lieux[g]); i.value=t.rs.lieux[g]; } else { t.rs.defaut=mn(i.value,t.rs.defaut); i.value=t.rs.defaut; } });
       const h=c.querySelector('[data-hors]'); if(h) t.rs.horsTrain=h.checked;
       const av=c.querySelector('[data-avion]'); if(av) t.train.horsAvion=av.checked;
+      const pl=c.querySelector('[data-plein]'); if(pl) t.train.plein=pl.checked;
       t.train.notes=[...c.querySelectorAll('.noteGare')].map(d=>({gare:d.dataset.gare||'', texte:d.querySelector('[data-nt]').value.trim()})).filter(n=>n.gare);
       return t; };
     const changer=()=>{ const o={modif:$('nModif').checked, dec:$('nDec').checked, heure:+$('nHeure').value||18,
@@ -1414,7 +1416,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       // l'appli Android arrête les rappels (ils reviendront avec les réglages par défaut à la prochaine configuration)
       try{ if(NATIF && NATIF.reglerNotifs){ const off={on:false,min:0};
         NATIF.reglerNotifs(JSON.stringify({modif:false,dec:false,ch3:false,chVeille:false,reveilOn:false,neige:false,neigeJour:false,sync:false,
-          taches:{train:Object.assign({horsAvion:true,notes:[]},off),ev:off,eq:off,coup:off,rs:{on:false,horsTrain:true,defaut:15,lieux:{}}}})); }
+          taches:{train:Object.assign({horsAvion:true,plein:true,notes:[]},off),ev:off,eq:off,coup:off,rs:{on:false,horsTrain:true,defaut:15,lieux:{}}}})); }
         if(NATIF && NATIF.reglerReveils) NATIF.reglerReveils(JSON.stringify({defaut:{r:60,d:30},lieux:{}})); }catch(e){}
       // seules les données de Voie libre (pl-…, bo-…, vl-…) sont effacées
       const cles=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(/^(pl|bo|vl)-/.test(k)) cles.push(k); }

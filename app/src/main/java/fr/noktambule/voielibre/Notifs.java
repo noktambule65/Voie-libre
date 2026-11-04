@@ -666,7 +666,7 @@ public class Notifs extends BroadcastReceiver {
         try { t = new JSONObject(prefs(ctx).getString("taches", "{}")); } catch (Exception e) { t = new JSONObject(); }
         try {
             if (t.optJSONObject("train") == null) t.put("train", new JSONObject().put("on", true).put("min", 4).put("horsAvion", true)
-                    .put("notes", new JSONArray()));
+                    .put("plein", true).put("notes", new JSONArray()));
             if (t.optJSONObject("ev") == null) t.put("ev", new JSONObject().put("on", false).put("min", 15));
             if (t.optJSONObject("eq") == null) t.put("eq", new JSONObject().put("on", true).put("min", 15));
             if (t.optJSONObject("coup") == null) t.put("coup", new JSONObject().put("on", false).put("min", 10));
@@ -898,7 +898,10 @@ public class Notifs extends BroadcastReceiver {
                     : h + (ou.isEmpty() ? "" : " à " + ou);
             int id = 100 + (int) ((t.optLong("t") / 60000L) % 100000L);
             String note = "train".equals(type) ? noteDepart(ctx, t.optString("lieu")) : "";
-            if ("train".equals(type) && telephoneEnUtilisation(ctx)) {
+            // écran éteint ou verrouillé : écran rouge plein écran aussi (réglable), comme le bandeau quand le téléphone est utilisé
+            JSONObject rtp = reglagesTaches(ctx).optJSONObject("train");
+            boolean pleinHorsUsage = rtp == null || rtp.optBoolean("plein", true);
+            if ("train".equals(type) && (telephoneEnUtilisation(ctx) || pleinHorsUsage)) {
                 alerteDepart(ctx, id, t, dans, note);
                 continue;
             }
