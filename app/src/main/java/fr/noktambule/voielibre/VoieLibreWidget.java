@@ -457,7 +457,8 @@ public class VoieLibreWidget extends AppWidgetProvider {
         double[] place = placeImage(ctx, mgr, id, statut, compte);
         int n = combien(place, rapport, ENTETE / 720.0, 0.2);
         // Au-delà de 2 lignes : jamais de réduction (les cases gardent la même taille, quitte à afficher moins de lignes)
-        if (n > 2) n = Math.max(2, combien(place, rapport, ENTETE / 720.0, 0.0));
+        // (la hauteur réelle du widget est un peu inférieure à celle estimée : marge de 18 dp pour que rien ne soit réduit)
+        if (n > 2) n = Math.max(2, combien(new double[]{place[0], place[1] - 18}, rapport, ENTETE / 720.0, 0.0));
         return Math.max(1, Math.min(total, n));
     }
 
