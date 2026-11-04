@@ -1236,7 +1236,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <label class="coche sansCase">Phrase au départ : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteMin" value="${tr.noteMin}"> min avant le départ</label>
         ${(tr.notesArr||[]).map((n,i)=>noteLigne(n,i,'notesArr')).join('')}
         <button class="action clair" data-najout="notesArr">+ Phrase à l’arrivée dans une gare</button>
-        <label class="coche sansCase">Phrase à l’arrivée : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteArrMin" value="${tr.noteArrMin}"> min avant l’arrivée <small>0 = à l’heure d’arrivée prévue</small></label></div>`;
+        <label class="coche sansCase">Phrase à l’arrivée : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteArrMin" value="${tr.noteArrMin}"> min après l’arrivée <small>0 = à l’heure d’arrivée prévue</small></label></div>`;
     const changerT=()=>{ const t=lireT(), c=$('nTachesCorps');
       c.querySelectorAll('[data-on]').forEach(i=>t[i.dataset.on].on=i.checked);
       c.querySelectorAll('[data-t]').forEach(i=>{ t[i.dataset.t].min=mn(i.value,t[i.dataset.t].min); i.value=t[i.dataset.t].min; });

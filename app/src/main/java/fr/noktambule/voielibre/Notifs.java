@@ -950,7 +950,7 @@ public class Notifs extends BroadcastReceiver {
             if (t == null || !"train".equals(t.optString("type")) || t.optLong("t") <= 0) continue;
             if (!phrase(ctx, "notes", t.optString("lieu")).isEmpty()) l.add(new long[]{t.optLong("t") - avDep, 1, k});
             if (t.optLong("fin") > 0 && !phrase(ctx, "notesArr", t.optString("arr")).isEmpty())
-                l.add(new long[]{t.optLong("fin") - avArr, 0, k});
+                l.add(new long[]{t.optLong("fin") + avArr, 0, k});
         }
         java.util.Collections.sort(l, (x, y) -> Long.compare(x[0], y[0]));
         return l;
@@ -993,10 +993,10 @@ public class Notifs extends BroadcastReceiver {
             String gare = depart ? t.optString("lieu") : t.optString("arr");
             String texte = phrase(ctx, depart ? "notes" : "notesArr", gare);
             long cible = depart ? t.optLong("t") : t.optLong("fin");
-            long dans = Math.max(0, Math.round((cible - now) / 60000.0));
+            long dans = Math.max(0, Math.round((depart ? cible - now : now - cible) / 60000.0));
             String h = depart ? t.optString("h") : t.optString("hFin");
             String detail = (depart ? "Départ " : "Arrivée ") + h + " · " + gare + " · " + t.optString("quoi");
-            String quandTxt = dans > 0 ? (depart ? "Départ dans " : "Arrivée dans ") + dans + " min" : (depart ? "Départ maintenant" : "Arrivée maintenant");
+            String quandTxt = dans > 0 ? (depart ? "Départ dans " + dans + " min" : "Arrivé il y a " + dans + " min") : (depart ? "Départ maintenant" : "Arrivée maintenant");
             int id = 700000 + (int) ((cible / 60000L) % 100000L) * 2 + (depart ? 1 : 0);
             montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
                     ouvrir(ctx, 2004, "journee", "date", t.optString("date")));
