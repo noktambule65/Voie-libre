@@ -454,7 +454,10 @@ public class VoieLibreWidget extends AppWidgetProvider {
         if (total <= 0) return 0;
         Bitmap b = image(ctx, "s0.png");
         double rapport = b != null ? (double) b.getHeight() / b.getWidth() : 116.0 / 720;
-        int n = combien(placeImage(ctx, mgr, id, statut, compte), rapport, ENTETE / 720.0, 0.2);
+        double[] place = placeImage(ctx, mgr, id, statut, compte);
+        int n = combien(place, rapport, ENTETE / 720.0, 0.2);
+        // Au-delà de 2 lignes : jamais de réduction (les cases gardent la même taille, quitte à afficher moins de lignes)
+        if (n > 2) n = Math.max(2, combien(place, rapport, ENTETE / 720.0, 0.0));
         return Math.max(1, Math.min(total, n));
     }
 
