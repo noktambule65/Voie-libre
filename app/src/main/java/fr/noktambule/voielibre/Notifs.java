@@ -93,6 +93,8 @@ public class Notifs extends BroadcastReceiver {
             if (!theme.equals("clair") && !theme.equals("sombre")) theme = "auto";
             SharedPreferences w = ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0);
             if (!theme.equals(w.getString("theme", "auto"))) { w.edit().putString("theme", theme).commit(); VoieLibreWidget.majTous(ctx); }
+            String vd = "mois".equals(o.optString("widgetVue")) ? "mois" : "jour";
+            if (!vd.equals(w.getString("vueDefaut", "jour"))) { w.edit().putString("vueDefaut", vd).remove("vue").commit(); VoieLibreWidget.majTous(ctx); }
             JSONObject t = o.optJSONObject("taches");
             if (t != null) prefs(ctx).edit().putString("taches", t.toString()).apply();
         } catch (Exception ignore) { }

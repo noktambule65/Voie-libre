@@ -113,9 +113,11 @@ public class VoieLibreWidget extends AppWidgetProvider {
         String a = intent.getAction();
         if (a == null) return;
         SharedPreferences p = ctx.getSharedPreferences(PREFS, 0);
-        boolean modeMois = "mois".equals(p.getString("vue", "jour"));
+        boolean modeMois = "mois".equals(vueActive(p));
         if (a.equals(VUE)) {
+            // bascule temporaire : le widget revient à la vue par défaut après le délai de retour
             p.edit().putString("vue", modeMois ? "jour" : "mois").remove("moisSel").apply();
+            navigation(ctx, p);
             majTous(ctx);
         } else if (modeMois && (a.equals(PREC) || a.equals(SUIV))) {
             int n = semaines(p).length();
@@ -133,7 +135,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
             navigation(ctx, p);
             majTous(ctx);
         } else if (a.equals(AUTO) || a.equals(RETOUR)) {
-            p.edit().remove("sel").remove("moisSel").remove("navDepuis").apply();
+            p.edit().remove("sel").remove("moisSel").remove("vue").remove("navDepuis").apply();
             AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
             if (am != null && a.equals(AUTO)) am.cancel(diffusion(ctx, RETOUR, 10));
             majTous(ctx);
@@ -244,7 +246,14 @@ public class VoieLibreWidget extends AppWidgetProvider {
     private static void retourSiExpire(SharedPreferences p) {
         long t = p.getLong("navDepuis", 0);
         if (t > 0 && System.currentTimeMillis() - t >= DELAI_RETOUR)
-            p.edit().remove("sel").remove("moisSel").remove("navDepuis").apply();
+            p.edit().remove("sel").remove("moisSel").remove("vue").remove("navDepuis").apply();
+        else if (t == 0 && p.contains("vue"))
+            p.edit().remove("vue").apply();   // bascule d'une ancienne version, sans délai de retour
+    }
+
+    /** Vue affichée : la bascule en cours (bouton du widget) sinon la vue par défaut choisie dans les paramètres. */
+    private static String vueActive(SharedPreferences p) {
+        return p.getString("vue", p.getString("vueDefaut", "jour"));
     }
 
     // ---------- Compte à rebours (à la minute) ----------
@@ -692,7 +701,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
         programmerMinute(ctx, compte ? cible : 0);
 
         // Vue semaines : autant de semaines que la taille du widget le permet
-        boolean modeMois = "mois".equals(p.getString("vue", "jour"));
+        boolean modeMois = "mois".equals(vueActive(p));
         v.setTextViewText(R.id.vue, modeMois ? "📊" : "📅");
         if (modeMois) {
             JSONArray ss = semaines(p);
