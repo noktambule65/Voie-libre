@@ -1000,6 +1000,13 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 .panneau label.coche select{font:inherit;font-size:15px;padding:4px 6px;border:1.5px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
 .panneau [data-sec="complete"] .ligne2{margin-top:4px}
 .panneau.m-param #pTitre{display:none}
+.panneau .carteP{display:none}.panneau .carteP.ouverteP{display:block}
+#menuP{display:flex;flex-direction:column;gap:10px;margin:14px 0}
+#menuP .itemP{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:14px}
+#menuP .icP{font-size:24px;flex:none}#menuP .txtP{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#menuP .txtP b{font-size:17px}#menuP .txtP small{font-size:13px;color:var(--soft);line-height:1.35}#menuP .chevP{font-size:22px;color:var(--soft);flex:none}
+#retourP{display:block;width:auto;margin:10px 0 0}
+#rService details.sousMenu>summary{display:none}#rService details.sousMenu{border:0;background:none;padding:0}
 .panneau .carteP{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:2px 14px 14px;margin:14px 0}
 .panneau .carteP>h3{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;margin:14px 0 6px}
 .panneau .carteP .icP{font-size:20px}
@@ -1209,11 +1216,14 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const champ=(k,v)=>`<input type="number" min="0" max="180" step="5" inputmode="numeric" data-t="${k}" value="${v}"> min`;
     const dessinerT=()=>{ const t=lireT();
       $('nTachesCorps').innerHTML=`<p class="petit">Un rappel avant chaque tâche de la journée, d’après le déroulé Graou.</p>
+        <div class="sousTitreP">Départ des trains</div>
         <label class="coche"><input type="checkbox" data-on="train"${t.train.on?' checked':''}> Train conduit ${champ('train',t.train.min)} avant</label>
         <label class="coche long sousOpt"><input type="checkbox" data-avion="1"${t.train.horsAvion?' checked':''}><span>Pas de notification si le téléphone est en mode avion</span></label>
         <label class="coche long sousOpt"><input type="checkbox" data-plein="1"${t.train.plein!==false?' checked':''}><span>Écran rouge plein écran quand l’écran est éteint ou verrouillé<small>L’écran s’allume avec « Départ dans X min » en gros, jusqu’à OK. Téléphone en cours d’utilisation, le bandeau rouge reste affiché jusqu’à OK (Android n’autorise pas mieux).</small></span></label>
         ${pleinEcranHtml()}
+        <div class="sousTitreP">Phrases par gare</div>
         ${notesHtml(t.train)}
+        <div class="sousTitreP">Autres rappels</div>
         <label class="coche"><input type="checkbox" data-on="ev"${t.ev.on?' checked':''}> Train EV ${champ('ev',t.ev.min)} avant</label>
         <label class="coche"><input type="checkbox" data-on="eq"${t.eq.on?' checked':''}> EQ PREND ${champ('eq',t.eq.min)} avant</label>
         <label class="coche"><input type="checkbox" data-on="coup"${t.coup.on?' checked':''}> Fin de coupure ${champ('coup',t.coup.min)} avant</label>
@@ -1230,7 +1240,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const noteLigne=(n,i,k)=>`<div class="noteGare" data-liste="${k}" data-i="${i}" data-gare="${esc(n.gare||'')}">
         <span>${k==='notes'?'Au départ de':'À l’arrivée à'}</span> <button class="action clair bgare" data-ngare="${k}:${i}">${esc(n.gare||'choisir la gare')}</button>
         <input data-nt="${i}" value="${esc(n.texte||'')}" placeholder="${k==='notes'?'Phrase au départ':'Phrase à l’arrivée'}"><button class="lien" data-nsup="${k}:${i}" aria-label="Supprimer">✕</button></div>`;
-    const notesHtml=tr=>`<div class="sousOpt notesGare"><p class="petit"><b>Phrases par gare</b> : une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.)</p>
+    const notesHtml=tr=>`<div class="sousOpt notesGare"><p class="petit">Une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.)</p>
         ${(tr.notes||[]).map((n,i)=>noteLigne(n,i,'notes')).join('')}
         <button class="action clair" data-najout="notes">+ Phrase au départ d’une gare</button>
         <label class="coche sansCase">Phrase au départ : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteMin" value="${tr.noteMin}"> min avant le départ</label>
@@ -1258,7 +1268,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     $('nSyncFreq').addEventListener('change',()=>ajusterSeuil(true));   // avant l'enregistrement, qui lit le seuil ajusté
     ['nModif','nDec','nHeure','nCh3','nChV','nHeureCh','nRv','nRvH','nRvDe','nRvA','nNeige','nNeigeH','nNeigeJ','nSync','nSyncH','nSyncFreq','nSyncPS','nTheme','nWVue','nModifPortee'].forEach(id=>$(id).addEventListener('change',changer));
     // nouveau thème : toute l'appli est rechargée pour l'appliquer, puis rouverte sur Paramètres
-    $('nTheme').addEventListener('change',()=>{ setTimeout(()=>{ try{ const T=window.top; T.location.hash='param//'; T.location.reload(); }catch(e){ location.reload(); } }, 400); });
+    $('nTheme').addEventListener('change',()=>{ try{ localStorage.setItem('vl-carteP','rAffichage'); }catch(e){} setTimeout(()=>{ try{ const T=window.top; T.location.hash='param//'; T.location.reload(); }catch(e){ location.reload(); } }, 400); });
     dessinerT(); $('nTachesCorps').addEventListener('change',changer);
     $('nTachesCorps').addEventListener('click',e=>{
       if(e.target.closest('[data-pleinecran]')){ try{ AND.reglerPleinEcran(); }catch(err){} return; }
@@ -1415,10 +1425,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const lab=id=>{ const e=$(id); return e?e.closest('label'):null; };
 
     // 1. Planning Graou
-    const cP=carte('📅','Planning Graou','rPlanning');
+    const cP=carte('📅','Planning et synchro','rPlanning');
     const aide=document.createElement('button'); aide.className='lienAide'; aide.id='aideLien'; aide.textContent='❓ Où trouver mon lien d’abonnement Graou ?';
     aide.onclick=ouvrirTuto;
-    mettre(cP, $('pEtat'), pan.querySelector('label[for=url]'), $('url'), aide, $('majLien'), $('importer'), $('importer').nextElementSibling, pan.querySelector('.refPacific'), $('lSyncFreq'), $('lSyncPS'), $('wDiag'));
+    mettre(cP, $('pEtat'), pan.querySelector('label[for=url]'), $('url'), aide, $('majLien'), $('importer'), $('importer').nextElementSibling, pan.querySelector('.refPacific'), $('lSyncFreq'), $('lSyncPS'), lab('nSync'), $('wDiag'));
     const deco=document.createElement('button'); deco.className='action deco'; deco.id='deconnexion'; deco.textContent='Se déconnecter de Graou et repartir de zéro';
     const decoTxt=document.createElement('p'); decoTxt.className='petit'; decoTxt.textContent='Efface de ce téléphone ton lien Graou, ton planning et tous tes réglages : Voie libre redevient comme à la première ouverture.';
     mettre(cP, deco, decoTxt);
@@ -1440,11 +1450,12 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const cN=carte('🔔','Notifications','rNotifs');
       mettre(cN, $('nEtat'));
       if(AND.apercu){ const p=document.createElement('p'); p.className='petit'; p.textContent='Aperçu : les notifications, le widget et le réveil ne fonctionnent que dans l’appli Android. Les réglages faits ici sont gardés.'; cN.insertBefore(p, cN.children[1]); }
-      sous(cN,'Planning'); mettre(cN, lab('nModif'), $('lModifPortee'), lab('nDec'), lab('nSync'));
-      sous(cN,'Pendant la journée'); mettre(cN, $('nTaches'));
+      sous(cN,'Planning'); mettre(cN, lab('nModif'), $('lModifPortee'), lab('nDec'));
       sous(cN,'Météo'); mettre(cN, $('nNeige').closest('.coche'));
       sous(cN,'Calendrier'); mettre(cN, $('nCh3').closest('.coche'));
-      const sm=$('nTaches').querySelector('summary'); if(sm) sm.textContent='Rappels avant tâches (trains, EV, EQ PREND, RS/PC, coupure)';
+      // Rappels de service : leur propre rubrique (le menu déroulant d'origine est ouvert en permanence)
+      const cS=carte('🚆','Rappels de service','rService');
+      $('nTaches').open=true; cS.appendChild($('nTaches'));
       const ancien=q('[data-sec="notif"]'); if(ancien) ancien.style.display='none';
     }
 
@@ -1565,7 +1576,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     }
 
     // 5. Affichage
-    if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Affichage','rAffichage'); mettre(cW, $('lTheme')); if($('lWVue')) mettre(cW, $('lWVue')); }
+    if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Widget et affichage','rAffichage'); mettre(cW, $('lTheme')); if($('lWVue')) mettre(cW, $('lWVue')); }
     else if($('lTheme')){ $('lTheme').style.display='none'; if($('lWVue')) $('lWVue').style.display='none'; }
     // Options avancées (utilisateurs avertis) : chaque option ouvre sa propre page
     if(ouvrirModeAvion){
@@ -1646,6 +1657,29 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     cA.appendChild(pC); cA.appendChild(bC);
     // « Tout effacer » remplacé par la déconnexion de Graou (carte Planning Graou)
     $('effacer').remove();
+
+    // ---- Menu en arborescence : la page Paramètres liste les rubriques, chacune s'ouvre seule ----
+    const ENTREES=[['rPlanning','📅','Planning et synchro','Lien Graou, import, synchro automatique'],
+      ['rNotifs','🔔','Notifications','Planning modifié, découché, neige, changement d’heure'],
+      ['rService','🚆','Rappels de service','Départ des trains, phrases par gare, EV, EQ PREND, RS/PC'],
+      ['rReveil','⏰','Réveil','Alarmes, délais et sonneries'],
+      ['rMeteo','🌦️','Météo','Lieu des jours de repos et de congé'],
+      ['rAffichage','🎨','Widget et affichage','Thème, affichage par défaut du widget'],
+      ['rAvance','🛠️','Options avancées','Mode avion automatique'],
+      ['rAide','💡','Aide','Présentation, widget, contact'],
+      ['rVersion','🔄','Version et mises à jour','Version installée, mises à jour']].filter(e=>$(e[0]));
+    const menuP=document.createElement('nav'); menuP.id='menuP';
+    menuP.innerHTML=ENTREES.map(e=>`<button class="itemP" data-carte="${e[0]}"><span class="icP">${e[1]}</span><span class="txtP"><b>${e[2]}</b><small>${e[3]}</small></span><span class="chevP">›</span></button>`).join('');
+    const retourP=document.createElement('button'); retourP.id='retourP'; retourP.className='action clair'; retourP.textContent='‹ Paramètres'; retourP.style.display='none';
+    const premiere=pan.querySelector('.carteP'); premiere.before(retourP); premiere.before(menuP);
+    const versMenu=()=>{ pan.querySelectorAll('.carteP').forEach(c=>c.classList.remove('ouverteP')); menuP.style.display=''; retourP.style.display='none'; pan.scrollTop=0; };
+    const ouvrirCarte=id=>{ const c=$(id); if(!c){ versMenu(); return; } pan.querySelectorAll('.carteP').forEach(x=>x.classList.toggle('ouverteP',x===c));
+      menuP.style.display='none'; retourP.style.display=''; pan.scrollTop=0; try{ window.scrollTo(0,0); }catch(e){} };
+    menuP.addEventListener('click',e=>{ const b=e.target.closest('[data-carte]'); if(b) ouvrirCarte(b.dataset.carte); });
+    retourP.onclick=versMenu;
+    // à l'ouverture de Paramètres : le menu, ou la rubrique demandée (après le rechargement du thème, par « Prochains rappels »…)
+    window.vlParamOuvrir=id=>{ let c=id; if(!c){ try{ c=localStorage.getItem('vl-carteP'); localStorage.removeItem('vl-carteP'); }catch(e){} } if(c) ouvrirCarte(c); else versMenu(); };
+    versMenu();
   })();
 
   // Maquettes du widget pour l'aide : journée et semaines fictives (gares d'Aquitaine), dessinées avec
@@ -1736,6 +1770,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 
   function montrerVolet(){
     pan.classList.toggle('m-param',mode==='param');
+    try{ if(mode==='param' && window.vlParamOuvrir) window.vlParamOuvrir(); }catch(e){}
     ouvrirPanneau();
     $('pTitre').textContent = 'Planning Graou';
     pan.scrollTop=0;
@@ -1774,7 +1809,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 
   // Picto météo de « Voir ma journée » : ouvre ce jour, sur ce lieu et cette heure
   window.boulotAller=function(date, vue){
-    if(date==='notifs'){ setTimeout(()=>{ const c=$('rNotifs'); if(c) c.scrollIntoView({block:'start'}); },120); return; }
+    if(date==='notifs'){ setTimeout(()=>{ try{ window.vlParamOuvrir('rService'); }catch(e){} },120); return; }
     if(/^\d{4}-\d{2}-\d{2}$/.test(date||'')) allerMeteo(date, vue);
   };
 
