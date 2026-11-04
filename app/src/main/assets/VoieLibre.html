@@ -1585,10 +1585,14 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         });
       };
       bD.style.display='none'; cV.appendChild(bD);
+      // Option cachée : oublier les rappels déjà « vus » (utile après avoir changé l'heure du téléphone pour tester)
+      const bR=document.createElement('button'); bR.className='action clair'; bR.textContent='Réinitialiser les rappels déjà vus';
+      bR.onclick=()=>{ try{ NATIF.reinitialiserVus && NATIF.reinitialiserVus(); bR.textContent='✔ Rappels réinitialisés'; setTimeout(()=>{ bR.textContent='Réinitialiser les rappels déjà vus'; },3000); }catch(e){} };
+      bR.style.display='none'; cV.appendChild(bR);
       // Options cachées : 7 appuis rapides sur le titre de la carte → journal de diagnostic et mode testeur
       let nAppuis=0, tAppui=0;
       cV.querySelector('h3').addEventListener('click',()=>{ const t=Date.now(); nAppuis=(t-tAppui<800)?nAppuis+1:1; tAppui=t;
-        if(nAppuis>=7){ nAppuis=0; bD.style.display=''; if(montrerTesteur) montrerTesteur(); bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
+        if(nAppuis>=7){ nAppuis=0; bD.style.display=''; bR.style.display=''; if(montrerTesteur) montrerTesteur(); bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
     }
     if(NATIF && NATIF.verifierMaj){
       const pV=document.createElement('p'); pV.className='petit';

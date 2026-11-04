@@ -274,6 +274,15 @@ public class Notifs extends BroadcastReceiver {
                 ouvrir(ctx, 2001, "journee", "date", premiere));
     }
 
+    /**
+     * Option cachée (tests) : oublie les rappels déjà « vus » (départs, mode avion), par exemple après avoir changé
+     * l'heure du téléphone, puis reprogramme les alarmes.
+     */
+    static void reinitialiserVus(Context ctx) {
+        prefs(ctx).edit().remove("tacheVu").remove("macroVu").apply();
+        programmer(ctx);
+    }
+
     // ---------- Découché la veille ----------
 
     /** Programme les prochains rappels activés : découché et changement d'heure. */

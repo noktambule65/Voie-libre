@@ -472,6 +472,10 @@ public class Pont {
     @JavascriptInterface
     public void signalTest(String quoi) { Notifs.signalTest(ctx, !"arr".equals(quoi)); }
 
+    /** Option cachée : réinitialise les rappels déjà « vus » (tests après un changement d'heure). */
+    @JavascriptInterface
+    public void reinitialiserVus() { Notifs.reinitialiserVus(ctx); }
+
     /** Mode testeur (caché) : pré-versions proposées aussi. */
     @JavascriptInterface
     public boolean testeur() { return MiseAJour.testeur(ctx); }
