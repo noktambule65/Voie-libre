@@ -1556,8 +1556,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     }
 
     // 5. Affichage
-    if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Affichage','rAffichage'); mettre(cW, $('lTheme')); }
-    else if($('lTheme')) $('lTheme').style.display='none';
+    if($('lTheme') && !AND.apercu){ const cW=carte('🎨','Affichage','rAffichage'); mettre(cW, $('lTheme')); if($('lWVue')) mettre(cW, $('lWVue')); }
+    else if($('lTheme')){ $('lTheme').style.display='none'; if($('lWVue')) $('lWVue').style.display='none'; }
     // Options avancées (utilisateurs avertis) : chaque option ouvre sa propre page
     if(ouvrirModeAvion){
       const cO=carte('🛠️','Options avancées','rAvance');
