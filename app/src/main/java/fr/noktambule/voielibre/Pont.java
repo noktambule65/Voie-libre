@@ -123,6 +123,9 @@ public class Pont {
          * Télécharge une adresse sans les restrictions du navigateur (abonnement Graou…).
          * La réponse revient à la page par window.__boulotRetour(id, statut, contenu en base64).
          */
+        /** Taille maximale d'un téléchargement demandé par la page (5 Mo). */
+        static final int TAILLE_MAX = 5 * 1024 * 1024;
+
         @JavascriptInterface
         public void telecharger(String id, String adresse) {
             new Thread(() -> {
@@ -148,12 +151,19 @@ public class Pont {
                     }
                     InputStream in = statut >= 400 ? c.getErrorStream() : c.getInputStream();
                     if (in != null) {
+                        // Plafond : un planning Graou pèse quelques dizaines de Ko. Au-delà de 5 Mo (mauvais lien :
+                        // vidéo, archive…), lecture arrêtée avant de saturer la mémoire ; la page affiche un message (statut -1).
                         ByteArrayOutputStream tampon = new ByteArrayOutputStream();
                         byte[] bloc = new byte[16384];
                         int n;
-                        while ((n = in.read(bloc)) > 0) tampon.write(bloc, 0, n);
+                        boolean tropGros = false;
+                        while ((n = in.read(bloc)) > 0) {
+                            if (tampon.size() + n > TAILLE_MAX) { tropGros = true; break; }
+                            tampon.write(bloc, 0, n);
+                        }
                         in.close();
-                        contenu = Base64.encodeToString(tampon.toByteArray(), Base64.NO_WRAP);
+                        if (tropGros) statut = -1;
+                        else contenu = Base64.encodeToString(tampon.toByteArray(), Base64.NO_WRAP);
                     }
                 } catch (Exception e) {
                     statut = 0;

@@ -835,7 +835,7 @@ async function majDepuisLien(manuel){
   try{
     const r=await fetch(url,{cache:'no-store'});
     if(!r.ok) throw new Error('Le serveur Graou a répondu « erreur '+r.status+' ». Vérifie le lien (le jeton a peut-être été régénéré).');
-    const evts=lireICS(await r.text());
+    const evts=lireICS(await texteLimite(r));
     if(!evts.length) throw new Error('Le lien ne contient aucun événement.');
     enregistrer(evts,'lien');
     if(manuel) $('pEtat').textContent='Planning mis à jour : '+evts.length+' entrées trouvées.';
@@ -855,9 +855,23 @@ function majAuto(){
 }
 
 /* Import d'un fichier */
+// Lecture plafonnée à 5 Mo (un planning Graou pèse quelques dizaines de Ko) : un mauvais lien vers une vidéo
+// ou une archive donne un message au lieu de saturer la mémoire.
+const TAILLE_MAX=5*1024*1024, MSG_TROP_GROS='Le lien renvoie un fichier beaucoup trop gros pour être un planning Graou (plus de 5 Mo). Vérifie le lien.';
+async function texteLimite(r){
+  const lg=+((r.headers && r.headers.get('content-length'))||0); if(lg>TAILLE_MAX) throw new Error(MSG_TROP_GROS);
+  if(!r.body || !r.body.getReader) return r.text();
+  const lect=r.body.getReader(), morceaux=[]; let total=0;
+  for(;;){ const {done,value}=await lect.read(); if(done) break;
+    total+=value.length; if(total>TAILLE_MAX){ try{ lect.cancel().catch(()=>{}); }catch(e){} throw new Error(MSG_TROP_GROS); }
+    morceaux.push(value); }
+  const tout=new Uint8Array(total); let p=0; morceaux.forEach(m=>{ tout.set(m,p); p+=m.length; });
+  return new TextDecoder('utf-8').decode(tout);
+}
 $('importer').onclick=()=>$('fichier').click();
 $('fichier').onchange=()=>{
   const f=$('fichier').files[0]; if(!f) return;
+  if(f.size>TAILLE_MAX){ $('pEtat').textContent='Fichier beaucoup trop gros pour être un planning Graou (plus de 5 Mo) : vérifie le fichier choisi.'; $('fichier').value=''; return; }
   const rd=new FileReader();
   rd.onload=()=>{
     const txt=String(rd.result);
@@ -3538,6 +3552,7 @@ function raccordAndroid(){
     return new Promise(function(ok,ko){
       var id='r'+Date.now()+Math.random().toString(36).slice(2);
       T.__boulotRappels[id]=function(st,x){
+        if(st===-1) return ko(new Error('Le lien renvoie un fichier beaucoup trop gros pour être un planning Graou (plus de 5 Mo). Vérifie le lien.'));
         if(!st) return ko(new TypeError('Pas de réseau'));
         var bin=atob(x||''), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
         ok(new Response((st===204||st===205||st===304)?null:arr,{status:st}));

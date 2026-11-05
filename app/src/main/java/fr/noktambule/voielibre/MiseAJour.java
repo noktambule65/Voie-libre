@@ -157,7 +157,11 @@ final class MiseAJour {
         ByteArrayOutputStream b = new ByteArrayOutputStream();
         byte[] t = new byte[8192];
         int n;
-        while ((n = in.read(t)) > 0) b.write(t, 0, n);
+        while ((n = in.read(t)) > 0) {
+            // réponse de GitHub : quelques dizaines de Ko ; au-delà de 5 Mo, anomalie → traitée comme une erreur réseau
+            if (b.size() + n > 5 * 1024 * 1024) { in.close(); throw new java.io.IOException("réponse trop grosse"); }
+            b.write(t, 0, n);
+        }
         in.close();
         return b.toString("UTF-8");
     }
