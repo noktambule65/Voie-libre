@@ -284,6 +284,8 @@ main{padding:10px 10px 40px;max-width:720px;margin:0 auto}
 .l2v{margin-bottom:10px}.l2v .action{margin-top:0}.ligne2 .action{flex:1;margin-top:0}
 .liens{display:flex;justify-content:space-between;margin-top:14px}
 .lien{border:0;background:none;color:var(--soft);font-size:14px;padding:6px 0;text-decoration:underline}
+/* croix de suppression : boutons, pas des liens texte, donc sans soulignement */
+.lien[data-psup],.lien[data-rssup],.lien[data-rvsup]{text-decoration:none}
 .lien.rouge{color:var(--now)}
 </style>
 <style>/* Thème sombre : suit le réglage du téléphone */
