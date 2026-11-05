@@ -2580,13 +2580,21 @@ async function exporterImage(){
         y+=19; corps+=T(M,y,dateL,13,'#55657A');
         y+=22; corps+=T(M,y,`PS ${hm(g.p0)} ${g.gPS}   ·   FS ${hm(g.f0)} ${g.gFS}   ·   ${pad(Math.floor(g.duree/60))}:${pad(g.duree%60)}`,13,'#14243A',700);
         y+=10; corps+=g.svg.replace('<svg ',`<svg x="${M}" y="${y}" `); y+=g.H+8;
-        const L=(x.s.items||[]).slice(0,16);
-        L.forEach(it=>{ y+=16;
-          const lieu=String(it.lieu||'').split('->').map(t=>t.trim()).filter(Boolean).map(nomL).join(' → ');
-          const act=/^(EV|TAXI|BUS|EVLOC)\b/i.test(it.act)?'EV '+libEV(it.act):it.act;
-          corps+=T(M,y,(it.h1||'')+(it.h2?'–'+it.h2:''),12,'#55657A');
-          corps+=T(M+78,y,(act+(lieu?' · '+lieu:'')).slice(0,52),12,'#14243A',it.cond?700:400); });
-        if((x.s.items||[]).length>16){ y+=16; corps+=T(M+78,y,'… et '+((x.s.items||[]).length-16)+' autres',12,'#8A8A8A'); }
+        // liste des tâches : même affichage que dans l'appli (cartes de trains, lignes grises, icônes), copiée avec ses styles
+        if(g.detail){
+          const box=document.createElement('div');
+          box.style.cssText=`position:fixed;left:-10000px;top:0;width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif;background:#fff`;
+          box.innerHTML=detailLignes(x); document.body.appendChild(box);
+          const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+4;
+          const copie=gl.cloneNode(true);
+          const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
+          fige(gl,copie);
+          copie.querySelectorAll('.galV').forEach(e=>e.remove()); copie.querySelectorAll('[href]').forEach(e=>{ e.removeAttribute('href'); e.removeAttribute('target'); e.removeAttribute('rel'); });
+          const ser=new XMLSerializer().serializeToString(copie);
+          box.remove();
+          corps+=`<foreignObject x="${M}" y="${y}" width="${W-2*M}" height="${hb}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif">${ser}</div></foreignObject>`;
+          y+=hb;
+        }
         y+=10; titre=x.code+' · '+dateL;
       });
       nom='voie-libre-journee-'+JOUR+'.png';
