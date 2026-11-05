@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v4
+      # Avant tout : une faute de JavaScript dans la page arrête la construction (sinon l'APK partirait avec)
+      - name: Vérifier le JavaScript de VoieLibre.html
+        run: node .github/verifier-js.js app/src/main/assets/VoieLibre.html
 
       - name: Déchiffrer la clé de signature
         env:

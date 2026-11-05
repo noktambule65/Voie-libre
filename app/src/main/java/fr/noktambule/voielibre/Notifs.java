@@ -1064,7 +1064,7 @@ public class Notifs extends BroadcastReceiver {
                 String grand = depart ? (dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT")
                         : (dans > 0 ? "ARRIVÉ IL Y A " + dans + " MIN" : "ARRIVÉE MAINTENANT");
                 alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + h, t.optString("ou"),
-                        (depart ? "Départ " : "Arrivée ") + h, texte, t.optString("date"), 180000L, 2012);
+                        (depart ? "Départ " : "Arrivée ") + h, texte, t.optString("date"), 180000L);
                 continue;
             }
             montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
@@ -1095,16 +1095,16 @@ public class Notifs extends BroadcastReceiver {
         String grand = dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT";
         alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + t.optString("h"), t.optString("ou"),
                 "Départ " + t.optString("h"), note, t.optString("date"),
-                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()), 2010);
+                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()));
     }
 
     /**
      * Alerte rouge (départ de train ou phrase personnalisée réglée en « écran rouge ») : bandeau persistant jusqu'à OK
-     * si le téléphone est utilisé, écran rouge plein écran s'il est éteint ou verrouillé. code : requêtes code et code + 1,
-     * distinctes pour le départ et pour les phrases, afin qu'une alerte ne modifie pas le bouton OK de l'autre.
+     * si le téléphone est utilisé, écran rouge plein écran s'il est éteint ou verrouillé. Les requêtes (écran et OK)
+     * portent l'identifiant de la notification : deux alertes affichées en même temps gardent chacune leur bouton OK.
      */
     private static void alerteRouge(Context ctx, int id, String grand, String quoi, String train, String trajet,
-                                    String debutTexte, String note, String date, long duree, int code) {
+                                    String debutTexte, String note, String date, long duree) {
         if (!autorisees(ctx)) return;
         canaux(ctx);
         android.widget.RemoteViews petit = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart);
@@ -1124,8 +1124,8 @@ public class Notifs extends BroadcastReceiver {
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
                 .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
-        PendingIntent pEcran = PendingIntent.getActivity(ctx, code, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        PendingIntent pOk = PendingIntent.getBroadcast(ctx, code + 1, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
+        PendingIntent pEcran = PendingIntent.getActivity(ctx, id, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pOk = PendingIntent.getBroadcast(ctx, id, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Action ok = new Notification.Action.Builder(
                 android.graphics.drawable.Icon.createWithResource(ctx, R.drawable.ic_notif), "OK", pOk).build();

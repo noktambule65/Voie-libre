@@ -238,9 +238,20 @@ public class MainActivity extends Activity {
 
     private void ouvrirExterne(Uri u) {
         try {
-            Intent i = "intent".equalsIgnoreCase(u.getScheme())
-                    ? Intent.parseUri(u.toString(), Intent.URI_INTENT_SCHEME)
-                    : new Intent(Intent.ACTION_VIEW, u);
+            Intent i;
+            if ("intent".equalsIgnoreCase(u.getScheme())) {
+                // Lien « intent: » : traité comme un lien de navigateur, jamais comme un ordre interne.
+                // Il ne peut ni viser un écran précis (y compris ceux de Voie libre), ni passer par un sélecteur,
+                // ni donner accès à des fichiers.
+                i = Intent.parseUri(u.toString(), Intent.URI_INTENT_SCHEME);
+                i.addCategory(Intent.CATEGORY_BROWSABLE);
+                i.setComponent(null);
+                i.setSelector(null);
+                i.setFlags(i.getFlags() & ~(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION));
+            } else {
+                i = new Intent(Intent.ACTION_VIEW, u);
+            }
             startActivity(i);
         } catch (Exception e) {
             Toast.makeText(this, "Aucune appli pour ouvrir ce lien", Toast.LENGTH_SHORT).show();
