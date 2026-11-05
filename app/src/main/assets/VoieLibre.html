@@ -544,43 +544,19 @@ function lieuMeteo(nom){
   if(!norm(nom)) return null;
   return LIEUX.find(L=>L.n===String(nom).trim()) || gare(nom);
 }
-function icone(code, jour){
-  if(code===0) return jour?'☀️':'🌙';
-  if(code===1||code===2) return jour?'🌤️':'☁️';
-  if(code===3) return '☁️';
-  if(code===45||code===48) return '🌫️';
-  if(code>=51&&code<=57) return '🌦️';
-  if((code>=61&&code<=67)||(code>=80&&code<=82)) return '🌧️';
-  if((code>=71&&code<=77)||code===85||code===86) return '❄️';
-  if(code>=95) return '⛈️';
-  return '';
-}
-const METEO={}, METEO_EN_COURS={};
-const VARS='temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,is_day';
+function icone(code, jour){ return parent.vlMeteo.icone(code, jour); }   // règle unique (vlMeteo)
+const METEO={};
 function meteoCache(L){
   const c=METEO[L.n]||charger('pl-meteo2-'+L.n,null);
   if(c) METEO[L.n]=c;
   return c;
 }
 async function chargerMeteo(L){
-  const c=meteoCache(L);
-  // gare sans coordonnées dans la liste : position cherchée par son nom (une seule fois)
-  if(L.la==null){ try{ if(parent.vlCoords) await parent.vlCoords(L); }catch(e){} if(L.la==null) return c; }
-  if(c && Date.now()-c.t < 2*3600*1000) return c;
-  if(METEO_EN_COURS[L.n]) return METEO_EN_COURS[L.n];   // même requête partagée entre les lignes d'un même lieu
-  METEO_EN_COURS[L.n]=(async()=>{ try{
-    const url='https://api.open-meteo.com/v1/forecast?latitude='+L.la+'&longitude='+L.lo+
-      '&hourly='+VARS+'&timezone=Europe%2FParis&past_days=1&forecast_days=16';
-    const r=await fetch(url);
-    if(!r.ok) throw new Error(r.status);
-    const h=(await r.json()).hourly;
-    const n={t:Date.now(), time:h.time, T:h.temperature_2m, R:h.apparent_temperature, P:h.precipitation_probability,
-      MM:h.precipitation, W:h.weather_code, V:h.wind_speed_10m, G:h.wind_gusts_10m, D:h.is_day};
-    METEO[L.n]=n; sauver('pl-meteo2-'+L.n, n);
-    return n;
-  }catch(e){ return c; }
-  finally{ METEO_EN_COURS[L.n]=null; } })();
-  return METEO_EN_COURS[L.n];
+  // téléchargement commun (vlMeteo) ; la page garde en mémoire la prévision la plus récente
+  await parent.vlMeteo.charger(L);
+  const s=charger('pl-meteo2-'+L.n,null);
+  if(s && (!METEO[L.n] || s.t>METEO[L.n].t)) METEO[L.n]=s;
+  return meteoCache(L);
 }
 // Heure la plus proche d'un horaire (13:26 → 13h, 13:40 → 14h, 23:45 → 0h le lendemain) → indice dans les prévisions
 function indiceHeure(c, jour, h){
@@ -2070,38 +2046,10 @@ function trajet(l){ return l.replace(/\s*->\s*/,' → '); }
 // Gares : tableau des codes Graou de toute la France (fourni par l'accueil)
 const norm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
 function lieuMeteo(nom){ if(!norm(nom)) return null; return (parent!==window && parent.vlGare) ? parent.vlGare(nom) : null; }
-const METEO_DECODEE={};
-function meteoCache(L){ let s=null; try{ s=localStorage.getItem('pl-meteo2-'+L.n); }catch(e){} if(!s) return null;
-  const m=METEO_DECODEE[L.n]; if(m && m.s===s) return m.v;
-  let v=null; try{ v=JSON.parse(s); }catch(e){} METEO_DECODEE[L.n]={s,v}; return v; }
-const METEO_EN_COURS={};
-function chargerMeteo(L){
-  const c=meteoCache(L);
-  if(c && Date.now()-c.t<2*3600*1000) return Promise.resolve(false);
-  if(METEO_EN_COURS[L.n]) return METEO_EN_COURS[L.n];
-  return METEO_EN_COURS[L.n]=(async()=>{ try{
-    // gare sans coordonnées dans la liste : position cherchée par son nom (une seule fois)
-    if(L.la==null){ try{ if(parent.vlCoords) await parent.vlCoords(L); }catch(e){} if(L.la==null) return false; }
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+L.la+'&longitude='+L.lo+
-      '&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,is_day&timezone=Europe%2FParis&past_days=1&forecast_days=16');
-    if(!r.ok) return false;
-    const h=(await r.json()).hourly;
-    localStorage.setItem('pl-meteo2-'+L.n, JSON.stringify({t:Date.now(), time:h.time, T:h.temperature_2m, R:h.apparent_temperature, P:h.precipitation_probability,
-      MM:h.precipitation, W:h.weather_code, V:h.wind_speed_10m, G:h.wind_gusts_10m, D:h.is_day}));
-    return true;
-  }catch(e){ return false; } finally{ METEO_EN_COURS[L.n]=null; } })();
-}
-function picto(code,jour){
-  if(code===0) return jour?'☀️':'🌙';
-  if(code===1||code===2) return jour?'🌤️':'☁️';
-  if(code===3) return '☁️';
-  if(code===45||code===48) return '🌫️';
-  if(code>=51&&code<=57) return '🌦️';
-  if((code>=61&&code<=67)||(code>=80&&code<=82)) return '🌧️';
-  if((code>=71&&code<=77)||code===85||code===86) return '❄️';
-  if(code>=95) return '⛈️';
-  return '';
-}
+// mémoire et téléchargement communs (vlMeteo)
+function meteoCache(L){ return parent.vlMeteo.cache(L.n); }
+function chargerMeteo(L){ return parent.vlMeteo.charger(L); }
+function picto(code,jour){ return parent.vlMeteo.icone(code,jour); }   // règle unique (vlMeteo)
 // Picto météo touchable : ouvre la Météo du jour, sur ce lieu et cette heure (zone tactile plus large que le dessin)
 function pictoTouchable(svgTexte, lieu, m, x, y, larg, ancre){
   const L=lieuMeteo(lieu); if(!L) return svgTexte;
@@ -2836,7 +2784,7 @@ function tachesSeg(x, j){
 /* ---- Neige prévue sur les lieux de la journée (codes météo WMO 71-77, 85-86 d'Open-Meteo) ----
    Chaque lieu est retenu pendant le temps où on y est : de la PS au départ du premier train, à l'arrivée,
    pendant une coupure ou une tâche sur place, jusqu'à la FS. */
-const estNeige=c=>(c>=71&&c<=77)||c===85||c===86;
+const estNeige=c=>parent.vlMeteo.estNeige(c);
 function neigeSeg(x, j){
   const p0=min(x.s.ps&&x.s.ps.h); if(p0===null) return null;
   const rel=h=>{ let v=min(h); if(v===null) return null; if(v<p0-180) v+=1440; return v; };
@@ -3066,6 +3014,49 @@ window.vlPlanning=(function(){
   return {analyser, indexer, estEV};
 })();
 /* PLANNING-PARTAGE-FIN */
+/* METEO-PARTAGEE-DEBUT */
+// Prévisions Open-Meteo : téléchargement, mémoire et pictogrammes communs à l'accueil, à la page Météo et à Ma journée.
+// Une seule demande à la fois par lieu, même si plusieurs pages la réclament ; prévision gardée 2 h (clé pl-meteo2-<lieu>).
+window.vlMeteo=(function(){
+  const VARS='temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,is_day';
+  const DECODE={}, EN_COURS={};
+  // dernière prévision enregistrée pour un lieu (décodée une seule fois tant qu'elle ne change pas)
+  function cache(n){ let s=null; try{ s=localStorage.getItem('pl-meteo2-'+n); }catch(e){} if(!s) return null;
+    const m=DECODE[n]; if(m && m.s===s) return m.v;
+    let v=null; try{ v=JSON.parse(s); }catch(e){} DECODE[n]={s,v}; return v; }
+  // télécharge si la prévision a plus de 2 h ; renvoie true si une nouvelle prévision a été enregistrée
+  function charger(L){
+    if(!L) return Promise.resolve(false);
+    const c=cache(L.n);
+    if(c && Date.now()-c.t<2*3600*1000) return Promise.resolve(false);
+    if(EN_COURS[L.n]) return EN_COURS[L.n];
+    return EN_COURS[L.n]=(async()=>{ try{
+      // gare sans coordonnées dans la liste : position cherchée par son nom (une seule fois)
+      if(L.la==null){ try{ if(window.vlCoords) await window.vlCoords(L); }catch(e){} if(L.la==null) return false; }
+      const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+L.la+'&longitude='+L.lo+
+        '&hourly='+VARS+'&timezone=Europe%2FParis&past_days=1&forecast_days=16');
+      if(!r.ok) return false;
+      const h=(await r.json()).hourly;
+      localStorage.setItem('pl-meteo2-'+L.n, JSON.stringify({t:Date.now(), time:h.time, T:h.temperature_2m, R:h.apparent_temperature, P:h.precipitation_probability,
+        MM:h.precipitation, W:h.weather_code, V:h.wind_speed_10m, G:h.wind_gusts_10m, D:h.is_day}));
+      return true;
+    }catch(e){ return false; } finally{ EN_COURS[L.n]=null; } })();
+  }
+  function icone(code, jour){
+    if(code===0) return jour?'☀️':'🌙';
+    if(code===1||code===2) return jour?'🌤️':'☁️';
+    if(code===3) return '☁️';
+    if(code===45||code===48) return '🌫️';
+    if(code>=51&&code<=57) return '🌦️';
+    if((code>=61&&code<=67)||(code>=80&&code<=82)) return '🌧️';
+    if((code>=71&&code<=77)||code===85||code===86) return '❄️';
+    if(code>=95) return '⛈️';
+    return '';
+  }
+  const estNeige=c=>(c>=71&&c<=77)||c===85||c===86;
+  return {cache, charger, icone, estNeige};
+})();
+/* METEO-PARTAGEE-FIN */
 // Erreur attrapée à un endroit important (rappels, widget, synchro…) : notée dans le journal de diagnostic
 // (Paramètres › Aide) au lieu de disparaître en silence. Le comportement de l'appli ne change pas.
 // Les pages Planning et Journée l'appellent par window.top.vlNoteErreur. Avant l'ouverture du journal, mise en attente.
@@ -3260,26 +3251,10 @@ function ilYa(t){ const m=Math.round((Date.now()-t)/60000);
   return 'le '+new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short'}).format(new Date(t)); }
 
 /* météo : même mémoire que la rubrique Météo ; chargée ici si besoin */
-function picto(c,jour){ if(c===0) return jour?'☀️':'🌙'; if(c===1||c===2) return jour?'🌤️':'☁️'; if(c===3) return '☁️';
-  if(c===45||c===48) return '🌫️'; if(c>=51&&c<=57) return '🌦️'; if((c>=61&&c<=67)||(c>=80&&c<=82)) return '🌧️';
-  if((c>=71&&c<=77)||c===85||c===86) return '❄️'; if(c>=95) return '⛈️'; return ''; }
-const estNeige=c=>(c>=71&&c<=77)||c===85||c===86;
-const meteoCache=n=>lireObj('pl-meteo2-'+n);
-const EN_COURS={};
-async function chargerMeteoG(g){
-  if(!g) return false; const c=meteoCache(g.n);
-  if(c && Date.now()-c.t<2*3600e3) return false;
-  if(EN_COURS[g.n]) return false; EN_COURS[g.n]=1;
-  try{
-    if(g.la==null) await window.vlCoords(g); if(g.la==null) return false;
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+g.la+'&longitude='+g.lo+
-      '&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,is_day&timezone=Europe%2FParis&past_days=1&forecast_days=16');
-    if(!r.ok) return false; const h=(await r.json()).hourly;
-    localStorage.setItem('pl-meteo2-'+g.n, JSON.stringify({t:Date.now(), time:h.time, T:h.temperature_2m, R:h.apparent_temperature, P:h.precipitation_probability,
-      MM:h.precipitation, W:h.weather_code, V:h.wind_speed_10m, G:h.wind_gusts_10m, D:h.is_day}));
-    return true;
-  }catch(e){ return false; } finally{ EN_COURS[g.n]=0; }
-}
+function picto(c,jour){ return window.vlMeteo.icone(c,jour); }
+const estNeige=c=>window.vlMeteo.estNeige(c);
+const meteoCache=n=>window.vlMeteo.cache(n);
+function chargerMeteoG(g){ return window.vlMeteo.charger(g); }
 function meteoA(n,d){ const c=meteoCache(n); if(!c||!c.time) return null;
   const t=new Date(d.getTime()+30*60000), i=c.time.indexOf(cleJ(t)+'T'+p2(t.getHours())+':00');
   if(i<0||c.T[i]==null) return null; return {ic:picto(c.W[i],c.D[i]===1), T:Math.round(c.T[i]), W:c.W[i]}; }
