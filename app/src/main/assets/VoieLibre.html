@@ -1851,6 +1851,7 @@ main{padding:10px 10px 30px;max-width:900px;margin:0 auto}
 .onglets{position:sticky;top:62px;z-index:2;display:flex;gap:6px;padding:8px 10px;background:var(--fond);max-width:900px;margin:0 auto}
 .onglets button{flex:1;border:1.5px solid var(--trait);background:#fff;border-radius:10px;padding:8px;font:inherit;font-size:15px;font-weight:600;color:var(--doux);cursor:pointer}
 .onglets button.on{background:var(--tete);border-color:var(--tete);color:#fff}
+.onglets #partImg{flex:0 0 52px;padding:8px 0}.onglets #partImg:disabled{opacity:.6}
 .carte.m{padding:6px 4px 8px}
 .mlib{text-align:center;color:#8A8A8A;font-size:12.5px;padding:2px 8px 6px}
 .carte.m{overflow:visible}
@@ -1943,7 +1944,7 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
   <div class="jour" id="jour"><b></b><small></small></div>
   <button id="suiv" aria-label="Jour suivant">›</button>
 </header>
-<div class="onglets"><button id="oJour" class="on">Journée</button><button id="oMois">Semaines</button></div>
+<div class="onglets"><button id="oJour" class="on">Journée</button><button id="oMois">Semaines</button><button id="partImg" aria-label="Partager en image" title="Partager en image">📤</button></div>
 <main id="vue"></main>
 <script>
 (function(){
@@ -2412,6 +2413,7 @@ function semainesQuiTiennent(v,larg){
 // Vue semaines en défilement continu : tout le planning, de la première à la dernière semaine connue ;
 // défiler vers le bas montre la suite, vers le haut le passé. Le titre suit les semaines visibles.
 let GRILLE=null;   // {debut, nb, ch, haut} de la grille affichée
+let VIS=4;        // nombre de semaines visibles à l'écran (partage en image)
 // Semaines vides ajoutées avant / après le planning connu ; agrandies quand on approche d'un bord (sans fin, comme avant)
 let EXT_AV=4, EXT_AP=26;
 function rendreMois(){
@@ -2448,7 +2450,7 @@ function titreVisible(){
   const y=(window.scrollY||0)+GRILLE.haut-hautGrille();
   const i=Math.max(0,Math.min(GRILLE.nb-1,Math.round(y/GRILLE.ch)));
   const vis=Math.max(1,Math.min(GRILLE.nb-i,Math.floor(((window.innerHeight||640)-GRILLE.haut)/GRILLE.ch)));
-  MOIS=new Date(GRILLE.debut.getFullYear(),GRILLE.debut.getMonth(),GRILLE.debut.getDate()+i*7);
+  MOIS=new Date(GRILLE.debut.getFullYear(),GRILLE.debut.getMonth(),GRILLE.debut.getDate()+i*7); VIS=vis;
   $('jour').querySelector('b').textContent=titreSemaines(MOIS,vis);
   $('jour').querySelector('small').textContent=vis+' semaines';
 }
@@ -2551,6 +2553,60 @@ function banniereHeure(liste){
   return t?`<div class="chgHeure">${esc(t)}</div>`:'';
 }
 function brancherRetour(){ const b=$('revenir'); if(b) b.onclick=()=>{ JOUR=DEFAUT; rendre(); window.scrollTo(0,0); }; }
+/* ---- Partage en image : toujours en clair (le SVG est dessiné sur fond blanc, hors du thème de l'écran) ---- */
+async function exporterImage(){
+  const bt=$('partImg'); if(!bt || bt.disabled) return;
+  const ancien=bt.textContent, W=420, M=14;
+  const T=(x,y,txt,sz,fill,wt,anc)=>`<text x="${x}" y="${y}" font-size="${sz}" fill="${fill}"${wt?` font-weight="${wt}"`:''}${anc?` text-anchor="${anc}"`:''}>${esc(txt)}</text>`;
+  const flash=t=>{ bt.textContent=t; setTimeout(()=>{ bt.textContent=ancien; bt.disabled=false; },1800); };
+  bt.disabled=true; bt.textContent='…';
+  try{
+    let corps='', y=0, nom='', titre='';
+    if(MODE==='mois'){
+      const nb=Math.max(2,Math.min(8,VIS||4)), g=moisSVG(MOIS,W-2*M,nb,false);
+      titre='Planning · '+titreSemaines(MOIS,nb);
+      corps+=T(M,30,titre,18,'#14243A',700); y=44;
+      corps+=g.svg.replace('<svg ',`<svg x="${M}" y="${y}" `); y+=g.H+8;
+      nom='voie-libre-planning-'+cle(MOIS)+'.png';
+    } else {
+      const xs=(INDEX[JOUR]||[]).filter(e=>e.s);
+      if(!xs.length){ flash('—'); return; }
+      const dateL=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(lire(JOUR));
+      const nomL=l=>{ const L=lieuMeteo(l); return L?L.n:nomGare(l); };
+      y=8;
+      xs.forEach(x=>{
+        const g=graphique(x,W-2*M,true); if(!g.svg) return;
+        y+=24; corps+=T(M,y,x.code,22,'#14243A',700);
+        y+=19; corps+=T(M,y,dateL,13,'#55657A');
+        y+=22; corps+=T(M,y,`PS ${hm(g.p0)} ${g.gPS}   ·   FS ${hm(g.f0)} ${g.gFS}   ·   ${pad(Math.floor(g.duree/60))}:${pad(g.duree%60)}`,13,'#14243A',700);
+        y+=10; corps+=g.svg.replace('<svg ',`<svg x="${M}" y="${y}" `); y+=g.H+8;
+        const L=(x.s.items||[]).slice(0,16);
+        L.forEach(it=>{ y+=16;
+          const lieu=String(it.lieu||'').split('->').map(t=>t.trim()).filter(Boolean).map(nomL).join(' → ');
+          const act=/^(EV|TAXI|BUS|EVLOC)\b/i.test(it.act)?'EV '+libEV(it.act):it.act;
+          corps+=T(M,y,(it.h1||'')+(it.h2?'–'+it.h2:''),12,'#55657A');
+          corps+=T(M+78,y,(act+(lieu?' · '+lieu:'')).slice(0,52),12,'#14243A',it.cond?700:400); });
+        if((x.s.items||[]).length>16){ y+=16; corps+=T(M+78,y,'… et '+((x.s.items||[]).length-16)+' autres',12,'#8A8A8A'); }
+        y+=10; titre=x.code+' · '+dateL;
+      });
+      nom='voie-libre-journee-'+JOUR+'.png';
+    }
+    y+=16; corps+=T(M,y,'Voie libre',10,'#8A8A8A'); y+=14;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" font-family="'Open Sans',Roboto,Arial,sans-serif"><rect width="${W}" height="${y}" fill="#fff"/>${corps}</svg>`;
+    const b64=await svgVersPng(svg,W,y,3);
+    if(!b64){ flash('✕'); return; }
+    const A=window.BoulotAndroid||(parent!==window&&parent.BoulotAndroid);
+    if(A && A.partagerFichier){ A.partagerFichier(nom,'image/png',b64,titre); }
+    else {
+      const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+      const f=new File([u],nom,{type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[f]})) await navigator.share({files:[f],title:titre});
+      else { const a=document.createElement('a'); a.href=URL.createObjectURL(f); a.download=nom; document.body.appendChild(a); a.click(); a.remove(); }
+    }
+    bt.textContent=ancien; bt.disabled=false;
+  }catch(e){ flash('✕'); }
+}
+$('partImg').onclick=exporterImage;
 const WMO_TXT={0:'Ciel dégagé',1:'Plutôt dégagé',2:'Partiellement nuageux',3:'Couvert',45:'Brouillard',48:'Brouillard givrant',51:'Bruine faible',53:'Bruine',55:'Bruine forte',56:'Bruine verglaçante',57:'Bruine verglaçante forte',61:'Pluie faible',63:'Pluie',65:'Pluie forte',66:'Pluie verglaçante',67:'Pluie verglaçante forte',71:'Neige faible',73:'Neige',75:'Neige forte',77:'Grains de neige',80:'Averses faibles',81:'Averses',82:'Averses violentes',85:'Averses de neige',86:'Fortes averses de neige',95:'Orage',96:'Orage avec grêle',99:'Orage violent avec grêle'};
 function cadreMeteo(cible){
   const [k,h,lieu]=cible.split('|'), L=lieuMeteo(lieu), c=L?meteoCache(L):null;
