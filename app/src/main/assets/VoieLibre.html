@@ -2245,7 +2245,7 @@ function lieuxDuJour(x){
 }
 
 function reel(a,b){ const [y,m,d]=jg().split('-').map(Number); return Math.round((new Date(y,m-1,d,0,b)-new Date(y,m-1,d,0,a))/60000); }
-function graphique(x, largeurDispo, sansMaintenant){
+function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   // Reproduction du graphique de journée de Graou
   const s=x.s, p0=min(s.ps&&s.ps.h); if(p0===null) return {svg:''};
   const rel=h=>{ let m=min(h); if(m===null) return null; if(m<p0-180) m+=1440; return m; };
@@ -2269,7 +2269,8 @@ function graphique(x, largeurDispo, sansMaintenant){
     it.b=Math.min(it.a+45, f0, ...suiv); it.g=it.b>it.a?'repas':'point'; } });
   const t0=Math.floor(p0/60)*60, t1=Math.max(t0+60,Math.ceil(f0/60)*60), heures=(t1-t0)/60;
   const G=20, D=20, pxh=(largeurDispo-G-D)/heures, W=Math.round(largeurDispo);
-  const X=m=>G+(m-t0)/60*pxh, Y=66, H=140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
+  // sansMeteo (image partagée) : ni pictos ni températures, graphique un peu moins haut
+  const X=m=>G+(m-t0)/60*pxh, Y=66, H=sansMeteo?130:140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
   const mn=m=>pad(((m%60)+60)%60),
     // gare écrite en bas du graphique : toujours son code court (« MBC »), même quand Graou donne le nom complet
     // (« Marseille-Blancarde », souvent les journées sans train) ; gare introuvable : premier mot, comme avant
@@ -2362,7 +2363,7 @@ function graphique(x, largeurDispo, sansMaintenant){
     const arr=code(mob[k].lieu.split('->')[1]||mob[k].lieu), xa=X(mob[k].b), xb=X(mob[k+1].a);
     if(xb-xa>18) o.push(`<text x="${((xa+xb)/2).toFixed(1)}" y="${Y+33}" font-size="8.5" fill="${ENC}" text-anchor="middle">${esc(arr)}</text>`);
     // météo pendant la présence sur place (heure du milieu de l'attente)
-    const mt=meteoA(arr,(mob[k].b+mob[k+1].a)/2);
+    const mt=sansMeteo?null:meteoA(arr,(mob[k].b+mob[k+1].a)/2);
     if(mt && xb-xa>24) o.push(pictoTouchable(`<text x="${((xa+xb)/2).toFixed(1)}" y="${Y+47}" font-size="12.5" fill="${ENC}" text-anchor="middle">${mt.ic}${mt.T}°</text>`,
       arr,(mob[k].b+mob[k+1].a)/2,(xa+xb)/2,Y+47,40,'middle'));
   }
@@ -2402,7 +2403,7 @@ function graphique(x, largeurDispo, sansMaintenant){
   o.push(`<text x="${(X(t0)-1).toFixed(1)}" y="${H-12}" font-size="19" fill="${ENC}">${esc(gPS)}</text>`);
   o.push(`<text x="${(X(t1)+1).toFixed(1)}" y="${H-12}" font-size="19" fill="${ENC}" text-anchor="end">${esc(gFS)}</text>`);
   // météo à la prise et à la fin de service, à côté des grands codes de gare
-  const mPS=meteoA((s.ps&&s.ps.lieu)||gPS,p0), mFS=meteoA((s.fs&&s.fs.lieu)||gFS,f0);
+  const mPS=sansMeteo?null:meteoA((s.ps&&s.ps.lieu)||gPS,p0), mFS=sansMeteo?null:meteoA((s.fs&&s.fs.lieu)||gFS,f0);
   if(mPS) o.push(pictoTouchable(`<text x="${(X(t0)+gPS.length*12.5+5).toFixed(1)}" y="${H-13}" font-size="14.5" fill="${ENC}">${mPS.ic}${mPS.T}°</text>`,
     (s.ps&&s.ps.lieu)||gPS,p0,X(t0)+gPS.length*12.5+5,H-13,46,'start'));
   if(mFS) o.push(pictoTouchable(`<text x="${(X(t1)-gFS.length*12.5-5).toFixed(1)}" y="${H-13}" font-size="14.5" fill="${ENC}" text-anchor="end">${mFS.ic}${mFS.T}°</text>`,
@@ -2804,7 +2805,7 @@ async function exporterImage(proche){
         nom='voie-libre-journee-'+JOUR+'.png';
       } else
       xs.forEach(x=>{
-        const g=graphique(x,W-2*M,true); if(!g.svg) return;
+        const g=graphique(x,W-2*M,true,true); if(!g.svg) return;   // image partagée : sans la météo
         y+=24; corps+=T(M,y,x.code,22,'#14243A',700);
         y+=19; corps+=T(M,y,dateL,13,'#55657A');
         y+=22; corps+=T(M,y,`PS ${hm(g.p0)} ${g.gPS}   ·   FS ${hm(g.f0)} ${g.gFS}   ·   ${pad(Math.floor(g.duree/60))}:${pad(g.duree%60)}`,13,'#14243A',700);
