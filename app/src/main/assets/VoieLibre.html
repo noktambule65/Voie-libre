@@ -2571,10 +2571,10 @@ function moisSVG(debut,W,nbSem,sansEntete,proche){
         if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
       } else {
         let t=String(e.ev.titre||'').replace(/^•\s*/,''), fs=t.length>6?9.5:11.5;
-        // pour un proche : « Repos » (RP, RU, RQ… et AH), « Congé » (CA, ½CA…) ; les autres codes restent tels quels
+        // pour un proche : « Repos » (RP, RU, RQ…), « Congé » (CA, ½CA… et AH) ; les autres codes restent tels quels
         let coulT=coul;
-        if(proche && (e.cat==='rp' || (e.cat==='abs' && /^AH$/i.test(t.trim())))){ t='Repos'; fs=11.5; coulT=COUL_CAT.rp; }
-        else if(proche && e.cat==='ca'){ t='Congé'; fs=11.5; coulT=COUL_CAT.ca; }
+        if(proche && e.cat==='rp'){ t='Repos'; fs=11.5; coulT=COUL_CAT.rp; }
+        else if(proche && (e.cat==='ca' || (e.cat==='abs' && /^AH$/i.test(t.trim())))){ t='Congé'; fs=11.5; coulT=COUL_CAT.ca; }
         if(proche && e.cat==='d'){   // « d » : journée de travail dont les horaires ne sont pas encore connus
           o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.5).toFixed(1)}" font-size="11.5" font-weight="700" fill="${COUL_CAT.d}" text-anchor="middle">Travail</text>`);
           o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.7).toFixed(1)}" font-size="7.5" fill="#666" text-anchor="middle">horaires à venir</text>`);
