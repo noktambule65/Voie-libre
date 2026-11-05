@@ -1243,14 +1243,17 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       return ok?'':'<div class="sousOpt"><div class="noteAuto">⚠️ <b>Bandeau rouge non autorisé</b> : le rappel de départ disparaît après quelques secondes si tu utilises le téléphone. <button class="btnAuto" data-pleinecran="1">Autoriser</button></div></div>'; };
     // Phrase ajoutée au rappel de départ, seulement pour les trains partant d'une gare donnée (particularité locale)
     const noteLigne=(n,i,k)=>`<div class="noteGare" data-liste="${k}" data-i="${i}" data-gare="${esc(n.gare||'')}">
-        <span>${k==='notes'?'Au départ de':'À l’arrivée à'}</span> <button class="action clair bgare" data-ngare="${k}:${i}">${esc(n.gare||'choisir la gare')}</button>
+        <span>${k==='notes'?'Au départ de':'À l’arrivée à'}</span> <button class="action clair bgare" data-ngare="${k}:${i}">${esc(n.gare||'toutes les gares')}</button>
+        <input data-nd="${i}" value="${esc(n.debut||'')}" placeholder="Trains commençant par (ex. 87, 14) : vide = tous" inputmode="text" autocomplete="off">
         <input data-nt="${i}" value="${esc(n.texte||'')}" placeholder="${k==='notes'?'Phrase au départ':'Phrase à l’arrivée'}"><button class="lien" data-nsup="${k}:${i}" aria-label="Supprimer">✕</button></div>`;
     const notesHtml=tr=>`<div class="sousOpt notesGare"><p class="petit">Une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.)</p>
         ${(tr.notes||[]).map((n,i)=>noteLigne(n,i,'notes')).join('')}
         <button class="action clair" data-najout="notes">+ Phrase au départ d’une gare</button>
+        <button class="action clair" data-najoutn="notes">+ Phrase au départ selon le numéro du train</button>
         <label class="coche sansCase">Phrase au départ : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteMin" value="${tr.noteMin}"> min avant le départ</label>
         ${(tr.notesArr||[]).map((n,i)=>noteLigne(n,i,'notesArr')).join('')}
         <button class="action clair" data-najout="notesArr">+ Phrase à l’arrivée dans une gare</button>
+        <button class="action clair" data-najoutn="notesArr">+ Phrase à l’arrivée selon le numéro du train</button>
         <label class="coche sansCase">Phrase à l’arrivée : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteArrMin" value="${tr.noteArrMin}"> min après l’arrivée <small>0 = à l’heure d’arrivée prévue</small></label></div>`;
     const changerT=()=>{ const t=lireT(), c=$('nTachesCorps');
       c.querySelectorAll('[data-on]').forEach(i=>t[i.dataset.on].on=i.checked);
@@ -1259,7 +1262,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const h=c.querySelector('[data-hors]'); if(h) t.rs.horsTrain=h.checked;
       const av=c.querySelector('[data-avion]'); if(av) t.train.horsAvion=av.checked;
       const pl=c.querySelector('[data-plein]'); if(pl) t.train.plein=pl.checked;
-      ['notes','notesArr'].forEach(k=>{ t.train[k]=[...c.querySelectorAll('.noteGare[data-liste="'+k+'"]')].map(d=>({gare:d.dataset.gare||'', texte:d.querySelector('[data-nt]').value.trim()})).filter(n=>n.gare); });
+      ['notes','notesArr'].forEach(k=>{ t.train[k]=[...c.querySelectorAll('.noteGare[data-liste="'+k+'"]')].map(d=>({gare:d.dataset.gare||'', debut:d.querySelector('[data-nd]').value.trim(), texte:d.querySelector('[data-nt]').value.trim()})).filter(n=>n.gare||n.debut||n.texte); });
       c.querySelectorAll('[data-nmin]').forEach(i=>{ const k=i.dataset.nmin; t.train[k]=mn(i.value,t.train[k]); i.value=t.train[k]; });
       return t; };
     const changer=()=>{ const o={modif:$('nModif').checked, dec:$('nDec').checked, heure:+$('nHeure').value||18,
@@ -1278,6 +1281,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     $('nTachesCorps').addEventListener('click',e=>{
       if(e.target.closest('[data-pleinecran]')){ try{ AND.reglerPleinEcran(); }catch(err){} return; }
       const enregT=t=>{ const o=charger('bo-notif',{})||{}; o.taches=t; sauver('bo-notif',o); dessinerT(); changer(); };
+      const ajN=e.target.closest('[data-najoutn]');
+      if(ajN){ const k=ajN.dataset.najoutn==='notesArr'?'notesArr':'notes'; const t=changerT(); if(!t.train[k]) t.train[k]=[]; t.train[k].push({gare:'', debut:'', texte:''}); enregT(t); return; }
       const aj=e.target.closest('[data-najout]'), sup=e.target.closest('[data-nsup]'), ng=e.target.closest('[data-ngare]');
       if(aj||ng){ const [k0,i0]=ng?ng.dataset.ngare.split(':'):[aj.dataset.najout]; const k=k0==='notesArr'?'notesArr':'notes';
         choisirGare(k==='notes'?'Gare de départ du train':'Gare d’arrivée du train').then(g=>{ if(!g) return; const t=changerT();

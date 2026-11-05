@@ -930,15 +930,29 @@ public class Notifs extends BroadcastReceiver {
     }
 
     /** Phrases de Paramètres pour cette gare (liste « notes » au départ, « notesArr » à l'arrivée), ou chaîne vide. */
-    private static String phrase(Context ctx, String liste, String gare) {
+    private static String phrase(Context ctx, String liste, String gare, String train) {
         JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
         JSONArray l = rt == null ? null : rt.optJSONArray(liste);
         List<String> r = new ArrayList<>();
         for (int k = 0; l != null && k < l.length(); k++) {
             JSONObject n = l.optJSONObject(k);
-            if (n != null && n.optString("gare").equalsIgnoreCase(gare) && !n.optString("texte").trim().isEmpty()) r.add(n.optString("texte").trim());
+            if (n == null || n.optString("texte").trim().isEmpty()) continue;
+            String g = n.optString("gare").trim();
+            if (!g.isEmpty() && !g.equalsIgnoreCase(gare)) continue;       // gare vide : toutes les gares
+            if (!numeroCommence(train, n.optString("debut"))) continue;     // « commence par » vide : tous les trains
+            r.add(n.optString("texte").trim());
         }
         return String.join(" · ", r);
+    }
+
+    /** Le numéro du train commence-t-il par l'un des débuts indiqués (séparés par virgule, point-virgule ou espace) ? Vide : oui. */
+    private static boolean numeroCommence(String train, String debuts) {
+        if (debuts == null || debuts.trim().isEmpty()) return true;
+        String quoi = train == null ? "" : train.trim().toUpperCase(Locale.FRANCE);
+        String chiffres = quoi.replaceAll("^\\D+", "");
+        for (String d : debuts.trim().toUpperCase(Locale.FRANCE).split("[,;\\s]+"))
+            if (!d.isEmpty() && (quoi.startsWith(d) || chiffres.startsWith(d))) return true;
+        return false;
     }
 
     /** Rappels des phrases : {instant, 1 = départ / 0 = arrivée, indice de la tâche}, triés. */
@@ -952,8 +966,8 @@ public class Notifs extends BroadcastReceiver {
         for (int k = 0; k < taches.length(); k++) {
             JSONObject t = taches.optJSONObject(k);
             if (t == null || !"train".equals(t.optString("type")) || t.optLong("t") <= 0) continue;
-            if (!phrase(ctx, "notes", t.optString("lieu")).isEmpty()) l.add(new long[]{t.optLong("t") - avDep, 1, k});
-            if (t.optLong("fin") > 0 && !phrase(ctx, "notesArr", t.optString("arr")).isEmpty())
+            if (!phrase(ctx, "notes", t.optString("lieu"), t.optString("quoi")).isEmpty()) l.add(new long[]{t.optLong("t") - avDep, 1, k});
+            if (t.optLong("fin") > 0 && !phrase(ctx, "notesArr", t.optString("arr"), t.optString("quoi")).isEmpty())
                 l.add(new long[]{t.optLong("fin") + avArr, 0, k});
         }
         java.util.Collections.sort(l, (x, y) -> Long.compare(x[0], y[0]));
@@ -995,7 +1009,7 @@ public class Notifs extends BroadcastReceiver {
             // départ : même choix que le rappel de départ (pas de notification en mode avion) ; à l'arrivée, toujours (c'est en conduite)
             if (depart && avion && (rt == null || rt.optBoolean("horsAvion", true))) continue;
             String gare = depart ? t.optString("lieu") : t.optString("arr");
-            String texte = phrase(ctx, depart ? "notes" : "notesArr", gare);
+            String texte = phrase(ctx, depart ? "notes" : "notesArr", gare, t.optString("quoi"));
             long cible = depart ? t.optLong("t") : t.optLong("fin");
             long dans = Math.max(0, Math.round((depart ? cible - now : now - cible) / 60000.0));
             String h = depart ? t.optString("h") : t.optString("hFin");
