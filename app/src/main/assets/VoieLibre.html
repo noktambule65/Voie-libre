@@ -1851,7 +1851,7 @@ main{padding:10px 10px 30px;max-width:900px;margin:0 auto}
 .onglets{position:sticky;top:62px;z-index:2;display:flex;gap:6px;padding:8px 10px;background:var(--fond);max-width:900px;margin:0 auto}
 .onglets button{flex:1;border:1.5px solid var(--trait);background:#fff;border-radius:10px;padding:8px;font:inherit;font-size:15px;font-weight:600;color:var(--doux);cursor:pointer}
 .onglets button.on{background:var(--tete);border-color:var(--tete);color:#fff}
-.onglets #partImg{flex:0 0 52px;padding:8px 0}.onglets #partImg:disabled{opacity:.6}
+.onglets #partImg{flex:0 0 52px;padding:0;display:flex;align-items:center;justify-content:center}.onglets #partImg svg{display:block}.onglets #partImg:disabled{opacity:.55}
 .carte.m{padding:6px 4px 8px}
 .mlib{text-align:center;color:#8A8A8A;font-size:12.5px;padding:2px 8px 6px}
 .carte.m{overflow:visible}
@@ -1944,7 +1944,7 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
   <div class="jour" id="jour"><b></b><small></small></div>
   <button id="suiv" aria-label="Jour suivant">›</button>
 </header>
-<div class="onglets"><button id="oJour" class="on">Journée</button><button id="oMois">Semaines</button><button id="partImg" aria-label="Partager en image" title="Partager en image">📤</button></div>
+<div class="onglets"><button id="oJour" class="on">Journée</button><button id="oMois">Semaines</button><button id="partImg" aria-label="Partager en image" title="Partager en image"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg></button></div>
 <main id="vue"></main>
 <script>
 (function(){
@@ -2556,10 +2556,10 @@ function brancherRetour(){ const b=$('revenir'); if(b) b.onclick=()=>{ JOUR=DEFA
 /* ---- Partage en image : toujours en clair (le SVG est dessiné sur fond blanc, hors du thème de l'écran) ---- */
 async function exporterImage(){
   const bt=$('partImg'); if(!bt || bt.disabled) return;
-  const ancien=bt.textContent, W=420, M=14;
+  const ancien=bt.innerHTML, W=420, M=14;
   const T=(x,y,txt,sz,fill,wt,anc)=>`<text x="${x}" y="${y}" font-size="${sz}" fill="${fill}"${wt?` font-weight="${wt}"`:''}${anc?` text-anchor="${anc}"`:''}>${esc(txt)}</text>`;
-  const flash=t=>{ bt.textContent=t; setTimeout(()=>{ bt.textContent=ancien; bt.disabled=false; },1800); };
-  bt.disabled=true; bt.textContent='…';
+  const flash=t=>{ bt.textContent=t; setTimeout(()=>{ bt.innerHTML=ancien; bt.disabled=false; },1800); };
+  bt.disabled=true;
   try{
     let corps='', y=0, nom='', titre='';
     if(MODE==='mois'){
@@ -2611,7 +2611,7 @@ async function exporterImage(){
       if(navigator.canShare && navigator.canShare({files:[f]})) await navigator.share({files:[f],title:titre});
       else { const a=document.createElement('a'); a.href=URL.createObjectURL(f); a.download=nom; document.body.appendChild(a); a.click(); a.remove(); }
     }
-    bt.textContent=ancien; bt.disabled=false;
+    bt.disabled=false;
   }catch(e){ flash('✕'); }
 }
 $('partImg').onclick=exporterImage;
