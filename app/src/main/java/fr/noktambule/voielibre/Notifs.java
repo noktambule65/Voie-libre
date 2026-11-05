@@ -62,6 +62,11 @@ public class Notifs extends BroadcastReceiver {
 
     static SharedPreferences prefs(Context ctx) { return ctx.getSharedPreferences(PREFS, 0); }
 
+    /** Erreur inattendue : notée dans le journal de diagnostic (Paramètres › Aide), sans rien changer d'autre. */
+    static void erreur(Context ctx, String ou, Exception ex) {
+        Pont.etape(ctx, "⚠ erreur " + ou + " : " + ex, false);
+    }
+
     /** Réglages envoyés par la page : {"modif":bool, "dec":bool, "heure":18, "ch3":bool, "chVeille":bool, "chHeure":18}. */
     static void regler(Context ctx, String json) {
         try {
@@ -98,7 +103,7 @@ public class Notifs extends BroadcastReceiver {
             if (!vd.equals(w.getString("vueDefaut", "jour"))) { w.edit().putString("vueDefaut", vd).remove("vue").commit(); VoieLibreWidget.majTous(ctx); }
             JSONObject t = o.optJSONObject("taches");
             if (t != null) prefs(ctx).edit().putString("taches", t.toString()).apply();
-        } catch (Exception ignore) { }
+        } catch (Exception ex) { erreur(ctx, "réglages des notifications", ex); }
         programmer(ctx);
     }
 
@@ -290,15 +295,15 @@ public class Notifs extends BroadcastReceiver {
 
     /** Programme les prochains rappels activés : découché et changement d'heure. */
     static void programmer(Context ctx) {
-        try { programmerDecouche(ctx); } catch (Exception ignore) { }
-        try { programmerHeure(ctx); } catch (Exception ignore) { }
-        try { programmerTaches(ctx); } catch (Exception ignore) { }
-        try { programmerNotes(ctx); } catch (Exception ignore) { }
-        try { programmerMacro(ctx); } catch (Exception ignore) { }
-        try { programmerReveil(ctx); } catch (Exception ignore) { }
-        try { neige(ctx); } catch (Exception ignore) { }
-        try { synchro(ctx); } catch (Exception ignore) { }
-        try { programmerSyncPS(ctx); } catch (Exception ignore) { }
+        try { programmerDecouche(ctx); } catch (Exception ex) { erreur(ctx, "rappel découché (programmation)", ex); }
+        try { programmerHeure(ctx); } catch (Exception ex) { erreur(ctx, "rappel changement d’heure (programmation)", ex); }
+        try { programmerTaches(ctx); } catch (Exception ex) { erreur(ctx, "rappels de service (programmation)", ex); }
+        try { programmerNotes(ctx); } catch (Exception ex) { erreur(ctx, "rappels phrases (programmation)", ex); }
+        try { programmerMacro(ctx); } catch (Exception ex) { erreur(ctx, "rappel macro (programmation)", ex); }
+        try { programmerReveil(ctx); } catch (Exception ex) { erreur(ctx, "rappel réveil oublié (programmation)", ex); }
+        try { neige(ctx); } catch (Exception ex) { erreur(ctx, "alerte neige (programmation)", ex); }
+        try { synchro(ctx); } catch (Exception ex) { erreur(ctx, "synchro programmée (programmation)", ex); }
+        try { programmerSyncPS(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service (programmation)", ex); }
     }
 
     // ---------- Synchro en plus à l'heure de la PS et 5 min après ----------
@@ -1279,13 +1284,13 @@ public class Notifs extends BroadcastReceiver {
                 || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) { programmer(ctx); return; }
         if (ACTION_HEURE.equals(intent.getAction())) {
             if (prefs(ctx).getBoolean("ch3", false) || prefs(ctx).getBoolean("chVeille", false))
-                try { rappelHeure(ctx, intent.getIntExtra("type", 1), intent.getLongExtra("instant", 0)); } catch (Exception ignore) { }
+                try { rappelHeure(ctx, intent.getIntExtra("type", 1), intent.getLongExtra("instant", 0)); } catch (Exception ex) { erreur(ctx, "rappel changement d’heure", ex); }
             programmer(ctx);
             return;
         }
         if (ACTION_NEIGE.equals(intent.getAction()) || ACTION_SYNC.equals(intent.getAction())) { programmer(ctx); return; }
         if (ACTION_SYNC_PS.equals(intent.getAction())) {
-            if (prefs(ctx).getBoolean("syncPS", false)) try { synchroMaintenant(ctx); } catch (Exception ignore) { }
+            if (prefs(ctx).getBoolean("syncPS", false)) try { synchroMaintenant(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service", ex); }
             programmer(ctx);   // la suivante
             return;
         }
@@ -1295,22 +1300,22 @@ public class Notifs extends BroadcastReceiver {
             return;
         }
         if (ACTION_REVEIL.equals(intent.getAction())) {
-            try { verifierReveil(ctx, intent.getStringExtra("date")); } catch (Exception ignore) { }
+            try { verifierReveil(ctx, intent.getStringExtra("date")); } catch (Exception ex) { erreur(ctx, "réveil oublié", ex); }
             programmer(ctx);
             return;
         }
         if (ACTION_MACRO.equals(intent.getAction())) {
-            try { envoyerMacro(ctx); } catch (Exception ignore) { }
+            try { envoyerMacro(ctx); } catch (Exception ex) { erreur(ctx, "macro", ex); }
             programmer(ctx);
             return;
         }
         if (ACTION_NOTE.equals(intent.getAction())) {
-            try { rappelNotes(ctx); } catch (Exception ignore) { }
+            try { rappelNotes(ctx); } catch (Exception ex) { erreur(ctx, "rappel phrase", ex); }
             programmer(ctx);
             return;
         }
         if (ACTION_TACHE.equals(intent.getAction())) {
-            try { rappelTaches(ctx); } catch (Exception ignore) { }
+            try { rappelTaches(ctx); } catch (Exception ex) { erreur(ctx, "rappel de service", ex); }
             programmer(ctx);
             return;
         }

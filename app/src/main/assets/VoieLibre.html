@@ -552,7 +552,7 @@ function fixerRepos(o){
   if(r.gps) r.n='Ma position';
   localStorage.setItem('bo-repos', JSON.stringify(r));
   if(r.n!==avant.n || Math.abs(+r.la-+avant.la)>0.02 || Math.abs(+r.lo-+avant.lo)>0.02){ try{ localStorage.removeItem('pl-meteo2-'+r.n); }catch(e){} }
-  appliquerRepos(); try{ rendre(); }catch(e){}
+  appliquerRepos(); try{ rendre(); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('Planning (affichage après réglage du lieu de repos)',e); }
 }
 // Nom de la commune d'un point (géocodage inverse de la Géoplateforme IGN, puis de la Base Adresse Nationale)
 async function nomDuLieu(la, lo){
@@ -1284,7 +1284,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       neige:$('nNeige').checked, neigeHeure:+$('nNeigeH').value||18, neigeJour:$('nNeigeJ').checked,
       reveilOn:$('nRv').checked, reveilHeure:+$('nRvH').value, reveilDe:+$('nRvDe').value, reveilA:Math.max(+$('nRvA').value, +$('nRvDe').value+1)};
       $('nRvA').value=String(o.reveilA);
-      sauver('bo-notif',o); try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){} setTimeout(etat,1500); };
+      sauver('bo-notif',o); try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des réglages de notifications à Android',e); } setTimeout(etat,1500); };
     $('nSyncFreq').addEventListener('change',()=>ajusterSeuil(true));   // avant l'enregistrement, qui lit le seuil ajusté
     ['nModif','nDec','nHeure','nCh3','nChV','nHeureCh','nRv','nRvH','nRvDe','nRvA','nNeige','nNeigeH','nNeigeJ','nSync','nSyncH','nSyncFreq','nSyncPS','nTheme','nWVue','nModifPortee'].forEach(id=>$(id).addEventListener('change',changer));
     // nouveau thème : toute l'appli est rechargée pour l'appliquer, puis rouverte sur Paramètres
@@ -1381,7 +1381,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     // retour des réglages d'Android : la mention disparaît si l'autorisation vient d'être donnée
     document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ try{ dessinerT(); }catch(e){} } });
     remplir();
-    try{ AND.reprendreNotifs(JSON.stringify(Object.assign(lire(),{taches:lireT()}))); }catch(e){}   // l'appli Android reprend les réglages
+    try{ AND.reprendreNotifs(JSON.stringify(Object.assign(lire(),{taches:lireT()}))); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des rappels à Android',e); }   // l'appli Android reprend les réglages
     window.addEventListener('focus',etat); document.addEventListener('visibilitychange',etat);
   }
   if(AND && AND.reveils){
@@ -1410,7 +1410,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <p class="petit">L’Horloge du téléphone reçoit ces réglages ; c’est elle qui les applique.</p>`; };
     const son=(o,c)=>Object.assign({uri:'',titre:'',vib:true}, (o.sons||{})[c]||{});
     // Les délais et sonneries servent aussi au bouton « Régler le réveil » de la notification Réveil oublié
-    const versAndroid=o=>{ try{ if(AND.reglerReveils) AND.reglerReveils(JSON.stringify(o)); }catch(e){} };
+    const versAndroid=o=>{ try{ if(AND.reglerReveils) AND.reglerReveils(JSON.stringify(o)); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des réglages de réveil à Android',e); } };
     const majSon=(c,maj)=>{ const o=lireR(); o.sons=o.sons||{}; o.sons[c]=Object.assign(son(o,c),maj); sauver('bo-reveil',o); versAndroid(o); dessiner(); };
     // Retour du sélecteur de sonneries d'Android
     try{ window.top.__boulotSonnerie=(c,uri,titre)=>majSon(c,{uri,titre}); }catch(e){}
@@ -2714,7 +2714,7 @@ document.addEventListener('click',e=>{
   const liste=[];
   if(r.avecR) liste.push(avecSon({h:d1.getHours(), m:d1.getMinutes(), msg:'Voie libre · Réveil · '+lib},'r'));
   if(r.avecD) liste.push(avecSon({h:d2.getHours(), m:d2.getMinutes(), msg:'Voie libre · Départ · '+lib},'d'));
-  let ok=false; try{ ok=r.A.reveils(JSON.stringify(liste)); }catch(err){}
+  let ok=false; try{ ok=r.A.reveils(JSON.stringify(liste)); }catch(err){ window.top.vlNoteErreur&&window.top.vlNoteErreur('réveil demandé à l’Horloge',err); }
   b.textContent=ok?`✓ Demandé à l’Horloge : ${texteAlarmes(r)}`:'Aucune appli Horloge trouvée pour régler le réveil';
   b.disabled=true;
 });
@@ -2978,7 +2978,7 @@ window.exporterWidget=function(forcer){
           // déroulé complet, pour signaler toute modification de la journée (trains, EV, coupure…)
           const sig=(x.s.items||[]).map(it=>(it.cond?'*':'')+'|'+it.h1+'|'+(it.h2||'')+'|'+it.lieu+'|'+it.act);
           if(j<=cle(ajout(now,7))){ const tc=tachesSeg(x,j); taches.push(...tc.taches); cond.push(...tc.cond);
-            try{ const nz=neigeSeg(x,j); if(nz) neige.push(nz); }catch(e){} }
+            try{ const nz=neigeSeg(x,j); if(nz) neige.push(nz); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('alerte neige ('+j+')',e); } }
           sortie.push({date:j, seg:x.seg, code:x.code, dec:!!x.dec, rhr:Lr?Lr.n:String(rh||''), sig,
             debut:new Date(y,m-1,d,0,g.p0).getTime(), fin:new Date(y,m-1,d,0,g.f0).getTime(),
             lieuPS:(x.s.ps&&x.s.ps.lieu)||g.gPS, lieuFS:(x.s.fs&&x.s.fs.lieu)||g.gFS,
@@ -2998,9 +2998,9 @@ window.exporterWidget=function(forcer){
       // tuile Rappels de l'accueil : prochaines tâches et neige prévue
       try{ localStorage.setItem('vl-prochains', JSON.stringify({maj:Date.now(),
         taches:taches.map(z=>({type:z.type, t:z.t, quoi:z.quoi, ou:z.ou})),
-        neige:neige.map(z=>({debut:z.debut, lieux:(z.lieux||[]).map(l=>l.n)}))})); }catch(e){}
+        neige:neige.map(z=>({debut:z.debut, lieux:(z.lieux||[]).map(l=>l.n)}))})); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('tuile Rappels de l’accueil',e); }
       try{ localStorage.setItem('vl-sig-widget', signatureExport()); }catch(e){}
-    }catch(e){}
+    }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('préparation du widget et des rappels',e); }
     exportEnCours=null;
   })();
   return exportEnCours;
@@ -3060,6 +3060,17 @@ window.vlRegles=(function(){
   return {categorie, changementHeure, nuitDu, texteChangement};
 })();
 /* REGLES-PARTAGEES-FIN */
+// Erreur attrapée à un endroit important (rappels, widget, synchro…) : notée dans le journal de diagnostic
+// (Paramètres › Aide) au lieu de disparaître en silence. Le comportement de l'appli ne change pas.
+// Les pages Planning et Journée l'appellent par window.top.vlNoteErreur. Avant l'ouverture du journal, mise en attente.
+window.vlNoteErreur=function(ou,e){
+  try{
+    var t='⚠ erreur '+ou+' : '+String((e&&e.message)||e).slice(0,200);
+    try{ console.warn('[Voie libre] '+t); }catch(_){}
+    if(window.__vlDiagNote) window.__vlDiagNote(t);
+    else { var f=window.__vlDiagAttente=window.__vlDiagAttente||[]; if(f.length<20) f.push(t); }
+  }catch(_){}
+};
 </script>
 
 <script>
@@ -3387,7 +3398,7 @@ function majService(){
     else if(st&&st.erreur&&(st.erreurQuand||0)>(st.quand||0)) T.param='<span class="alerte">⚠️ Graou non mis à jour</span>';
     else if(st&&st.quand) T.param=(st.source==='lien'?'Graou à jour ':'Planning importé ')+ilYa(st.quand);
     else T.param='Planning Graou, rappels, météo';
-  }catch(e){}
+  }catch(e){ window.vlNoteErreur('accueil (tuiles)',e); }
   if(vide) bandeau='<button class="lien" id="premier">⚙ Ajoute ton planning Graou pour commencer</button>';
   $('service').innerHTML=bandeau;
   $('accueil').classList.toggle('sansTitre', bandeau.indexOf('svB')>=0);
@@ -3440,6 +3451,7 @@ function raccordAndroid(){
         var u=(navigator.userAgent.match(/Chrome\/([\d.]+)/)||[])[1]||'?', n=0; try{ n=T.localStorage.length; }catch(e){}
         var taille=0; try{ for(var i=0;i<T.localStorage.length;i++){ var k=T.localStorage.key(i); taille+=k.length+(T.localStorage.getItem(k)||'').length; } }catch(e){}
         T.__vlDiagNote('— ouverture de l’appli · WebView '+u+' · stockage '+n+' clés, '+Math.round(taille/1024)+' Ko');
+        if(T.__vlDiagAttente){ T.__vlDiagAttente.forEach(function(t){ T.__vlDiagNote(t); }); T.__vlDiagAttente=null; }
       }
       var note=T.__vlDiagNote;
       note('page « '+nom+' » chargée');
@@ -3630,7 +3642,7 @@ function ouvrir(id, depuisHistorique){
   courante=r;
   $('titreRub').textContent=r.titre;
   Object.values(CADRES).forEach(c=>c.f.classList.remove('on'));
-  const f=cadre(r.app, fr=>{ if(r.mode){ try{ fr.contentWindow.boulotMode(r.mode); }catch(e){} } });
+  const f=cadre(r.app, fr=>{ if(r.mode){ try{ fr.contentWindow.boulotMode(r.mode); }catch(e){ window.vlNoteErreur('ouverture de « '+id+' »',e); } } });
   f.classList.add('on');
   $('accueil').style.display='none';
   $('cadre').classList.add('on');
@@ -3668,7 +3680,7 @@ window.boulotOuvrir=id=>ouvrir(id);
 window.boulotAller=(id,arg,vue)=>{
   const r=RUBRIQUES.find(x=>x.id===id)||(id===PARAMETRES.id?PARAMETRES:null); if(!r) return;
   ouvrir(id, !!(courante && courante.id===id));
-  if(arg||vue) cadre(r.app, fr=>{ try{ fr.contentWindow.boulotAller && fr.contentWindow.boulotAller(arg||'', vue||''); }catch(e){} });
+  if(arg||vue) cadre(r.app, fr=>{ try{ fr.contentWindow.boulotAller && fr.contentWindow.boulotAller(arg||'', vue||''); }catch(e){ window.vlNoteErreur('ouverture directe ('+(arg||'')+' '+(vue||'')+')',e); } });
 };
 window.boulotRetour=()=>{ if(courante && courante.id==='param') versAccueil(); };
 window.addEventListener('popstate',()=>{
@@ -3680,7 +3692,7 @@ try{ if(history.state && history.state.boulot) history.replaceState(null,''); }c
 
 /* ---- Appli Android : widget ---- */
 if(window.BoulotAndroid){
-  const exporter=()=>cadre('journee', fj=>{ try{ fj.contentWindow.exporterWidget(); }catch(e){} });
+  const exporter=()=>cadre('journee', fj=>{ try{ fj.contentWindow.exporterWidget(); }catch(e){ window.vlNoteErreur('lancement de la mise à jour du widget',e); } });
   if(/[?&]sync=1/.test(location.search)){
     try{ window.__vlDiagNote && window.__vlDiagNote('synchro invisible (widget ou arrière-plan)'); }catch(e){}
     // Synchro demandée par le bouton ⟳ du widget : planning Graou retéléchargé, puis journées recalculées
@@ -3692,7 +3704,7 @@ if(window.BoulotAndroid){
     else {
       const avant=localStorage.getItem('pl-statut'), t0=Date.now();
       cadre('planning', fr=>{
-        try{ fr.contentWindow.majDepuisLien(true); }catch(e){}
+        try{ fr.contentWindow.majDepuisLien(true); }catch(e){ window.vlNoteErreur('synchro invisible (téléchargement Graou)',e); }
         const att=setInterval(()=>{
           const st=localStorage.getItem('pl-statut');
           if(st!==avant || Date.now()-t0>30000){ clearInterval(att); fin(st!==avant); }
@@ -3702,8 +3714,8 @@ if(window.BoulotAndroid){
   } else {
     // À chaque ouverture de l'appli, le widget reçoit les journées à jour, et la partie Android les réglages de notifications
     setTimeout(exporter, 1500);
-    try{ const n=localStorage.getItem('bo-notif'); if(n) BoulotAndroid.reprendreNotifs(n); }catch(e){}
-    try{ const r=localStorage.getItem('bo-reveil'); if(r && BoulotAndroid.reglerReveils) BoulotAndroid.reglerReveils(r); }catch(e){}
+    try{ const n=localStorage.getItem('bo-notif'); if(n) BoulotAndroid.reprendreNotifs(n); }catch(e){ window.vlNoteErreur('envoi des réglages de notifications au démarrage',e); }
+    try{ const r=localStorage.getItem('bo-reveil'); if(r && BoulotAndroid.reglerReveils) BoulotAndroid.reglerReveils(r); }catch(e){ window.vlNoteErreur('envoi des réglages de réveil au démarrage',e); }
     // Ouverture directe d'une rubrique depuis le widget ou une notification (#journee/2026-10-23/mois)
     const [anc,arg,vue]=(location.hash||'').slice(1).split('/').map(x=>{ try{ return decodeURIComponent(x||''); }catch(e){ return ''; } });
     if(anc){ try{ history.replaceState(history.state,'',location.pathname+location.search); }catch(e){} setTimeout(()=>window.boulotAller(anc,arg,vue), 50); }

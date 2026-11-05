@@ -233,7 +233,7 @@ public class Pont {
                 VoieLibreWidget.majApres(ctx, 5000);   // second passage une fois la synchro retombée
                 Notifs.comparer(ctx, avant, jours);
                 Notifs.programmer(ctx);
-            } catch (Exception ignore) { }
+            } catch (Exception ex) { Notifs.erreur(ctx, "mise à jour du widget et des rappels", ex); }
         }).start();
     }
 
@@ -342,7 +342,7 @@ public class Pont {
     public String diagTrace() {
         android.content.SharedPreferences p = ctx.getSharedPreferences("diag", 0);
         String al = p.getString("alertes", "");
-        return (al.isEmpty() ? "Aucun gel détecté.\n" : "GELS DÉTECTÉS (plus récent en haut) :\n" + al + "\n") + "\nÉtapes :\n" + p.getString("fil", "");
+        return (al.isEmpty() ? "Aucun gel ni erreur détecté.\n" : "GELS ET ERREURS DÉTECTÉS (plus récent en haut) :\n" + al + "\n") + "\nÉtapes :\n" + p.getString("fil", "");
     }
 
     @JavascriptInterface
