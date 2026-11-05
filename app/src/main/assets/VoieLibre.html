@@ -2463,7 +2463,7 @@ function lieuSimple(l){
   const p=t.split(/\s+/), g=(parent!==window && parent.vlGareCode)?parent.vlGareCode(p[0]):null;
   return g?g.n:t.replace(/\s+[A-Z0-9]{1,4}$/,'');
 }
-// Nom de lieu de découché pour une case de la grille : une ligne s'il est court (avec 🛏), sinon deux lignes
+// Nom de lieu de découché pour une case de la grille : une ligne s'il est court, sinon deux lignes (🛏 en tête dans les deux cas)
 // coupées après un tiret ou une espace (« Montréjeau- » / « Gourdan-Po… »), 11 caractères au plus par ligne
 function nomSurDeuxLignes(n){
   n=String(n||'').trim(); if(!n) return [];
@@ -2570,8 +2570,9 @@ function moisSVG(debut,W,nbSem,sansEntete,proche){
           o.push(`<rect x="${x1.toFixed(1)}" y="${y+ch-6}" width="${(x2-x1).toFixed(1)}" height="2.5" fill="#E8902E"/>`);
           if(rhrL.length===1) o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-9).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">🛏 ${esc(rhrL[0])}</text>`);
           else if(haut){
-            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-16.5).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">${esc(rhrL[0])}</text>`);
-            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-8.5).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">${esc(rhrL[1])}</text>`);
+            // deux lignes un peu plus petites, avec le lit en tête de la première
+            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-16).toFixed(1)}" font-size="6.8" font-weight="700" fill="#E8902E" text-anchor="middle">🛏 ${esc(rhrL[0])}</text>`);
+            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-8.5).toFixed(1)}" font-size="6.8" font-weight="700" fill="#E8902E" text-anchor="middle">${esc(rhrL[1])}</text>`);
           }
         }
         if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
