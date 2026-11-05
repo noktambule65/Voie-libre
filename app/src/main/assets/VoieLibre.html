@@ -459,33 +459,7 @@ function lireCSV(txt){
   return out;
 }
 
-/* ---------- Analyse d'une journée de service ---------- */
-function analyser(ev){
-  const L=ev.desc.split('\n');
-  const a={entete:(L[0]||'').trim(), js:[], rhr:null, segs:[]};
-  let seg=null;
-  L.slice(1).forEach(brut=>{
-    const l=brut.replace(/\s+$/,''); let m;
-    if((m=l.match(/^\[PS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/))){ seg={ps:{lieu:m[1],h:m[2]}, fs:null, lignes:[]}; a.segs.push(seg); return; }
-    if((m=l.match(/^\[FS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/))){ if(seg) seg.fs={lieu:m[1],h:m[2]}; return; }
-    if(!seg || !l.trim()) return;
-    m=l.match(/^(\*\*\*\s*)?(\d{1,2}:\d{2})(?:\s*->\s*(\d{1,2}:\d{2}))?\s*\|\s*([^|]*?)\s*\|\s*(.*)$/);
-    if(m) seg.lignes.push({cond:!!m[1], h1:m[2], h2:m[3]||'', lieu:m[4].trim(), act:m[5].trim()});
-    else seg.lignes.push({brut:l.trim()});
-  });
-  // Ligne d'en-tête : « N132 13:26 -> 20:14 | RHR Toulouse (09h09) | N143 05:23 -> 13:17 » ou « N304 07h08 »
-  a.entete.split('|').map(s=>s.trim()).forEach(p=>{
-    let m;
-    if((m=p.match(/^RHR\s+(.*?)\s*(?:\((\d+h\d+)\))?$/))){ a.rhr={lieu:m[1], duree:m[2]||''}; return; }
-    if((m=p.match(/^(\S+)\s+(\d{1,2}:\d{2})\s*->\s*(\d{1,2}:\d{2})$/))){ a.js.push({code:m[1]}); return; }
-    if((m=p.match(/^(\S+)\s+(\d+h\d+)$/))){ a.js.push({code:m[1], duree:m[2]}); return; }
-  });
-  if(!a.js.length){
-    const codes=ev.titre.replace(/\(.*\)/,'').split(/\s+/).filter(x=>/^[A-Z]{1,4}\d/.test(x));
-    (codes.length?codes:[ev.titre]).forEach(c=>a.js.push({code:c}));
-  }
-  return a;
-}
+/* ---------- Analyse d'une journée de service : règle unique, dans le script principal (vlPlanning) ---------- */
 
 /* ---------- Catégories ---------- */
 // Codes couleur de l'agenda Graou : vert (repos), bleu clair (congés, maladie…), rose (absences), « d » en pastille sombre
@@ -504,30 +478,9 @@ const COUL = {
 /* ---------- Index par jour ---------- */
 let EVTS=[], ICS=[], CSV=[], INDEX={}, BORNES=null, ROUL={};
 function indexer(){
-  INDEX={}; BORNES=null; ROUL={};
-  let filtre=null;
-  const mettre=(j,x)=>{ if(filtre && filtre.has(j)) return; (INDEX[j]=INDEX[j]||[]).push(x); };
-  const ajouter = ev => {
-    if(ev.roul){ if(ev.roul[0]) ROUL[ev.j1]=ev.roul[0]; if(ev.roul[1]) ROUL[ev.j2]=ev.roul[1]; }
-    if(ev.entier){
-      for(let d=lire(ev.j1); cle(d)<=ev.j2; d=ajout(d,1)) mettre(cle(d),{ev, cat:categorie(ev)});
-    } else {
-      const a=analyser(ev);
-      const dec = a.segs.length>1 || !!a.rhr;
-      if(a.segs.length>1){
-        a.segs.forEach((s,i)=>mettre(i===0?ev.j1:ev.j2,{ev, a, cat:dec?'dec':'js', seg:i}));
-      } else {
-        mettre(ev.j1,{ev, a, cat:dec?'dec':'js', seg:0});
-      }
-    }
-    if(!BORNES) BORNES={deb:ev.j1, fin:ev.j2};
-    if(ev.j1<BORNES.deb) BORNES.deb=ev.j1;
-    if(ev.j2>BORNES.fin) BORNES.fin=ev.j2;
-  };
-  // Le fichier .ics (avec le déroulé) passe en premier ; le CSV complète les jours qu'il ne couvre pas.
-  ICS.forEach(ajouter);
-  filtre=new Set(Object.keys(INDEX));
-  CSV.forEach(ajouter);
+  // Index des jours : règle unique, dans le script principal (vlPlanning), commune à Météo, Ma journée, Semaines et l'accueil
+  const r=parent.vlPlanning.indexer(ICS, CSV);
+  INDEX=r.INDEX; BORNES=r.BORNES; ROUL=r.ROUL;
 }
 function infosSeg(x){
   const s=x.a.segs[x.seg]||null;
@@ -2055,22 +2008,6 @@ const duree=m=>Math.floor(m/60)+'h'+pad(m%60);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function charger(k){try{return JSON.parse(localStorage.getItem(k))||[];}catch(e){return [];}}
 
-/* ---- Lecture du planning enregistré par la rubrique Météo ---- */
-function analyser(desc){
-  const L=String(desc||'').split('\n'), tete=(L[0]||'').trim(), segs=[]; let s=null;
-  L.slice(1).forEach(b=>{
-    const l=b.trim(); if(!l) return; let m;
-    if((m=l.match(/^\[PS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/))){ s={ps:{lieu:m[1],h:m[2]},fs:null,items:[]}; segs.push(s); return; }
-    if((m=l.match(/^\[FS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/))){ if(s) s.fs={lieu:m[1],h:m[2]}; return; }
-    if(!s) return;
-    m=l.match(/^(\*\*\*\s*)?(\d{1,2}:\d{2})(?:\s*->\s*(\d{1,2}:\d{2}))?\s*\|\s*([^|]*?)\s*\|\s*(.*)$/);
-    if(m) s.items.push({cond:!!m[1],h1:m[2],h2:m[3]||'',lieu:m[4].trim(),act:m[5].trim()});
-  });
-  let rhr=null;
-  tete.split('|').forEach(p=>{ const m=p.trim().match(/^RHR\s+(.*?)\s*(?:\((\d+h\d+)\))?$/); if(m) rhr={lieu:m[1],duree:m[2]||''}; });
-  return {tete,segs,rhr};
-}
-
 /* ---- Changement d'heure (d'après le fuseau du téléphone, rien d'écrit en dur) ---- */
 // k = 'AAAA-MM-JJ' : renvoie {avant, apres, hiver} si l'heure change ce jour-là (vers 2 h ou 3 h), sinon null
 // Règles uniques, dans le script principal (vlRegles) : à modifier là-bas seulement
@@ -2082,43 +2019,8 @@ function texteChangement(c, quand){ return parent.vlRegles.texteChangement(c, qu
 function categorie(ev){ return parent.vlRegles.categorie(ev); }
 let INDEX={};
 function indexer(){
-  INDEX={};
-  const ics=charger('pl-evts'), csv=charger('pl-csv'), couverts=new Set();
-  const mettre=(j,x)=>{ (INDEX[j]=INDEX[j]||[]).push(x); };
-  const ajouter=(ev,filtre)=>{
-    if(!ev||!ev.j1||ev.j1<'2000') return;           // ignore l'événement factice de 1970
-    if(filtre && filtre.has(ev.j1)) return;
-    if(ev.entier){ for(let d=lire(ev.j1);cle(d)<=ev.j2;d=ajout(d,1)) mettre(cle(d),{ev,cat:categorie(ev)}); return; }
-    const a=analyser(ev.desc), dec=a.segs.length>1||!!a.rhr;
-    const codes=String(ev.titre||'').replace(/\(.*\)/,'').split(/\s+/).filter(x=>/^[A-Z]{1,4}\d/.test(x.replace(/^•/,'')));
-    if(!a.segs.length) a.segs=[{ps:{lieu:'',h:ev.h1},fs:{lieu:'',h:ev.h2},items:[]}];
-    a.segs.forEach((s,i)=>mettre(i===0?ev.j1:ev.j2,{ev,a,s,seg:i,dec,cat:dec?'dec':'js',code:(codes[i]||codes[0]||ev.titre||'').replace(/^•/,'')}));
-  };
-  ics.forEach(ev=>{ ajouter(ev); if(ev&&ev.j1) couverts.add(ev.j1); if(ev&&ev.j2) couverts.add(ev.j2); });
-  csv.forEach(ev=>ajouter(ev,couverts));
-  completerEV();
-}
-
-/* ---- EV sans trajet ----
-   Le lendemain d'un découché, Graou n'envoie parfois que « 10:36 | | EV 872882 » (ni arrivée ni gares).
-   Le même train, au même horaire de départ, figure en entier ailleurs dans le planning
-   (« 10:36 -> 11:10 | LUC -> MTJ | EV 872882 », ou conduit) : on y reprend l'heure d'arrivée et le trajet. */
-function completerEV(){
-  const num=a=>{ const m=String(a||'').match(/(\d{3,})\s*$/); return m?m[1]:''; };
-  const ref=new Map();
-  const tous=[]; Object.values(INDEX).forEach(l=>l.forEach(x=>{ if(x.s && x.s.items) tous.push(...x.s.items); }));
-  tous.forEach(it=>{
-    if(!it.h2 || !it.lieu || !/->/.test(it.lieu)) return;
-    const n=num(it.act); if(!n) return;
-    const k=n+'@'+it.h1, deja=ref.get(k);
-    // priorité à un EV (même libellé que celui à compléter), sinon le train conduit
-    if(!deja || (estEV(it.act) && !estEV(deja.act))) ref.set(k,it);
-  });
-  tous.forEach(it=>{
-    if(it.h2 || it.lieu || !estEV(it.act)) return;
-    const r=ref.get(num(it.act)+'@'+it.h1); if(!r) return;
-    it.h2=r.h2; it.lieu=r.lieu;
-  });
+  // Index des jours (EV sans trajet complétés compris) : règle unique, dans le script principal (vlPlanning)
+  INDEX=parent.vlPlanning.indexer(charger('pl-evts'), charger('pl-csv')).INDEX;
 }
 
 /* ---- Journée à afficher par défaut : en cours, sinon la prochaine ---- */
@@ -2157,7 +2059,7 @@ function estManoeuvre(a){ return /^man[oœ]e?uvres?\b/i.test(String(a||'').trim(
 function estChauffage(a){ return /^chauffage\b/i.test(String(a||'').trim()); }
 function estRepas(a){ return /^pause\s*repas\b/i.test(String(a||'').trim()); }
 function estReserve(a){ return /^(R|r[ée]serve)$/i.test(String(a||'').trim()); }
-function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
+function estEV(a){ return parent.vlPlanning.estEV(a); }
 // Icône d'un trajet en voyageur : taxi 🚕, bus 🚌, en cabine sans conduire 🚂, sinon 💺
 // Réservations de taxi et d'hôtel (site interne SNCF) : ouvert depuis un taxi ou le bandeau RHR de la journée
 const GALACSI='https://www.galacsimobile.sncf.fr';
@@ -3074,6 +2976,96 @@ window.vlRegles=(function(){
   return {categorie, changementHeure, nuitDu, texteChangement};
 })();
 /* REGLES-PARTAGEES-FIN */
+/* PLANNING-PARTAGE-DEBUT */
+// Lecture du planning Graou : une seule version, utilisée par l'accueil, la page Météo (et Paramètres)
+// et la page Ma journée / Semaines (qui prépare aussi le widget et les rappels). Les pages l'appellent par parent.vlPlanning.
+window.vlPlanning=(function(){
+  const RE_PS=/^\[PS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/, RE_FS=/^\[FS\]\s*(.*?)\s*(\d{1,2}:\d{2})$/,
+        RE_LIGNE=/^(\*\*\*\s*)?(\d{1,2}:\d{2})(?:\s*->\s*(\d{1,2}:\d{2}))?\s*\|\s*([^|]*?)\s*\|\s*(.*)$/;
+  const pad=n=>String(n).padStart(2,'0');
+  const cle=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const lire=s=>{ const [y,m,j]=s.split('-').map(Number); return new Date(y,m-1,j); };
+  const ajout=(d,n)=>{ const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+  function estEV(a){ return /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(a||'')); }
+
+  // Déroulé d'une journée (description Graou) :
+  //   1re ligne « N132 13:26 -> 20:14 | RHR Toulouse (09h09) | N143 05:23 -> 13:17 » ou « N304 07h08 »
+  //   puis [PS] lieu hh:mm, lignes « *** 09:36 -> 10:11 | LUC -> MTJ | 872880 » ou « 08:47 | LUC | EQ PREND 872821 », [FS] lieu hh:mm
+  // Chaque partie (segs) garde ses lignes reconnues dans items, et dans lignes avec en plus les lignes non reconnues ({brut}).
+  function analyser(ev){
+    const L=String((ev&&ev.desc)||'').split('\n'), tete=(L[0]||'').trim();
+    const a={entete:tete, tete, js:[], rhr:null, segs:[]};
+    let seg=null;
+    L.slice(1).forEach(b=>{
+      const l=b.trim(); if(!l) return; let m;
+      if((m=l.match(RE_PS))){ seg={ps:{lieu:m[1],h:m[2]}, fs:null, items:[], lignes:[]}; a.segs.push(seg); return; }
+      if((m=l.match(RE_FS))){ if(seg) seg.fs={lieu:m[1],h:m[2]}; return; }
+      if(!seg) return;
+      if((m=l.match(RE_LIGNE))){ const it={cond:!!m[1], h1:m[2], h2:m[3]||'', lieu:m[4].trim(), act:m[5].trim()}; seg.items.push(it); seg.lignes.push(it); }
+      else seg.lignes.push({brut:l});
+    });
+    tete.split('|').map(p=>p.trim()).forEach(p=>{ let m;
+      if((m=p.match(/^RHR\s+(.*?)\s*(?:\((\d+h\d+)\))?$/))){ a.rhr={lieu:m[1], duree:m[2]||''}; return; }
+      if((m=p.match(/^(\S+)\s+(\d{1,2}:\d{2})\s*->\s*(\d{1,2}:\d{2})$/))){ a.js.push({code:m[1]}); return; }
+      if((m=p.match(/^(\S+)\s+(\d+h\d+)$/))){ a.js.push({code:m[1], duree:m[2]}); return; }
+    });
+    if(!a.js.length){
+      const t=String((ev&&ev.titre)||''), codes=t.replace(/\(.*\)/,'').split(/\s+/).filter(x=>/^[A-Z]{1,4}\d/.test(x));
+      (codes.length?codes:[t]).forEach(c=>a.js.push({code:c}));
+    }
+    return a;
+  }
+
+  // EV sans trajet : le lendemain d'un découché (ou quand les gares n'ont pas été saisies), Graou n'envoie parfois que
+  // « 10:36 | | EV 872882 ». Le même train, au même horaire de départ, figure en entier ailleurs dans le planning
+  // (« 10:36 -> 11:10 | LUC -> MTJ | EV 872882 », ou conduit) : on y reprend l'heure d'arrivée et le trajet.
+  function completerEV(INDEX){
+    const num=a=>{ const m=String(a||'').match(/(\d{3,})\s*$/); return m?m[1]:''; };
+    const ref=new Map(), tous=[];
+    Object.values(INDEX).forEach(l=>l.forEach(x=>{ if(x.s && x.s.items) tous.push(...x.s.items); }));
+    tous.forEach(it=>{
+      if(!it.h2 || !it.lieu || !/->/.test(it.lieu)) return;
+      const n=num(it.act); if(!n) return;
+      const k=n+'@'+it.h1, deja=ref.get(k);
+      if(!deja || (estEV(it.act) && !estEV(deja.act))) ref.set(k,it);   // priorité à un EV, sinon le train conduit
+    });
+    tous.forEach(it=>{
+      if(it.h2 || it.lieu || !estEV(it.act)) return;
+      const r=ref.get(num(it.act)+'@'+it.h1); if(!r) return;
+      it.h2=r.h2; it.lieu=r.lieu;
+    });
+  }
+
+  // Index par jour. Le .ics (avec le déroulé) passe en premier ; un événement du CSV n'est repris que si son
+  // premier jour n'est pas déjà donné par le .ics. Renvoie aussi les bornes du planning et les roulements (CSV).
+  function indexer(ics, csv){
+    ics=ics||[]; csv=csv||[];
+    const INDEX={}, ROUL={}, couverts=new Set(); let BORNES=null;
+    const mettre=(j,x)=>{ (INDEX[j]=INDEX[j]||[]).push(x); };
+    const noter=ev=>{
+      if(!ev) return;
+      if(ev.roul){ if(ev.roul[0]) ROUL[ev.j1]=ev.roul[0]; if(ev.roul[1]) ROUL[ev.j2]=ev.roul[1]; }
+      if(!BORNES) BORNES={deb:ev.j1, fin:ev.j2};
+      if(ev.j1<BORNES.deb) BORNES.deb=ev.j1;
+      if(ev.j2>BORNES.fin) BORNES.fin=ev.j2;
+    };
+    const ajouter=(ev,filtre)=>{
+      if(!ev||!ev.j1||ev.j1<'2000') return;           // ignore l'événement factice de 1970
+      if(filtre && filtre.has(ev.j1)) return;
+      if(ev.entier){ for(let d=lire(ev.j1); cle(d)<=ev.j2; d=ajout(d,1)) mettre(cle(d),{ev, cat:window.vlRegles.categorie(ev)}); return; }
+      const a=analyser(ev), dec=a.segs.length>1||!!a.rhr;
+      const codes=String(ev.titre||'').replace(/\(.*\)/,'').split(/\s+/).filter(x=>/^[A-Z]{1,4}\d/.test(x.replace(/^•/,'')));
+      if(!a.segs.length) a.segs=[{ps:{lieu:'',h:ev.h1}, fs:{lieu:'',h:ev.h2}, items:[], lignes:[], vide:true}];   // journée sans déroulé (CSV…)
+      a.segs.forEach((s,i)=>mettre(i===0?ev.j1:ev.j2,{ev, a, s, seg:i, dec, cat:dec?'dec':'js', code:(codes[i]||codes[0]||ev.titre||'').replace(/^•/,'')}));
+    };
+    ics.forEach(ev=>{ noter(ev); ajouter(ev); if(ev&&ev.j1) couverts.add(ev.j1); if(ev&&ev.j2) couverts.add(ev.j2); });
+    csv.forEach(ev=>{ noter(ev); ajouter(ev,couverts); });
+    completerEV(INDEX);
+    return {INDEX, BORNES, ROUL};
+  }
+  return {analyser, indexer, estEV};
+})();
+/* PLANNING-PARTAGE-FIN */
 // Erreur attrapée à un endroit important (rappels, widget, synchro…) : notée dans le journal de diagnostic
 // (Paramètres › Aide) au lieu de disparaître en silence. Le comportement de l'appli ne change pas.
 // Les pages Planning et Journée l'appellent par window.top.vlNoteErreur. Avant l'ouverture du journal, mise en attente.
@@ -3178,36 +3170,29 @@ try{ const vieux=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorag
   if(k && k.indexOf('pl-meteo2-')===0){ const m=String(localStorage.getItem(k)||'').match(/"t":(\d+)/); if(!m || Date.now()-(+m[1])>3*864e5) vieux.push(k); } }
   vieux.forEach(k=>localStorage.removeItem(k)); }catch(e){}
 function servicesPl(){
-  const ics=lirePl('pl-evts'), csv=lirePl('pl-csv');
-  const couverts=new Set(), out=[];
+  // Journées de service, d'après la lecture commune du planning (vlPlanning : mêmes règles que Météo et Ma journée)
+  const I=window.vlPlanning.indexer(lirePl('pl-evts'), lirePl('pl-csv')).INDEX, out=[];
   const date=(j,h)=>{ const [y,m,d]=j.split('-').map(Number), [hh,mm]=h.split(':').map(Number); return new Date(y,m-1,d,hh,mm); };
-  const ajouter=ev=>{
-    if(!ev||ev.entier||!ev.j1) return;
-    const L=String(ev.desc||'').split('\n'), segs=[]; let seg=null;
-    L.slice(1).forEach(l=>{ let m;
-      if((m=l.match(/^\[PS\]\s*(.*?)\s*(\d{1,2}:\d{2})\s*$/))){ seg={ps:{lieu:m[1],h:m[2]},fs:null,trains:0,trs:[],pts:[{h:m[2],lieu:m[1]}]}; segs.push(seg); }
-      else if((m=l.match(/^\[FS\]\s*(.*?)\s*(\d{1,2}:\d{2})\s*$/))&&seg){ seg.fs={lieu:m[1],h:m[2]}; seg.pts.push({h:m[2],lieu:m[1]}); }
-      else if(seg && (m=l.trim().match(/^(\*\*\*\s*)?(\d{1,2}:\d{2})(?:\s*->\s*(\d{1,2}:\d{2}))?\s*\|\s*([^|]*?)\s*\|/))){
-        if(m[1]){ seg.trains++; seg.trs.push({h:m[2],n:(l.split('|')[2]||'').trim()}); }
-        const lx=m[4].split('->').map(t=>t.trim()).filter(Boolean);
-        if(lx.length>1){ seg.pts.push({h:m[2],lieu:lx[0]}); seg.pts.push({h:m[3]||m[2],lieu:lx[1]}); }
-        else if(lx.length){ seg.pts.push({h:m[2],lieu:lx[0]}); if(m[3]) seg.pts.push({h:m[3],lieu:lx[0]}); }
-      } });
-    let rhr=''; String(L[0]||'').split('|').forEach(p=>{ const m=p.trim().match(/^RHR\s+(.*?)\s*(?:\(\d+h\d+\))?$/); if(m) rhr=m[1]; });
-    const code=(String(ev.titre||'').replace(/^•\s*/,'').split(/\s+/)[0])||'';
-    const liste=segs.length?segs:[{ps:{lieu:'',h:ev.h1},fs:{lieu:'',h:ev.h2},trains:0,pts:[]}];
-    liste.forEach((sg,i)=>{
-      const j=i===0?ev.j1:ev.j2, hps=sg.ps&&sg.ps.h, hfs=sg.fs&&sg.fs.h;
-      if(!hps) return;
-      const d=date(j,hps); let f=hfs?date(j,hfs):null;
-      if(f&&f<d) f=new Date(f.getTime()+864e5);
-      const codes=String(ev.titre||'').replace(/^•\s*/,'').split(/\s+/);
-      out.push({d,f,j,ps:nomLieu(sg.ps.lieu),fs:nomLieu(sg.fs&&sg.fs.lieu),psL:sg.ps.lieu,fsL:sg.fs&&sg.fs.lieu,
-        trains:sg.trains, trs:sg.trs||[], pts:sg.pts||[], rhr:(i===0&&rhr)?nomLieu(rhr):'', code:(liste.length>1&&codes[i])||code});
+  Object.keys(I).forEach(j=>I[j].forEach(x=>{
+    if(!x.s) return;
+    const ev=x.ev, sg=x.s, i=x.seg, liste=x.a.segs, hps=sg.ps&&sg.ps.h, hfs=sg.fs&&sg.fs.h;
+    if(!hps) return;
+    const d=date(j,hps); let f=hfs?date(j,hfs):null;
+    if(f&&f<d) f=new Date(f.getTime()+864e5);
+    // trains conduits et lieux successifs (prise de service, gares du déroulé, fin de service)
+    const trs=[], pts=sg.vide?[]:[{h:sg.ps.h, lieu:sg.ps.lieu}];
+    sg.items.forEach(it=>{
+      if(it.cond) trs.push({h:it.h1, n:it.act.split('|')[0].trim()});
+      const lx=it.lieu.split('->').map(t=>t.trim()).filter(Boolean);
+      if(lx.length>1){ pts.push({h:it.h1,lieu:lx[0]}); pts.push({h:it.h2||it.h1,lieu:lx[1]}); }
+      else if(lx.length){ pts.push({h:it.h1,lieu:lx[0]}); if(it.h2) pts.push({h:it.h2,lieu:lx[0]}); }
     });
-  };
-  ics.forEach(ev=>{ ajouter(ev); if(ev&&ev.j1) couverts.add(ev.j1); if(ev&&ev.j2) couverts.add(ev.j2); });
-  csv.forEach(ev=>{ if(ev&&!couverts.has(ev.j1)) ajouter(ev); });
+    if(sg.fs && !sg.vide) pts.push({h:sg.fs.h, lieu:sg.fs.lieu});
+    const rhr=x.a.rhr?x.a.rhr.lieu:'';
+    const code=(String(ev.titre||'').replace(/^•\s*/,'').split(/\s+/)[0])||'', codes=String(ev.titre||'').replace(/^•\s*/,'').split(/\s+/);
+    out.push({d,f,j,ps:nomLieu(sg.ps.lieu),fs:nomLieu(sg.fs&&sg.fs.lieu),psL:sg.ps.lieu,fsL:sg.fs&&sg.fs.lieu,
+      trains:trs.length, trs, pts, rhr:(i===0&&rhr)?nomLieu(rhr):'', code:(liste.length>1&&codes[i])||code});
+  }));
   return out.sort((a,b)=>a.d-b.d);
 }
 const escS=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
