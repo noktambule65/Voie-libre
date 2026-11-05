@@ -2463,6 +2463,18 @@ function lieuSimple(l){
   const p=t.split(/\s+/), g=(parent!==window && parent.vlGareCode)?parent.vlGareCode(p[0]):null;
   return g?g.n:t.replace(/\s+[A-Z0-9]{1,4}$/,'');
 }
+// Nom de lieu de découché pour une case de la grille : une ligne s'il est court (avec 🛏), sinon deux lignes
+// coupées après un tiret ou une espace (« Montréjeau- » / « Gourdan-Po… »), 11 caractères au plus par ligne
+function nomSurDeuxLignes(n){
+  n=String(n||'').trim(); if(!n) return [];
+  if(n.length<=10) return [n];
+  let mieux=null;
+  for(let i=1;i<n.length-1;i++){ if(n[i]!=='-' && n[i]!==' ') continue;
+    const a=n.slice(0,i+1).trim(), b=n.slice(i+1).trim(); if(a.length>11) continue;
+    const pire=Math.max(a.length,b.length); if(!mieux || pire<mieux[2]) mieux=[a,b,pire]; }
+  const c=t=>t.length>11?t.slice(0,10)+'…':t;
+  return mieux?[mieux[0],c(mieux[1])]:[n.slice(0,11),c(n.slice(11))];
+}
 function heureFr(h){ const m=String(h||'').match(/^(\d{1,2}):(\d{2})/); return m?(+m[1])+'h'+m[2]:String(h||''); }
 function dureeFr(d){ return d>=60?Math.floor(d/60)+'h'+pad(d%60):d+' min'; }
 // Libellé d'une opération ponctuelle ; null = ligne masquée (marche à pied)
@@ -2548,13 +2560,19 @@ function moisSVG(debut,W,nbSem,sansEntete,proche){
       const coul=COUL_CAT[e.cat]||'#666';
       if(sv && proche){
         // pour un proche : début et fin seulement ; découché : barre orange et lieu en petit
-        o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.47).toFixed(1)}" font-size="12.5" font-weight="700" fill="#2F5FA8" text-anchor="middle">${esc(heureFr(sv.s.ps&&sv.s.ps.h||'').replace('h',':'))}</text>`);
-        if(sv.s.fs) o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.72).toFixed(1)}" font-size="11" font-weight="700" fill="#2F5FA8" text-anchor="middle">→ ${esc(heureFr(sv.s.fs.h).replace('h',':'))}</text>`);
+        // (nom long : sur deux lignes, les heures remontent pour lui faire de la place)
+        const rhrL=(sv.dec && sv.seg===0 && sv.a.rhr)?nomSurDeuxLignes(lieuSimple(sv.a.rhr.lieu)):[];
+        const haut=rhrL.length>1;
+        o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*(haut?0.42:0.47)).toFixed(1)}" font-size="${haut?11.5:12.5}" font-weight="700" fill="#2F5FA8" text-anchor="middle">${esc(heureFr(sv.s.ps&&sv.s.ps.h||'').replace('h',':'))}</text>`);
+        if(sv.s.fs) o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*(haut?0.61:0.72)).toFixed(1)}" font-size="${haut?10:11}" font-weight="700" fill="#2F5FA8" text-anchor="middle">→ ${esc(heureFr(sv.s.fs.h).replace('h',':'))}</text>`);
         if(sv.dec){
           const x1=sv.seg===0?cx:x+1, x2=sv.seg===0?x+cw-1:cx;
           o.push(`<rect x="${x1.toFixed(1)}" y="${y+ch-6}" width="${(x2-x1).toFixed(1)}" height="2.5" fill="#E8902E"/>`);
-          if(sv.seg===0 && sv.a.rhr){ let n=lieuSimple(sv.a.rhr.lieu); if(n.length>11) n=n.slice(0,10)+'…';
-            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-9).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">🛏 ${esc(n)}</text>`); }
+          if(rhrL.length===1) o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-9).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">🛏 ${esc(rhrL[0])}</text>`);
+          else if(haut){
+            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-16.5).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">${esc(rhrL[0])}</text>`);
+            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-8.5).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">${esc(rhrL[1])}</text>`);
+          }
         }
         if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
       } else if(sv){
