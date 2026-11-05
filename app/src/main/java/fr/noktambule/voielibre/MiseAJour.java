@@ -341,9 +341,9 @@ final class MiseAJour {
         // Pas plus d'une proposition automatique toutes les 12 h, quelle que soit la réponse
         prefs(a).edit().putLong("reporteeJusqua", System.currentTimeMillis() + JOUR / 2).apply();
         android.text.SpannableStringBuilder m = new android.text.SpannableStringBuilder();
-        m.append("La version 1.").append(i.version).append(" de Voie libre est disponible (tu as la ")
+        m.append("La version 1.").append(String.valueOf(i.version)).append(" de Voie libre est disponible (tu as la ")
                 .append(nomVersion(a)).append(").");
-        if (i.taille > 0) m.append("\nTéléchargement : ").append(Math.max(1, Math.round(i.taille / 1048576.0))).append(" Mo.");
+        if (i.taille > 0) m.append("\nTéléchargement : ").append(String.valueOf(Math.max(1, Math.round(i.taille / 1048576.0)))).append(" Mo.");
         if (i.notes != null && !i.notes.isEmpty()) {
             m.append("\n\n");
             java.util.List<int[]> gras = new java.util.ArrayList<>();
