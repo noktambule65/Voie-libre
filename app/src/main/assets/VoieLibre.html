@@ -1993,6 +1993,13 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .gtab td.dur{white-space:nowrap}
 .carte.g .info{margin:2px 10px 8px}
 .gl{margin:6px 10px 10px;font-size:13px;color:#333}
+#menuPartage{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;justify-content:flex-end}
+#menuPartage .mpF{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+#menuPartage .mpB{position:relative;background:var(--card,#fff);color:var(--ink,#1F2A37);border-radius:16px 16px 0 0;padding:16px 14px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+#menuPartage .mpB>b{font-size:17px;margin:0 2px 4px}
+#menuPartage button{font:inherit;font-size:16px;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--rule,#C9D3DF);background:var(--bg,#E9EEF4);color:inherit}
+#menuPartage button small{display:block;font-size:13px;opacity:.75;margin-top:2px}
+#menuPartage .mpA{text-align:center;background:transparent;border:0}
 .gl .r{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding:7px 10px;border-radius:2px}
 .gl .r .h{flex:none;width:44px;font-weight:700;font-size:12.5px}
 .gl .r .l{flex:1;min-width:0}
@@ -2443,6 +2450,70 @@ function detailLignes(x){
   return `<div class="gl">${L.join('')}</div>`;
 }
 
+/* ---- Partage « pour un proche » : mêmes cartes et bandes, sans jargon ni sigles ---- */
+// Nom de gare seul : « MTJ MG » → « Montréjeau-Gourdan-Polignan » (le sigle d'emplacement est retiré)
+function lieuSimple(l){
+  const t=String(l||'').trim(); if(!t) return '';
+  const p=t.split(/\s+/), g=(parent!==window && parent.vlGareCode)?parent.vlGareCode(p[0]):null;
+  return g?g.n:t.replace(/\s+[A-Z0-9]{1,4}$/,'');
+}
+function heureFr(h){ const m=String(h||'').match(/^(\d{1,2}):(\d{2})/); return m?(+m[1])+'h'+m[2]:String(h||''); }
+function dureeFr(d){ return d>=60?Math.floor(d/60)+'h'+pad(d%60):d+' min'; }
+// Libellé d'une opération ponctuelle ; null = ligne masquée (marche à pied)
+function libProche(it){
+  const a=String(it.act||'').trim();
+  if(/^marche\b/i.test(a)) return null;
+  if(/^(PC|EJ|RS)\b/i.test(a)) return 'Essais des dispositifs de sécurité du train';
+  if(/^MS\b/i.test(a)) return 'Mise en stationnement du train';
+  if(/^EQ\s+PREND\b/i.test(a)) return 'Je prends le train en relais d’un collègue';
+  if(/^EQ\s+C[EÈ]DE\b/i.test(a)) return 'Je passe le train en relais à un collègue';
+  if(/^coupure\b/i.test(a)) return 'Pause (coupure)';
+  if(estRepas(a)) return '🍜 Pause repas';
+  if(estReserve(a)) return '⏳ En réserve, prêt à partir si besoin';
+  if(estManoeuvre(a)) return 'Manœuvres du train';
+  if(estChauffage(a)) return 'Mise en chauffe du train';
+  if(/^train_evo\b|^EVO\b/i.test(a) || genre(it)==='evo') return 'Je déplace le train';
+  return LIB_PONCT(a)||a;
+}
+function detailLignesProche(x){
+  const s=x.s; if(!s) return '';
+  const p0=min(s.ps&&s.ps.h); if(p0===null) return '';
+  const rel=h=>{ let m=min(h); if(m===null) return null; if(m<p0-180) m+=1440; return m; };
+  const L=[]; let dernier='';
+  L.push(`<div class="r ps"><span class="h">${esc(s.ps.h)}</span><span class="l"><b>Début de journée</b>${esc(lieuSimple(s.ps.lieu))}</span></div>`);
+  s.items.forEach(it=>{
+    const g=genre(it), num=(it.act.match(/([A-Z]?\d{3,})\s*$/)||[])[1]||'';
+    if(g==='cond'||g==='ev'){
+      const [de,a]=String(it.lieu).split('->').map(t=>lieuSimple(t));
+      const dur=dureeFr(reel(rel(it.h1),rel(it.h2)));
+      const act=String(it.act).trim();
+      const lib=g==='cond'?'Je conduis':/^TAXI\b/i.test(act)?'Trajet en taxi':/^BUS\b/i.test(act)?'Trajet en bus':/^EVLOC\b/i.test(act)?'En cabine, sans conduire':'Trajet en passager';
+      L.push(`<div class="tr ${g}"><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
+        <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
+        <div class="d"><b>${lib}</b> · ${dur}</div></div>`);
+      dernier='';
+    } else {
+      const lib=libProche(it); if(lib===null) return;
+      if(lib===dernier) return;   // opérations identiques qui se suivent (PC puis EJ…) : une seule ligne
+      dernier=lib;
+      let fin=it.h2;
+      if(estReserve(it.act)||estRepas(it.act)){
+        const a=rel(it.h1), f=s.fs?rel(s.fs.h):null, suiv=s.items.map(y=>rel(y.h1)).filter(v=>v!==null&&a!==null&&v>a);
+        let b=Math.min(...suiv, f===null?Infinity:f); if(estRepas(it.act)) b=Math.min(b,a+45);
+        if(!it.h2 && isFinite(b) && b>a) fin=hm(b); }
+      const lieux=[...new Set(String(it.lieu||'').split('->').map(t=>lieuSimple(t)).filter(Boolean))].join(' → ');
+      const h=fin?esc(it.h1)+'-'+esc(fin):esc(it.h1);
+      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(lieux)}</span></span>${num?`<span class="n">${esc(num)}</span>`:''}</div>`);
+    }
+  });
+  if(s.fs) L.push(`<div class="r ps"><span class="h">${esc(s.fs.h)}</span><span class="l"><b>Fin de journée</b>${esc(lieuSimple(s.fs.lieu))}</span></div>`);
+  // en tête : l'essentiel en une phrase
+  let res=`Je commence à <b>${esc(heureFr(s.ps.h))}</b> à <b>${esc(lieuSimple(s.ps.lieu))}</b>`
+    +(s.fs?` et je termine à <b>${esc(heureFr(s.fs.h))}</b> à <b>${esc(lieuSimple(s.fs.lieu))}</b>`:'')+'.';
+  if(x.dec && x.seg===0 && x.a && x.a.rhr) res+=` 🛏 Nuit à l’hôtel à <b>${esc(lieuSimple(x.a.rhr.lieu))}</b>.`;
+  return `<div class="gl"><div style="background:#fff;border:1px solid #C9D3DF;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:14px;line-height:1.45;color:#1F2A37">${res}</div>${L.join('')}</div>`;
+}
+
 /* ---- Affichage d'un jour ---- */
 let JOUR=null;
 // Jour utilisé seulement le temps de dessiner un graphique pour le widget (le jour affiché n'est jamais touché)
@@ -2453,7 +2524,7 @@ const COUL_CAT={js:'#2F5FA8',dec:'#2F5FA8',rp:'#3A902D',ca:'#5BB7D5',abs:'#DE8AE
 // Grille de semaines complètes (lundi → dimanche), sans s'arrêter au mois calendaire
 const SEMAINES=5;
 function lundiDe(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-(x.getDay()+6)%7); return x; }
-function moisSVG(debut,W,nbSem,sansEntete){
+function moisSVG(debut,W,nbSem,sansEntete,proche){
   const lignes=nbSem||SEMAINES, cw=W/7, ch=Math.round(cw*1.12), hh=sansEntete?0:18, H=hh+lignes*ch, auj=cle(new Date());
   const an=debut.getFullYear(), m=debut.getMonth(), decal=0, nb=lignes*7;
   const o=[`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="'Open Sans',Roboto,Arial,sans-serif">`];
@@ -2467,7 +2538,18 @@ function moisSVG(debut,W,nbSem,sansEntete){
     if(dt.getDate()===1) o.push(`<line x1="${(x+1).toFixed(1)}" y1="${y+1}" x2="${(x+1).toFixed(1)}" y2="${y+ch-1}" stroke="#2F5FA8" stroke-width="1.5"/>`);
     if(e){
       const coul=COUL_CAT[e.cat]||'#666';
-      if(sv){
+      if(sv && proche){
+        // pour un proche : début et fin seulement ; découché : barre orange et lieu en petit
+        o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.47).toFixed(1)}" font-size="12.5" font-weight="700" fill="#2F5FA8" text-anchor="middle">${esc(heureFr(sv.s.ps&&sv.s.ps.h||'').replace('h',':'))}</text>`);
+        if(sv.s.fs) o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.72).toFixed(1)}" font-size="11" font-weight="700" fill="#2F5FA8" text-anchor="middle">→ ${esc(heureFr(sv.s.fs.h).replace('h',':'))}</text>`);
+        if(sv.dec){
+          const x1=sv.seg===0?cx:x+1, x2=sv.seg===0?x+cw-1:cx;
+          o.push(`<rect x="${x1.toFixed(1)}" y="${y+ch-6}" width="${(x2-x1).toFixed(1)}" height="2.5" fill="#E8902E"/>`);
+          if(sv.seg===0 && sv.a.rhr){ let n=lieuSimple(sv.a.rhr.lieu); if(n.length>11) n=n.slice(0,10)+'…';
+            o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch-9).toFixed(1)}" font-size="7.5" font-weight="700" fill="#E8902E" text-anchor="middle">🛏 ${esc(n)}</text>`); }
+        }
+        if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
+      } else if(sv){
         const code=sv.code||'', fs=code.length>5?10.5:12.5;
         o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.47).toFixed(1)}" font-size="${fs}" font-weight="700" fill="${coul}" text-anchor="middle">${esc(code)}</text>`);
         o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.67).toFixed(1)}" font-size="9" fill="#777" text-anchor="middle">${esc(sv.s.ps&&sv.s.ps.h||'')}</text>`);
@@ -2480,12 +2562,16 @@ function moisSVG(debut,W,nbSem,sansEntete){
         }
         if(liste.filter(z=>z.s).length>1) o.push(`<text x="${(x+4).toFixed(1)}" y="${y+ch-6}" font-size="10" font-weight="700" fill="#2F5FA8">+</text>`);
       } else {
-        const t=String(e.ev.titre||'').replace(/^•\s*/,''), fs=t.length>6?9.5:11.5;
+        let t=String(e.ev.titre||'').replace(/^•\s*/,''), fs=t.length>6?9.5:11.5;
+        // pour un proche : « Repos » (RP, RU, RQ… et AH), « Congé » (CA, ½CA…) ; les autres codes restent tels quels
+        let coulT=coul;
+        if(proche && (e.cat==='rp' || (e.cat==='abs' && /^AH$/i.test(t.trim())))){ t='Repos'; fs=11.5; coulT=COUL_CAT.rp; }
+        else if(proche && e.cat==='ca'){ t='Congé'; fs=11.5; coulT=COUL_CAT.ca; }
         if(e.cat==='d'){   // « d » : pastille sombre, lettre blanche, comme dans Graou
           const r=Math.min(cw,ch)*0.17;
           o.push(`<circle cx="${cx.toFixed(1)}" cy="${(y+ch*0.52).toFixed(1)}" r="${r.toFixed(1)}" fill="${coul}"/><text x="${cx.toFixed(1)}" y="${(y+ch*0.52+r*0.42).toFixed(1)}" font-size="${(r*1.25).toFixed(1)}" fill="#fff" text-anchor="middle">${esc(t)}</text>`);
         } else
-        o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.55).toFixed(1)}" font-size="${fs}" font-weight="700" fill="${coul}" text-anchor="middle">${esc(t)}</text>`);
+        o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.55).toFixed(1)}" font-size="${fs}" font-weight="700" fill="${coulT}" text-anchor="middle">${esc(t)}</text>`);
       }
     }
     o.push('</g>');
@@ -2646,7 +2732,22 @@ function banniereHeure(liste){
 }
 function brancherRetour(){ const b=$('revenir'); if(b) b.onclick=()=>{ JOUR=DEFAUT; rendre(); window.scrollTo(0,0); }; }
 /* ---- Partage en image : toujours en clair (le SVG est dessiné sur fond blanc, hors du thème de l'écran) ---- */
-async function exporterImage(){
+// Toucher « partager » : comme dans l'appli, ou pour un proche (sans jargon)
+function choisirPartage(){
+  const bt=$('partImg'); if(!bt || bt.disabled) return;
+  let m=document.getElementById('menuPartage'); if(m){ m.remove(); return; }
+  m=document.createElement('div'); m.id='menuPartage';
+  m.innerHTML=`<div class="mpF"></div><div class="mpB"><b>Partager en image</b>
+    <button data-p="0">📋 Comme dans l’appli</button>
+    <button data-p="1">👪 Pour un proche<small>Sans jargon : horaires, repos, congés, nuits à l’hôtel</small></button>
+    <button data-p="x" class="mpA">Annuler</button></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click',e=>{ const b=e.target.closest('[data-p]');
+    if(!b && !e.target.closest('.mpF')) return;
+    m.remove(); if(b && b.dataset.p!=='x') exporterImage(b.dataset.p==='1'); });
+}
+async function exporterImage(proche){
+  proche=proche===true;
   const bt=$('partImg'); if(!bt || bt.disabled) return;
   const ancien=bt.innerHTML, W=420, M=14;
   const T=(x,y,txt,sz,fill,wt,anc)=>`<text x="${x}" y="${y}" font-size="${sz}" fill="${fill}"${wt?` font-weight="${wt}"`:''}${anc?` text-anchor="${anc}"`:''}>${esc(txt)}</text>`;
@@ -2655,17 +2756,42 @@ async function exporterImage(){
   try{
     let corps='', y=0, nom='', titre='';
     if(MODE==='mois'){
-      const nb=Math.max(2,Math.min(8,VIS||4)), g=moisSVG(MOIS,W-2*M,nb,false);
-      titre='Planning · '+titreSemaines(MOIS,nb);
+      const nb=Math.max(2,Math.min(8,VIS||4)), g=moisSVG(MOIS,W-2*M,nb,false,proche);
+      titre=(proche?'Mes horaires · ':'Planning · ')+titreSemaines(MOIS,nb);
       corps+=T(M,30,titre,18,'#14243A',700); y=44;
       corps+=g.svg.replace('<svg ',`<svg x="${M}" y="${y}" `); y+=g.H+8;
-      nom='voie-libre-planning-'+cle(MOIS)+'.png';
+      if(proche){ y+=12;
+        corps+=`<rect x="${M}" y="${y-9}" width="10" height="10" rx="2" fill="#3A902D"/>`+T(M+14,y,'Repos',11,'#555')
+          +`<rect x="${M+64}" y="${y-9}" width="10" height="10" rx="2" fill="#5BB7D5"/>`+T(M+78,y,'Congé',11,'#555')
+          +`<rect x="${M+130}" y="${y-5}" width="16" height="2.5" fill="#E8902E"/>`+T(M+150,y,'🛏 Nuit à l’hôtel',11,'#555'); }
+      nom='voie-libre-'+(proche?'horaires-':'planning-')+cle(MOIS)+'.png';
     } else {
       const xs=(INDEX[JOUR]||[]).filter(e=>e.s);
       if(!xs.length){ flash('—'); return; }
       const dateL=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(lire(JOUR));
       const nomL=l=>{ const L=lieuMeteo(l); return L?L.n:nomGare(l); };
       y=8;
+      // HTML de l'appli copié dans l'image avec ses styles (mêmes cartes, bandes et icônes)
+      const insererHTML=html=>{
+        const box=document.createElement('div');
+        box.style.cssText=`position:fixed;left:-10000px;top:0;width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif;background:#fff`;
+        box.innerHTML=html; document.body.appendChild(box);
+        const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+4;
+        const copie=gl.cloneNode(true);
+        const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
+        fige(gl,copie);
+        const ser=new XMLSerializer().serializeToString(copie);
+        box.remove();
+        corps+=`<foreignObject x="${M}" y="${y}" width="${W-2*M}" height="${hb}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif">${ser}</div></foreignObject>`;
+        y+=hb; };
+      if(proche){
+        xs.forEach(x=>{
+          y+=26; corps+=T(M,y,'Ma journée de travail',20,'#14243A',700);
+          y+=19; corps+=T(M,y,dateL,13,'#55657A');
+          y+=12; insererHTML(detailLignesProche(x));
+          y+=10; titre='Ma journée · '+dateL; });
+        nom='voie-libre-journee-'+JOUR+'.png';
+      } else
       xs.forEach(x=>{
         const g=graphique(x,W-2*M,true); if(!g.svg) return;
         y+=24; corps+=T(M,y,x.code,22,'#14243A',700);
@@ -2706,7 +2832,7 @@ async function exporterImage(){
     bt.disabled=false;
   }catch(e){ flash('✕'); }
 }
-$('partImg').onclick=exporterImage;
+$('partImg').onclick=choisirPartage;
 const WMO_TXT={0:'Ciel dégagé',1:'Plutôt dégagé',2:'Partiellement nuageux',3:'Couvert',45:'Brouillard',48:'Brouillard givrant',51:'Bruine faible',53:'Bruine',55:'Bruine forte',56:'Bruine verglaçante',57:'Bruine verglaçante forte',61:'Pluie faible',63:'Pluie',65:'Pluie forte',66:'Pluie verglaçante',67:'Pluie verglaçante forte',71:'Neige faible',73:'Neige',75:'Neige forte',77:'Grains de neige',80:'Averses faibles',81:'Averses',82:'Averses violentes',85:'Averses de neige',86:'Fortes averses de neige',95:'Orage',96:'Orage avec grêle',99:'Orage violent avec grêle'};
 function cadreMeteo(cible){
   const [k,h,lieu]=cible.split('|'), L=lieuMeteo(lieu), c=L?meteoCache(L):null;
