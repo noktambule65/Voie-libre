@@ -23,6 +23,18 @@ public class DepartActivity extends Activity {
         // l'écran reste allumé tant que l'alerte est affichée ; elle se ferme toute seule 3 min après (comme la notification)
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, 3 * 60 * 1000L);
+        afficher();
+    }
+
+    /** Écran déjà ouvert (instance unique) : une nouvelle alerte (départ ou phrase) remplace l'affichage. */
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        afficher();
+    }
+
+    private void afficher() {
         int id = getIntent().getIntExtra("id", 0);
         LinearLayout l = new LinearLayout(this);
         l.setOrientation(LinearLayout.VERTICAL);

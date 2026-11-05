@@ -953,6 +953,18 @@ public class Notifs extends BroadcastReceiver {
         return String.join(" · ", r);
     }
 
+    /** L'une des phrases de ce train, à ce délai, demande-t-elle l'écran rouge (comme le rappel de départ) ? */
+    private static boolean phrasePlein(Context ctx, String liste, String gare, String train, int delai) {
+        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
+        JSONArray l = rt == null ? null : rt.optJSONArray(liste);
+        boolean depart = "notes".equals(liste);
+        for (int k = 0; l != null && k < l.length(); k++) {
+            JSONObject n = l.optJSONObject(k);
+            if (phraseVise(n, gare, train) && delaiPhrase(rt, n, depart) == delai && n.optBoolean("plein", false)) return true;
+        }
+        return false;
+    }
+
     /** Délais (minutes, sans doublon) des phrases qui visent ce train dans cette gare. */
     private static java.util.Set<Integer> delaisPhrases(Context ctx, String liste, String gare, String train) {
         JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
@@ -1047,6 +1059,14 @@ public class Notifs extends BroadcastReceiver {
             String quandTxt = dans > 0 ? (depart ? "Départ dans " + dans + " min" : "Arrivé il y a " + dans + " min") : (depart ? "Départ maintenant" : "Arrivée maintenant");
             // identifiant tiré de l'instant du rappel : deux phrases du même train à des délais différents ne s'écrasent pas
             int id = 700000 + (int) ((quand / 60000L) % 100000L) * 2 + (depart ? 1 : 0);
+            // phrase réglée en « écran rouge » : même alerte que le départ (bandeau persistant, plein écran si verrouillé)
+            if (phrasePlein(ctx, depart ? "notes" : "notesArr", gare, t.optString("quoi"), (int) e[3])) {
+                String grand = depart ? (dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT")
+                        : (dans > 0 ? "ARRIVÉ IL Y A " + dans + " MIN" : "ARRIVÉE MAINTENANT");
+                alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + h, t.optString("ou"),
+                        (depart ? "Départ " : "Arrivée ") + h, texte, t.optString("date"), 180000L, 2012);
+                continue;
+            }
             montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
                     ouvrir(ctx, 2004, "journee", "date", t.optString("date")));
         }
@@ -1072,10 +1092,21 @@ public class Notifs extends BroadcastReceiver {
      * (alerte « urgente » d'Android, comme un appel entrant). Retiré tout seul 2 min après le départ.
      */
     private static void alerteDepart(Context ctx, int id, JSONObject t, long dans, String note) {
+        String grand = dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT";
+        alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + t.optString("h"), t.optString("ou"),
+                "Départ " + t.optString("h"), note, t.optString("date"),
+                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()), 2010);
+    }
+
+    /**
+     * Alerte rouge (départ de train ou phrase personnalisée réglée en « écran rouge ») : bandeau persistant jusqu'à OK
+     * si le téléphone est utilisé, écran rouge plein écran s'il est éteint ou verrouillé. code : requêtes code et code + 1,
+     * distinctes pour le départ et pour les phrases, afin qu'une alerte ne modifie pas le bouton OK de l'autre.
+     */
+    private static void alerteRouge(Context ctx, int id, String grand, String quoi, String train, String trajet,
+                                    String debutTexte, String note, String date, long duree, int code) {
         if (!autorisees(ctx)) return;
         canaux(ctx);
-        String grand = dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT";
-        String train = t.optString("quoi") + " · " + t.optString("h"), trajet = t.optString("ou");
         android.widget.RemoteViews petit = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart);
         petit.setTextViewText(R.id.dGrand, grand);
         petit.setTextViewText(R.id.dLigne, train + (trajet.isEmpty() ? "" : " · " + trajet));
@@ -1093,25 +1124,25 @@ public class Notifs extends BroadcastReceiver {
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
                 .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
-        PendingIntent pEcran = PendingIntent.getActivity(ctx, 2010, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        PendingIntent pOk = PendingIntent.getBroadcast(ctx, 2011, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
+        PendingIntent pEcran = PendingIntent.getActivity(ctx, code, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pOk = PendingIntent.getBroadcast(ctx, code + 1, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Action ok = new Notification.Action.Builder(
                 android.graphics.drawable.Icon.createWithResource(ctx, R.drawable.ic_notif), "OK", pOk).build();
         Notification.Builder b = new Notification.Builder(ctx, CANAL_DEPART)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(0xFFE53935)
-                .setContentTitle(grand.charAt(0) + grand.substring(1).toLowerCase(Locale.FRANCE) + " : " + t.optString("quoi"))
-                .setContentText("Départ " + t.optString("h") + (trajet.isEmpty() ? "" : " · " + trajet) + (note.isEmpty() ? "" : " · " + note))
+                .setContentTitle(grand.charAt(0) + grand.substring(1).toLowerCase(Locale.FRANCE) + " : " + quoi)
+                .setContentText(debutTexte + (trajet.isEmpty() ? "" : " · " + trajet) + (note.isEmpty() ? "" : " · " + note))
                 .setStyle(new Notification.DecoratedCustomViewStyle())
                 .setCustomContentView(petit)
                 .setCustomHeadsUpContentView(petit)
                 .setCustomBigContentView(grandV)
                 .setCategory(Notification.CATEGORY_ALARM)
-                .setContentIntent(ouvrir(ctx, 2004, "journee", "date", t.optString("date")))
+                .setContentIntent(ouvrir(ctx, 2004, "journee", "date", date))
                 .addAction(ok)
                 .setAutoCancel(true)
-                .setTimeoutAfter(Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()));
+                .setTimeoutAfter(duree);
         // l'alerte « urgente » fait persister le bandeau ; sans l'autorisation, bandeau rouge normal (quelques secondes)
         if (pleinEcranAutorise(ctx)) b.setFullScreenIntent(pEcran, true);
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);

@@ -1071,6 +1071,10 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 #editPhrase .aide{color:var(--soft);font-size:13.5px;margin:8px 0 0}
 #editPhrase .epErr{color:var(--ink);font-weight:600;margin:0 0 4px}
 #editPhrase .action{width:100%;margin-top:6px}
+#editPhrase .epCase{display:flex;align-items:flex-start;gap:10px;font-size:15px;cursor:pointer}
+#editPhrase .epCase input{width:22px;height:22px;flex:none;margin:1px 0 0;padding:0}
+#editPhrase .epCase small{display:block;color:var(--soft);font-size:13px;margin-top:3px;line-height:1.35}
+.panneau .phraseCarte .pcRouge{color:#C62828;font-weight:700}
 .panneau .phraseCarte{background:var(--card);border:1.5px solid var(--rule);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14px;cursor:pointer}
 .panneau .phraseCarte .pcTete{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .panneau .phraseCarte .pcQuand{font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft);flex:none}
@@ -1269,7 +1273,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <div class="pcTete"><span class="pcQuand">${k==='notes'?'🚉 Départ':'🏁 Arrivée'}</span><span class="pcGare">${esc(n.gare||'Toutes les gares')}</span><button class="lien pcSup" data-psup="${k}:${i}" aria-label="Supprimer la phrase">✕</button></div>
         <div class="pcTrains">${n.debut?'Trains commençant par : <b>'+esc(n.debut)+'</b>':'Tous les trains'}</div>
         <div class="pcTexte">${n.texte?'« '+esc(n.texte)+' »':'<i>Phrase vide, touche pour la saisir</i>'}</div>
-        <div class="pcDelai">⏱ ${delaiTxt(n,k)}</div></div>`;
+        <div class="pcDelai">⏱ ${delaiTxt(n,k)}${n.plein?' · <span class="pcRouge">🔴 Écran rouge</span>':''}</div></div>`;
     const notesHtml=tr=>{ const l=[...(tr.notes||[]).map((n,i)=>phraseCarte(n,i,'notes')), ...(tr.notesArr||[]).map((n,i)=>phraseCarte(n,i,'notesArr'))];
       return `<div class="sousOpt notesGare"><p class="petit">Une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.).${l.length?' Touche une phrase pour la modifier.':''}</p>
         ${l.join('')}
@@ -1778,7 +1782,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 
   // Ajout ou modification d'une phrase personnalisée : moment, gare, trains, phrase, délai
   function editerPhrase(init, defMin){ return new Promise(fini=>{
-    const st={k:init?init.k:'notes', gare:init?(init.n.gare||''):'', debut:init?(init.n.debut||''):'', texte:init?(init.n.texte||''):'', min:init&&init.n.min!=null?String(init.n.min):''};
+    const st={k:init?init.k:'notes', gare:init?(init.n.gare||''):'', debut:init?(init.n.debut||''):'', texte:init?(init.n.texte||''):'', min:init&&init.n.min!=null?String(init.n.min):'', plein:!!(init&&init.n.plein)};
     const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='editPhrase';
     const dessiner=()=>{ const dep=st.k==='notes', min=st.min!==''?st.min:String(defMin[st.k]);
       ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>${init?'Modifier la phrase':'Nouvelle phrase'}</h2></div>
@@ -1795,11 +1799,15 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <div class="epEtape"><div class="epT">5. Quand</div>
           <div class="epDelai"><input id="epMin" type="number" min="0" max="180" step="1" inputmode="numeric" value="${esc(min)}"><span>${dep?'min avant le départ':'min après l’arrivée'}</span></div>
           ${dep?'':'<p class="aide">0 = à l’heure d’arrivée prévue.</p>'}</div>
+        <div class="epEtape"><div class="epT">6. Alerte</div>
+          <label class="epCase"><input type="checkbox" id="epPlein"${st.plein?' checked':''}><span><b>Écran rouge</b>, comme le rappel de départ du train
+          <small>Bandeau rouge jusqu’à OK si le téléphone est utilisé, écran rouge plein écran s’il est éteint ou verrouillé. Sinon, notification simple.</small></span></label></div>
         <p class="aide epErr" style="display:none">⚠️ Saisis une phrase avant d’enregistrer.</p>
         <button class="action" data-ok="1">Enregistrer</button>
       </div>`; };
     const lire=()=>{ const d=ov.querySelector('#epDebut'), t=ov.querySelector('#epTexte'), m=ov.querySelector('#epMin');
-      if(d) st.debut=d.value; if(t) st.texte=t.value; if(m) st.min=m.value; };
+      const pl=ov.querySelector('#epPlein');
+      if(d) st.debut=d.value; if(t) st.texte=t.value; if(m) st.min=m.value; if(pl) st.plein=pl.checked; };
     dessiner(); document.body.appendChild(ov);
     ov.addEventListener('click',e=>{
       if(e.target.closest('[data-x]')){ ov.remove(); fini(null); return; }
@@ -1810,7 +1818,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       if(e.target.closest('[data-ok]')){ lire();
         if(!st.texte.trim()){ ov.querySelector('.epErr').style.display='block'; const t=ov.querySelector('#epTexte'); if(t) t.focus(); return; }
         const n=Math.round(+st.min), min=st.min!==''&&isFinite(n)&&n>=0?Math.min(180,n):defMin[st.k];
-        ov.remove(); fini({k:st.k, n:{gare:st.gare, debut:st.debut.trim(), texte:st.texte.trim(), min}}); } });
+        ov.remove(); fini({k:st.k, n:{gare:st.gare, debut:st.debut.trim(), texte:st.texte.trim(), min, plein:st.plein}}); } });
     if(!init) setTimeout(()=>{ try{ ov.querySelector('#epTexte').focus(); }catch(e){} },60);
   }); }
 
