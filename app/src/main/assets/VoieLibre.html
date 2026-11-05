@@ -2340,11 +2340,12 @@ function graphique(x, largeurDispo, sansMaintenant){
     }
   });
   // numéros de train juste au-dessus des barres
-  const finRang=[-1e9,-1e9];
+  const finRang=[-1e9,-1e9], occNum=[];
   etiquettes.sort((a,b)=>a.x-b.x).forEach(e=>{
     const lw=e.txt.length*5.2+2;
     let r=finRang.findIndex(v=>e.x-lw/2>v+3); if(r<0) r=finRang.indexOf(Math.min(...finRang));
     finRang[r]=e.x+lw/2;
+    occNum.push({x1:e.x-lw/2, x2:e.x+lw/2, y1:Y-7-r*9-8, y2:Y-7-r*9+2});
     o.push(`<text class="el" data-i="${esc(e.info)}" x="${e.x.toFixed(1)}" y="${Y-7-r*9}" font-size="9" fill="${ENC}" text-anchor="middle">${esc(e.txt)}</text>`);
   });
   // minutes aux extrémités
@@ -2366,7 +2367,7 @@ function graphique(x, largeurDispo, sansMaintenant){
       arr,(mob[k].b+mob[k+1].a)/2,(xa+xb)/2,Y+47,40,'middle'));
   }
   // cadres RS / MS / PC / EJ / F1 / EQ… avec le numéro au-dessus ; « + » pour la marche à pied
-  const rangs=[-1e9,-1e9];
+  const rangs=[-1e9,-1e9,-1e9];
   items.filter(it=>it.g==='point').forEach(it=>{
     const xx=X(it.a), info=`${hm(it.a)} · ${it.lieu||''} · ${it.act}`;
     if(/^marche\b/i.test(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${(xx-2).toFixed(1)}" y="${Y-5}" font-size="10" fill="${ENC}" text-anchor="end">+</text>`); return; }
@@ -2383,7 +2384,11 @@ function graphique(x, largeurDispo, sansMaintenant){
     if(estChauffage(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${xx.toFixed(1)}" y="${Y-6}" font-size="12" fill="${ENC}" text-anchor="middle">#</text>`); return; }
     const lib=LIB_PONCT(it.act)||it.act, num=(it.act.match(/([A-Z]?\d{3,})\s*$/)||[])[1]||'';
     const lw=Math.max(16,lib.length*5.4+6), cx=Math.min(Math.max(xx+lw/2-4,G+lw/2),W-D-lw/2);
-    let r=rangs.findIndex(v=>cx-lw/2>v+2); if(r<0) r=rangs.indexOf(Math.min(...rangs));
+    // rangée la plus basse libre : pas de cadre avant, pas de numéro de train dessous (sinon chevauchement)
+    const libre=k=>{ const y0=38-k*16, h1=y0-(num?8:0), h2=y0+9.5;
+      return cx-lw/2>rangs[k]+2 && !occNum.some(b=>b.x2>cx-lw/2-1 && b.x1<cx+lw/2+1 && b.y2>h1 && b.y1<h2); };
+    let r=[0,1,2].find(libre);
+    if(r===undefined){ r=rangs.findIndex((v,k)=>k<2 && cx-lw/2>v+2); if(r<0) r=rangs.indexOf(Math.min(rangs[0],rangs[1])); }
     rangs[r]=cx+lw/2;
     const yb=38-r*16;
     o.push(`<g class="el" data-i="${esc(info)}">${num?`<text x="${(cx-lw/2).toFixed(1)}" y="${yb-1.5}" font-size="6.5" fill="${ENC}">${esc(num)}</text>`:''}<rect x="${(cx-lw/2).toFixed(1)}" y="${yb}" width="${lw.toFixed(1)}" height="9.5" fill="#fff" stroke="${ENC}" stroke-width="0.7"/><text x="${cx.toFixed(1)}" y="${yb+7.3}" font-size="7.5" fill="${ENC}" text-anchor="middle">${esc(lib)}</text></g>`);
@@ -2465,6 +2470,8 @@ function libProche(it){
   if(/^marche\b/i.test(a)) return null;
   if(/^(PC|EJ|RS)\b/i.test(a)) return 'Essais des dispositifs de sécurité du train';
   if(/^MS\b/i.test(a)) return 'Mise en stationnement du train';
+  if(/^F1\b/i.test(a)) return 'Attelage de deux trains ensemble';
+  if(/^C1\b/i.test(a)) return 'Séparation de deux trains attelés';
   if(/^EQ\s+PREND\b/i.test(a)) return 'Je prends le train en relais d’un collègue';
   if(/^EQ\s+C[EÈ]DE\b/i.test(a)) return 'Je passe le train en relais à un collègue';
   if(/^coupure\b/i.test(a)) return 'Pause (coupure)';
@@ -2567,7 +2574,10 @@ function moisSVG(debut,W,nbSem,sansEntete,proche){
         let coulT=coul;
         if(proche && (e.cat==='rp' || (e.cat==='abs' && /^AH$/i.test(t.trim())))){ t='Repos'; fs=11.5; coulT=COUL_CAT.rp; }
         else if(proche && e.cat==='ca'){ t='Congé'; fs=11.5; coulT=COUL_CAT.ca; }
-        if(e.cat==='d'){   // « d » : pastille sombre, lettre blanche, comme dans Graou
+        if(proche && e.cat==='d'){   // « d » : journée de travail dont les horaires ne sont pas encore connus
+          o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.5).toFixed(1)}" font-size="11.5" font-weight="700" fill="${COUL_CAT.d}" text-anchor="middle">Travail</text>`);
+          o.push(`<text x="${cx.toFixed(1)}" y="${(y+ch*0.7).toFixed(1)}" font-size="7.5" fill="#666" text-anchor="middle">horaires à venir</text>`);
+        } else if(e.cat==='d'){   // « d » : pastille sombre, lettre blanche, comme dans Graou
           const r=Math.min(cw,ch)*0.17;
           o.push(`<circle cx="${cx.toFixed(1)}" cy="${(y+ch*0.52).toFixed(1)}" r="${r.toFixed(1)}" fill="${coul}"/><text x="${cx.toFixed(1)}" y="${(y+ch*0.52+r*0.42).toFixed(1)}" font-size="${(r*1.25).toFixed(1)}" fill="#fff" text-anchor="middle">${esc(t)}</text>`);
         } else
@@ -2763,7 +2773,8 @@ async function exporterImage(proche){
       if(proche){ y+=12;
         corps+=`<rect x="${M}" y="${y-9}" width="10" height="10" rx="2" fill="#3A902D"/>`+T(M+14,y,'Repos',11,'#555')
           +`<rect x="${M+64}" y="${y-9}" width="10" height="10" rx="2" fill="#5BB7D5"/>`+T(M+78,y,'Congé',11,'#555')
-          +`<rect x="${M+130}" y="${y-5}" width="16" height="2.5" fill="#E8902E"/>`+T(M+150,y,'🛏 Nuit à l’hôtel',11,'#555'); }
+          +`<rect x="${M+130}" y="${y-5}" width="16" height="2.5" fill="#E8902E"/>`+T(M+150,y,'🛏 Nuit à l’hôtel',11,'#555');
+        y+=18; corps+=`<rect x="${M}" y="${y-9}" width="10" height="10" rx="2" fill="#333333"/>`+T(M+14,y,'Travail : horaires pas encore connus',11,'#555'); }
       nom='voie-libre-'+(proche?'horaires-':'planning-')+cle(MOIS)+'.png';
     } else {
       const xs=(INDEX[JOUR]||[]).filter(e=>e.s);
