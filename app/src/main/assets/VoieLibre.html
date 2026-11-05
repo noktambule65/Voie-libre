@@ -2001,7 +2001,7 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 #menuPartage button small{display:block;font-size:13px;opacity:.75;margin-top:2px}
 #menuPartage .mpA{text-align:center;background:transparent;border:0}
 .gl .r{display:flex;align-items:center;gap:10px;margin-bottom:4px;padding:7px 10px;border-radius:2px}
-.gl .r .h{flex:none;width:44px;font-weight:700;font-size:12.5px}
+.gl .r .h{flex:none;width:44px;font-weight:700;font-size:12.5px;white-space:nowrap}
 .gl .r .l{flex:1;min-width:0}
 .gl .r .n{flex:none;font-weight:700}
 .gl .ps{background:#5FA463;color:#fff}.gl .ps .l b{font-size:15px;margin-right:8px}
@@ -2788,9 +2788,9 @@ async function exporterImage(proche){
         const box=document.createElement('div');
         box.style.cssText=`position:fixed;left:-10000px;top:0;width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif;background:#fff`;
         box.innerHTML=html; document.body.appendChild(box);
-        const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+4;
+        const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+24;   // marge : rendu de l'image parfois un peu plus large
         const copie=gl.cloneNode(true);
-        const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
+        const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; if(n==='height'||n==='block-size') continue; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
         fige(gl,copie);
         const ser=new XMLSerializer().serializeToString(copie);
         box.remove();
@@ -2815,9 +2815,9 @@ async function exporterImage(proche){
           const box=document.createElement('div');
           box.style.cssText=`position:fixed;left:-10000px;top:0;width:${W-2*M}px;font-family:'Open Sans',Roboto,Arial,sans-serif;background:#fff`;
           box.innerHTML=detailLignes(x); document.body.appendChild(box);
-          const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+4;
+          const gl=box.firstElementChild, hb=Math.ceil(box.getBoundingClientRect().height)+24;   // marge : rendu de l'image parfois un peu plus large
           const copie=gl.cloneNode(true);
-          const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
+          const fige=(src,dst)=>{ const cs=getComputedStyle(src); let t=''; for(let k=0;k<cs.length;k++){ const n=cs[k]; if(n==='height'||n==='block-size') continue; t+=n+':'+cs.getPropertyValue(n)+';'; } dst.setAttribute('style',t); [...src.children].forEach((c,i)=>fige(c,dst.children[i])); };
           fige(gl,copie);
           copie.querySelectorAll('.galV').forEach(e=>e.remove()); copie.querySelectorAll('[href]').forEach(e=>{ e.removeAttribute('href'); e.removeAttribute('target'); e.removeAttribute('rel'); });
           const ser=new XMLSerializer().serializeToString(copie);
