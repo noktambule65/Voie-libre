@@ -929,20 +929,49 @@ public class Notifs extends BroadcastReceiver {
         if (max > vu) prefs(ctx).edit().putLong("tacheVu", max).apply();
     }
 
-    /** Phrases de Paramètres pour cette gare (liste « notes » au départ, « notesArr » à l'arrivée), ou chaîne vide. */
-    private static String phrase(Context ctx, String liste, String gare, String train) {
+    /** Délai d'une phrase en minutes (avant le départ ou après l'arrivée). Les phrases enregistrées avant
+     *  l'arrivée du délai par phrase reprennent le délai commun de leur section (noteMin / noteArrMin). */
+    private static int delaiPhrase(JSONObject rt, JSONObject n, boolean depart) {
+        int def = rt == null ? (depart ? 10 : 5) : rt.optInt(depart ? "noteMin" : "noteArrMin", depart ? 10 : 5);
+        int m = n != null && n.has("min") && !n.optString("min").trim().isEmpty() ? n.optInt("min", def) : def;
+        return Math.max(0, Math.min(180, m));
+    }
+
+    /** Phrases de Paramètres qui visent ce train dans cette gare (liste « notes » au départ, « notesArr » à l'arrivée).
+     *  delai >= 0 : seulement les phrases ayant ce délai ; delai < 0 : toutes. Chaîne vide si aucune. */
+    private static String phrase(Context ctx, String liste, String gare, String train, int delai) {
         JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
         JSONArray l = rt == null ? null : rt.optJSONArray(liste);
+        boolean depart = "notes".equals(liste);
         List<String> r = new ArrayList<>();
         for (int k = 0; l != null && k < l.length(); k++) {
             JSONObject n = l.optJSONObject(k);
-            if (n == null || n.optString("texte").trim().isEmpty()) continue;
-            String g = n.optString("gare").trim();
-            if (!g.isEmpty() && !g.equalsIgnoreCase(gare)) continue;       // gare vide : toutes les gares
-            if (!numeroCommence(train, n.optString("debut"))) continue;     // « commence par » vide : tous les trains
+            if (!phraseVise(n, gare, train)) continue;
+            if (delai >= 0 && delaiPhrase(rt, n, depart) != delai) continue;
             r.add(n.optString("texte").trim());
         }
         return String.join(" · ", r);
+    }
+
+    /** Délais (minutes, sans doublon) des phrases qui visent ce train dans cette gare. */
+    private static java.util.Set<Integer> delaisPhrases(Context ctx, String liste, String gare, String train) {
+        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
+        JSONArray l = rt == null ? null : rt.optJSONArray(liste);
+        boolean depart = "notes".equals(liste);
+        java.util.Set<Integer> r = new java.util.TreeSet<>();
+        for (int k = 0; l != null && k < l.length(); k++) {
+            JSONObject n = l.optJSONObject(k);
+            if (phraseVise(n, gare, train)) r.add(delaiPhrase(rt, n, depart));
+        }
+        return r;
+    }
+
+    /** La phrase (non vide) vise-t-elle ce train dans cette gare ? */
+    private static boolean phraseVise(JSONObject n, String gare, String train) {
+        if (n == null || n.optString("texte").trim().isEmpty()) return false;
+        String g = n.optString("gare").trim();
+        if (!g.isEmpty() && !g.equalsIgnoreCase(gare)) return false;      // gare vide : toutes les gares
+        return numeroCommence(train, n.optString("debut"));                // « commence par » vide : tous les trains
     }
 
     /** Le numéro du train commence-t-il par l'un des débuts indiqués (séparés par virgule, point-virgule ou espace) ? Vide : oui. */
@@ -955,20 +984,20 @@ public class Notifs extends BroadcastReceiver {
         return false;
     }
 
-    /** Rappels des phrases : {instant, 1 = départ / 0 = arrivée, indice de la tâche}, triés. */
+    /** Rappels des phrases : {instant, 1 = départ / 0 = arrivée, indice de la tâche, délai en minutes}, triés.
+     *  Chaque phrase a son propre délai : les phrases d'un même train ayant le même délai forment un seul rappel. */
     private static java.util.List<long[]> evenementsNotes(Context ctx) {
         java.util.List<long[]> l = new java.util.ArrayList<>();
         JSONArray taches = donnees(ctx).optJSONArray("taches");
         if (taches == null) return l;
-        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
-        long avDep = Math.max(0, Math.min(180, rt == null ? 10 : rt.optInt("noteMin", 10))) * 60000L;
-        long avArr = Math.max(0, Math.min(180, rt == null ? 5 : rt.optInt("noteArrMin", 5))) * 60000L;
         for (int k = 0; k < taches.length(); k++) {
             JSONObject t = taches.optJSONObject(k);
             if (t == null || !"train".equals(t.optString("type")) || t.optLong("t") <= 0) continue;
-            if (!phrase(ctx, "notes", t.optString("lieu"), t.optString("quoi")).isEmpty()) l.add(new long[]{t.optLong("t") - avDep, 1, k});
-            if (t.optLong("fin") > 0 && !phrase(ctx, "notesArr", t.optString("arr"), t.optString("quoi")).isEmpty())
-                l.add(new long[]{t.optLong("fin") + avArr, 0, k});
+            for (int d : delaisPhrases(ctx, "notes", t.optString("lieu"), t.optString("quoi")))
+                l.add(new long[]{t.optLong("t") - d * 60000L, 1, k, d});
+            if (t.optLong("fin") > 0)
+                for (int d : delaisPhrases(ctx, "notesArr", t.optString("arr"), t.optString("quoi")))
+                    l.add(new long[]{t.optLong("fin") + d * 60000L, 0, k, d});
         }
         java.util.Collections.sort(l, (x, y) -> Long.compare(x[0], y[0]));
         return l;
@@ -1009,13 +1038,15 @@ public class Notifs extends BroadcastReceiver {
             // départ : même choix que le rappel de départ (pas de notification en mode avion) ; à l'arrivée, toujours (c'est en conduite)
             if (depart && avion && (rt == null || rt.optBoolean("horsAvion", true))) continue;
             String gare = depart ? t.optString("lieu") : t.optString("arr");
-            String texte = phrase(ctx, depart ? "notes" : "notesArr", gare, t.optString("quoi"));
+            String texte = phrase(ctx, depart ? "notes" : "notesArr", gare, t.optString("quoi"), (int) e[3]);
+            if (texte.isEmpty()) continue;
             long cible = depart ? t.optLong("t") : t.optLong("fin");
             long dans = Math.max(0, Math.round((depart ? cible - now : now - cible) / 60000.0));
             String h = depart ? t.optString("h") : t.optString("hFin");
             String detail = (depart ? "Départ " : "Arrivée ") + h + " · " + gare + " · " + t.optString("quoi");
             String quandTxt = dans > 0 ? (depart ? "Départ dans " + dans + " min" : "Arrivé il y a " + dans + " min") : (depart ? "Départ maintenant" : "Arrivée maintenant");
-            int id = 700000 + (int) ((cible / 60000L) % 100000L) * 2 + (depart ? 1 : 0);
+            // identifiant tiré de l'instant du rappel : deux phrases du même train à des délais différents ne s'écrasent pas
+            int id = 700000 + (int) ((quand / 60000L) % 100000L) * 2 + (depart ? 1 : 0);
             montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
                     ouvrir(ctx, 2004, "journee", "date", t.optString("date")));
         }

@@ -1058,6 +1058,26 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
 /* Choix d'une gare (codes Graou de toute la France) */
 #voile .panneau .action.deco{background:transparent;color:var(--now);border:1.5px solid var(--now);margin-top:22px}
 #choixGare{z-index:30}
+#editPhrase{z-index:29}
+#editPhrase .epEtape{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+#editPhrase .epT{font-weight:700;font-size:15px;margin-bottom:8px}
+#editPhrase .epT small{font-weight:400;color:var(--soft);font-size:13px;margin-left:4px}
+#editPhrase .epChoix{display:flex;gap:8px}
+#editPhrase .epChoix button{flex:1;min-width:0;font:inherit;font-size:15px;padding:10px 8px;border-radius:10px;border:1.5px solid var(--rule);background:var(--bg);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#editPhrase .epChoix button.on{border-color:var(--ink);background:var(--ink);color:var(--card);font-weight:700}
+#editPhrase input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:10px;border:1.5px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
+#editPhrase .epDelai{display:flex;align-items:center;gap:10px}
+#editPhrase .epDelai input{width:80px;flex:none;text-align:center}
+#editPhrase .aide{color:var(--soft);font-size:13.5px;margin:8px 0 0}
+#editPhrase .epErr{color:var(--ink);font-weight:600;margin:0 0 4px}
+#editPhrase .action{width:100%;margin-top:6px}
+.panneau .phraseCarte{background:var(--card);border:1.5px solid var(--rule);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14px;cursor:pointer}
+.panneau .phraseCarte .pcTete{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.panneau .phraseCarte .pcQuand{font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft);flex:none}
+.panneau .phraseCarte .pcGare{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.panneau .phraseCarte .pcSup{flex:none;font-size:16px;padding:2px 8px;margin:-4px -6px -4px 0}
+.panneau .phraseCarte .pcTrains,.panneau .phraseCarte .pcDelai{color:var(--soft);font-size:13.5px}
+.panneau .phraseCarte .pcTexte{font-size:15.5px;font-weight:600;margin:4px 0;word-break:break-word}
 #voile .panneau .action.autoriseNotif{margin-top:8px}
 .panneau .noteAuto{background:#FFF3E0;border:1px solid #F3C48B;color:#8A4B00;border-radius:10px;padding:9px 11px;font-size:13.5px;line-height:1.4;margin:4px 0 8px}
 .panneau .noteAuto .btnAuto{display:inline-block;margin-left:4px;border:0;border-radius:8px;background:#E8902E;color:#fff;font:inherit;font-size:13.5px;font-weight:700;padding:4px 12px;cursor:pointer}
@@ -1213,6 +1233,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       ['evloc','taxi','bus'].forEach(k=>{ Object.assign(t[k], o.ev||{}, o[k]||{}); });
       t.macro=Object.assign(JSON.parse(JSON.stringify(M_DEF)), o.macro||{});
       ['dep','arr','encha'].forEach(k=>{ t.macro[k]=Object.assign({}, M_DEF[k], (o.macro||{})[k]||{}); });
+      // Délai propre à chaque phrase ; les phrases des versions précédentes reprennent le délai commun de leur section
+      [['notes','noteMin'],['notesArr','noteArrMin']].forEach(([k,d])=>{ t.train[k]=(t.train[k]||[]).map(n=>Object.assign({}, n, {min:mn(n.min!=null&&n.min!==''?n.min:t.train[d], t.train[d])})); });
       return t; };
     const mn=(v,def)=>{ const n=Math.round(+v); return isFinite(n)&&n>=0?Math.min(180,n):def; };
     const champ=(k,v)=>`<input type="number" min="0" max="180" step="5" inputmode="numeric" data-t="${k}" value="${v}"> min`;
@@ -1223,7 +1245,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <label class="coche long sousOpt"><input type="checkbox" data-avion="1"${t.train.horsAvion?' checked':''}><span>Pas de notification si le téléphone est en mode avion</span></label>
         <label class="coche long sousOpt"><input type="checkbox" data-plein="1"${t.train.plein!==false?' checked':''}><span>Écran rouge plein écran quand l’écran est éteint ou verrouillé<small>L’écran s’allume avec « Départ dans X min » en gros, jusqu’à OK. Téléphone en cours d’utilisation, le bandeau rouge reste affiché jusqu’à OK (Android n’autorise pas mieux).</small></span></label>
         ${pleinEcranHtml()}
-        <div class="sousTitreP">Phrases par gare</div>
+        <div class="sousTitreP">Phrases personnalisées</div>
         ${notesHtml(t.train)}
         <div class="sousTitreP">Autres rappels</div>
         <label class="coche"><input type="checkbox" data-on="ev"${t.ev.on?' checked':''}> EV en voyageur ${champ('ev',t.ev.min)} avant</label>
@@ -1241,20 +1263,18 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     // Bandeau rouge persistant du départ des trains (téléphone en utilisation) : autorisation Android 14+
     const pleinEcranHtml=()=>{ let ok=true; try{ ok=!AND.pleinEcranAutorise || AND.pleinEcranAutorise(); }catch(e){}
       return ok?'':'<div class="sousOpt"><div class="noteAuto">⚠️ <b>Bandeau rouge non autorisé</b> : le rappel de départ disparaît après quelques secondes si tu utilises le téléphone. <button class="btnAuto" data-pleinecran="1">Autoriser</button></div></div>'; };
-    // Phrase ajoutée au rappel de départ, seulement pour les trains partant d'une gare donnée (particularité locale)
-    const noteLigne=(n,i,k)=>`<div class="noteGare" data-liste="${k}" data-i="${i}" data-gare="${esc(n.gare||'')}">
-        <span>${k==='notes'?'Au départ de':'À l’arrivée à'}</span> <button class="action clair bgare" data-ngare="${k}:${i}">${esc(n.gare||'toutes les gares')}</button>
-        <input data-nd="${i}" value="${esc(n.debut||'')}" placeholder="Trains commençant par (ex. 87, 14) : vide = tous" inputmode="text" autocomplete="off">
-        <input data-nt="${i}" value="${esc(n.texte||'')}" placeholder="${k==='notes'?'Phrase au départ':'Phrase à l’arrivée'}"><button class="lien" data-nsup="${k}:${i}" aria-label="Supprimer">✕</button></div>`;
-    const notesHtml=tr=>`<div class="sousOpt notesGare"><p class="petit">Une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.)</p>
-        ${(tr.notes||[]).map((n,i)=>noteLigne(n,i,'notes')).join('')}
-        <button class="action clair" data-najout="notes">+ Phrase au départ d’une gare</button>
-        <button class="action clair" data-najoutn="notes">+ Phrase au départ selon le numéro du train</button>
-        <label class="coche sansCase">Phrase au départ : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteMin" value="${tr.noteMin}"> min avant le départ</label>
-        ${(tr.notesArr||[]).map((n,i)=>noteLigne(n,i,'notesArr')).join('')}
-        <button class="action clair" data-najout="notesArr">+ Phrase à l’arrivée dans une gare</button>
-        <button class="action clair" data-najoutn="notesArr">+ Phrase à l’arrivée selon le numéro du train</button>
-        <label class="coche sansCase">Phrase à l’arrivée : <input type="number" min="0" max="180" step="5" inputmode="numeric" data-nmin="noteArrMin" value="${tr.noteArrMin}"> min après l’arrivée <small>0 = à l’heure d’arrivée prévue</small></label></div>`;
+    // Phrases personnalisées : une carte par phrase (moment, gare, trains, phrase, délai) ; toucher la carte pour la modifier
+    const delaiTxt=(n,k)=>k==='notes'?n.min+' min avant le départ':(n.min?n.min+' min après l’arrivée':'à l’heure d’arrivée prévue');
+    const phraseCarte=(n,i,k)=>`<div class="phraseCarte" data-pliste="${k}" data-pi="${i}" role="button" tabindex="0" aria-label="Modifier la phrase">
+        <div class="pcTete"><span class="pcQuand">${k==='notes'?'🚉 Départ':'🏁 Arrivée'}</span><span class="pcGare">${esc(n.gare||'Toutes les gares')}</span><button class="lien pcSup" data-psup="${k}:${i}" aria-label="Supprimer la phrase">✕</button></div>
+        <div class="pcTrains">${n.debut?'Trains commençant par : <b>'+esc(n.debut)+'</b>':'Tous les trains'}</div>
+        <div class="pcTexte">${n.texte?'« '+esc(n.texte)+' »':'<i>Phrase vide, touche pour la saisir</i>'}</div>
+        <div class="pcDelai">⏱ ${delaiTxt(n,k)}</div></div>`;
+    const notesHtml=tr=>{ const l=[...(tr.notes||[]).map((n,i)=>phraseCarte(n,i,'notes')), ...(tr.notesArr||[]).map((n,i)=>phraseCarte(n,i,'notesArr'))];
+      return `<div class="sousOpt notesGare"><p class="petit">Une notification à part, avec la phrase en titre. Utile en cas de spécificité locale (AuM, etc.).${l.length?' Touche une phrase pour la modifier.':''}</p>
+        ${l.join('')}
+        <button class="action clair" data-pajout="1">+ Ajouter une phrase</button>
+        ${l.length>1?'<p class="petit">Si plusieurs phrases visent le même train avec le même délai, elles arrivent ensemble dans une seule notification.</p>':''}</div>`; };
     const changerT=()=>{ const t=lireT(), c=$('nTachesCorps');
       c.querySelectorAll('[data-on]').forEach(i=>t[i.dataset.on].on=i.checked);
       c.querySelectorAll('[data-t]').forEach(i=>{ t[i.dataset.t].min=mn(i.value,t[i.dataset.t].min); i.value=t[i.dataset.t].min; });
@@ -1262,8 +1282,6 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const h=c.querySelector('[data-hors]'); if(h) t.rs.horsTrain=h.checked;
       const av=c.querySelector('[data-avion]'); if(av) t.train.horsAvion=av.checked;
       const pl=c.querySelector('[data-plein]'); if(pl) t.train.plein=pl.checked;
-      ['notes','notesArr'].forEach(k=>{ t.train[k]=[...c.querySelectorAll('.noteGare[data-liste="'+k+'"]')].map(d=>({gare:d.dataset.gare||'', debut:d.querySelector('[data-nd]').value.trim(), texte:d.querySelector('[data-nt]').value.trim()})).filter(n=>n.gare||n.debut||n.texte); });
-      c.querySelectorAll('[data-nmin]').forEach(i=>{ const k=i.dataset.nmin; t.train[k]=mn(i.value,t.train[k]); i.value=t.train[k]; });
       return t; };
     const changer=()=>{ const o={modif:$('nModif').checked, dec:$('nDec').checked, heure:+$('nHeure').value||18,
       ch3:$('nCh3').checked, chVeille:$('nChV').checked, chHeure:+$('nHeureCh').value||18, taches:changerT(),
@@ -1281,15 +1299,16 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     $('nTachesCorps').addEventListener('click',e=>{
       if(e.target.closest('[data-pleinecran]')){ try{ AND.reglerPleinEcran(); }catch(err){} return; }
       const enregT=t=>{ const o=charger('bo-notif',{})||{}; o.taches=t; sauver('bo-notif',o); dessinerT(); changer(); };
-      const ajN=e.target.closest('[data-najoutn]');
-      if(ajN){ const k=ajN.dataset.najoutn==='notesArr'?'notesArr':'notes'; const t=changerT(); if(!t.train[k]) t.train[k]=[]; t.train[k].push({gare:'', debut:'', texte:''}); enregT(t); return; }
-      const aj=e.target.closest('[data-najout]'), sup=e.target.closest('[data-nsup]'), ng=e.target.closest('[data-ngare]');
-      if(aj||ng){ const [k0,i0]=ng?ng.dataset.ngare.split(':'):[aj.dataset.najout]; const k=k0==='notesArr'?'notesArr':'notes';
-        choisirGare(k==='notes'?'Gare de départ du train':'Gare d’arrivée du train').then(g=>{ if(!g) return; const t=changerT();
-          if(!t.train[k]) t.train[k]=[];
-          if(aj) t.train[k].push({gare:g.n, texte:''}); else if(t.train[k][+i0]) t.train[k][+i0].gare=g.n;
+      const sup=e.target.closest('[data-psup]');
+      if(sup){ const [k0,i0]=sup.dataset.psup.split(':'), k=k0==='notesArr'?'notesArr':'notes'; const t=changerT(); t.train[k].splice(+i0,1); enregT(t); return; }
+      const carte=e.target.closest('.phraseCarte'), aj=e.target.closest('[data-pajout]');
+      if(carte||aj){ const t0=changerT(), defMin={notes:t0.train.noteMin, notesArr:t0.train.noteArrMin};
+        const k0=carte?(carte.dataset.pliste==='notesArr'?'notesArr':'notes'):null, i0=carte?+carte.dataset.pi:-1;
+        const init=carte&&t0.train[k0][i0]?{k:k0, n:t0.train[k0][i0]}:null;
+        editerPhrase(init, defMin).then(r=>{ if(!r) return; const t=changerT();
+          if(init){ t.train[k0].splice(i0,1,r.n); if(r.k!==k0){ t.train[k0].splice(i0,1); t.train[r.k].push(r.n); } }
+          else t.train[r.k].push(r.n);
           enregT(t); }); return; }
-      if(sup){ const [k0,i0]=sup.dataset.nsup.split(':'), k=k0==='notesArr'?'notesArr':'notes'; const t=changerT(); t.train[k].splice(+i0,1); enregT(t); return; }
       if(e.target.closest('[data-rsajout]')){ choisirGare('Gare de la RS ou de la PC').then(g=>{ if(!g) return; const t=changerT();
           if(!(g.n in t.rs.lieux)) t.rs.lieux[g.n]=t.rs.defaut; enregT(t); }); return; }
       const rsup=e.target.closest('[data-rssup]');
@@ -1671,7 +1690,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     // ---- Menu en arborescence : la page Paramètres liste les rubriques, chacune s'ouvre seule ----
     const ENTREES=[['rPlanning','📅','Planning et synchro','Lien Graou, import, synchro automatique'],
       ['rNotifs','🔔','Notifications','Planning modifié, découché, neige, changement d’heure'],
-      ['rService','🚆','Rappels de service','Départ des trains, phrases par gare, EV, EQ PREND, RS/PC'],
+      ['rService','🚆','Rappels de service','Départ des trains, phrases personnalisées, EV, EQ PREND, RS/PC'],
       ['rReveil','⏰','Réveil','Alarmes, délais et sonneries'],
       ['rMeteo','🌦️','Météo','Lieu des jours de repos et de congé'],
       ['rAffichage','🎨','Widget et affichage','Thème, affichage par défaut du widget'],
@@ -1756,6 +1775,44 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     document.body.appendChild(ov);
     ov.addEventListener('click',e=>{ if(e.target.closest('[data-x]')){ ov.remove(); try{ $('url').focus(); }catch(err){} } });
   }
+
+  // Ajout ou modification d'une phrase personnalisée : moment, gare, trains, phrase, délai
+  function editerPhrase(init, defMin){ return new Promise(fini=>{
+    const st={k:init?init.k:'notes', gare:init?(init.n.gare||''):'', debut:init?(init.n.debut||''):'', texte:init?(init.n.texte||''):'', min:init&&init.n.min!=null?String(init.n.min):''};
+    const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='editPhrase';
+    const dessiner=()=>{ const dep=st.k==='notes', min=st.min!==''?st.min:String(defMin[st.k]);
+      ov.innerHTML=`<div class="ptete"><button class="nav" data-x="1" aria-label="Retour">‹</button><h2>${init?'Modifier la phrase':'Nouvelle phrase'}</h2></div>
+      <div class="pcorps">
+        <div class="epEtape"><div class="epT">1. Moment</div>
+          <div class="epChoix"><button class="${dep?'on':''}" data-k="notes">🚉 Au départ</button><button class="${dep?'':'on'}" data-k="notesArr">🏁 À l’arrivée</button></div></div>
+        <div class="epEtape"><div class="epT">2. ${dep?'Gare de départ du train':'Gare d’arrivée du train'}</div>
+          <div class="epChoix"><button class="${st.gare?'':'on'}" data-toutes="1">Toutes les gares</button><button class="${st.gare?'on':''}" data-gare="1">${st.gare?esc(st.gare)+' ▾':'Une gare ▾'}</button></div></div>
+        <div class="epEtape"><div class="epT">3. Trains concernés <small>facultatif</small></div>
+          <input id="epDebut" value="${esc(st.debut)}" placeholder="Tous les trains" autocomplete="off" spellcheck="false">
+          <p class="aide">Début du numéro, par exemple 87 ou 14. Plusieurs : sépare-les par une virgule. Vide : tous les trains.</p></div>
+        <div class="epEtape"><div class="epT">4. Phrase</div>
+          <input id="epTexte" value="${esc(st.texte)}" placeholder="Ex. DEMANDER L’AuM !" autocomplete="off"></div>
+        <div class="epEtape"><div class="epT">5. Quand</div>
+          <div class="epDelai"><input id="epMin" type="number" min="0" max="180" step="1" inputmode="numeric" value="${esc(min)}"><span>${dep?'min avant le départ':'min après l’arrivée'}</span></div>
+          ${dep?'':'<p class="aide">0 = à l’heure d’arrivée prévue.</p>'}</div>
+        <p class="aide epErr" style="display:none">⚠️ Saisis une phrase avant d’enregistrer.</p>
+        <button class="action" data-ok="1">Enregistrer</button>
+      </div>`; };
+    const lire=()=>{ const d=ov.querySelector('#epDebut'), t=ov.querySelector('#epTexte'), m=ov.querySelector('#epMin');
+      if(d) st.debut=d.value; if(t) st.texte=t.value; if(m) st.min=m.value; };
+    dessiner(); document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{
+      if(e.target.closest('[data-x]')){ ov.remove(); fini(null); return; }
+      const bk=e.target.closest('[data-k]');
+      if(bk){ lire(); if(bk.dataset.k!==st.k){ if(st.min===String(defMin[st.k])) st.min=''; st.k=bk.dataset.k; } dessiner(); return; }
+      if(e.target.closest('[data-toutes]')){ lire(); st.gare=''; dessiner(); return; }
+      if(e.target.closest('[data-gare]')){ lire(); choisirGare(st.k==='notes'?'Gare de départ du train':'Gare d’arrivée du train').then(g=>{ if(g) st.gare=g.n; dessiner(); }); return; }
+      if(e.target.closest('[data-ok]')){ lire();
+        if(!st.texte.trim()){ ov.querySelector('.epErr').style.display='block'; const t=ov.querySelector('#epTexte'); if(t) t.focus(); return; }
+        const n=Math.round(+st.min), min=st.min!==''&&isFinite(n)&&n>=0?Math.min(180,n):defMin[st.k];
+        ov.remove(); fini({k:st.k, n:{gare:st.gare, debut:st.debut.trim(), texte:st.texte.trim(), min}}); } });
+    if(!init) setTimeout(()=>{ try{ ov.querySelector('#epTexte').focus(); }catch(e){} },60);
+  }); }
 
   // Choix d'une gare parmi toutes celles de France : code Graou (TE, MTJ…) ou nom
   function choisirGare(titre){ return new Promise(fini=>{
