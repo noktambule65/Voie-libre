@@ -290,24 +290,74 @@ final class MiseAJour {
         }, "maj").start();
     }
 
+    /** Longueur maximale de la note affichée (la fenêtre défile ; au-delà, coupure en fin de ligne). */
+    static final int NOTE_MAX = 3000;
+
+    /**
+     * Mise en forme simple de la note de version GitHub (Markdown) pour la fenêtre de mise à jour :
+     * **texte** et titres « # » en gras (positions ajoutées à gras), « - » ou « * » en début de ligne → « • »,
+     * [texte](lien) → texte. Le texte rendu ne contient plus les signes de mise en page.
+     */
+    static String miseEnForme(String md, java.util.List<int[]> gras) {
+        String src = md.replace("\r\n", "\n").replace('\r', '\n');
+        if (src.length() > NOTE_MAX) {
+            int fin = src.lastIndexOf('\n', NOTE_MAX);
+            src = src.substring(0, fin > NOTE_MAX / 2 ? fin : NOTE_MAX) + "\n…";
+        }
+        StringBuilder out = new StringBuilder();
+        String[] lignes = src.split("\n", -1);
+        for (int k = 0; k < lignes.length; k++) {
+            String l = lignes[k];
+            String t = l.trim();
+            boolean titre = false;
+            if (t.startsWith("#")) { t = t.replaceFirst("^#+\\s*", ""); titre = true; }
+            else if (t.startsWith("- ") || t.startsWith("* ") || t.startsWith("+ ")) t = "• " + t.substring(2).trim();
+            else t = l.replaceAll("\\s+$", "");
+            t = t.replaceAll("\\[([^\\]]+)\\]\\([^)]*\\)", "$1");
+            int debutLigne = out.length();
+            // **gras** (ou __gras__) dans la ligne
+            int p = 0;
+            while (p < t.length()) {
+                int a = t.indexOf("**", p), b = a < 0 ? -1 : t.indexOf("**", a + 2);
+                int a2 = t.indexOf("__", p), b2 = a2 < 0 ? -1 : t.indexOf("__", a2 + 2);
+                if (b2 >= 0 && (b < 0 || a2 < a)) { a = a2; b = b2; }
+                if (a < 0 || b < 0) { out.append(t.substring(p)); break; }
+                out.append(t, p, a);
+                int s = out.length();
+                out.append(t, a + 2, b);
+                if (out.length() > s) gras.add(new int[]{s, out.length()});
+                p = b + 2;
+            }
+            if (titre && out.length() > debutLigne) gras.add(new int[]{debutLigne, out.length()});
+            if (k < lignes.length - 1) out.append('\n');
+        }
+        return out.toString().replaceAll("\\s+$", "");   // fin seulement : les positions du gras restent justes
+    }
+
     private static boolean ouverte(Activity a) { return a != null && !a.isFinishing() && !a.isDestroyed(); }
 
     private static void proposer(Activity a, Info i) {
         if (!ouverte(a)) return;
         // Pas plus d'une proposition automatique toutes les 12 h, quelle que soit la réponse
         prefs(a).edit().putLong("reporteeJusqua", System.currentTimeMillis() + JOUR / 2).apply();
-        StringBuilder m = new StringBuilder();
+        android.text.SpannableStringBuilder m = new android.text.SpannableStringBuilder();
         m.append("La version 1.").append(i.version).append(" de Voie libre est disponible (tu as la ")
                 .append(nomVersion(a)).append(").");
         if (i.taille > 0) m.append("\nTéléchargement : ").append(Math.max(1, Math.round(i.taille / 1048576.0))).append(" Mo.");
         if (i.notes != null && !i.notes.isEmpty()) {
-            String n = i.notes.length() > 700 ? i.notes.substring(0, 700) + "…" : i.notes;
-            m.append("\n\n").append(n);
+            m.append("\n\n");
+            java.util.List<int[]> gras = new java.util.ArrayList<>();
+            String n = miseEnForme(i.notes, gras);
+            int debut = m.length();
+            m.append(n);
+            for (int[] g : gras)
+                m.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), debut + g[0], debut + g[1],
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         m.append("\n\nLe navigateur télécharge la nouvelle version : ouvre le fichier pour l'installer. Tes réglages et ton planning sont conservés.");
         new AlertDialog.Builder(a)
                 .setTitle("Mise à jour disponible")
-                .setMessage(m.toString())
+                .setMessage(m)
                 .setPositiveButton("Télécharger", (d, w) -> ouvrirLien(a, i))
                 .setNegativeButton("Plus tard", (d, w) ->
                         prefs(a).edit().putLong("reporteeJusqua", System.currentTimeMillis() + JOUR).apply())
