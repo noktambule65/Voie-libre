@@ -1655,7 +1655,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     const menuP=document.createElement('nav'); menuP.id='menuP';
     menuP.innerHTML=ENTREES.map(e=>`<button class="itemP" data-carte="${e[0]}"><span class="icP">${e[1]}</span><span class="txtP"><b>${e[2]}</b><small>${e[3]}</small></span><span class="chevP">›</span></button>`).join('');
     const retourP=document.createElement('button'); retourP.id='retourP'; retourP.className='action clair'; retourP.textContent='‹ Paramètres'; retourP.style.display='none';
-    const premiere=pan.querySelector('.carteP'); premiere.before(retourP); premiere.before(menuP);
+    // « ‹ Paramètres » plus affiché : le fil d'Ariane de la barre du haut ramène au menu
+    const premiere=pan.querySelector('.carteP'); premiere.before(menuP);
     // Fil d'Ariane de la barre du haut (Menu principal › Paramètres › rubrique › page) : niveaux envoyés à l'appli
     let carteFil=null;
     const pagesOuvertes=()=>[...document.querySelectorAll('body > .page.ouvert')];
