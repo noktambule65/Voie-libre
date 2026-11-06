@@ -123,13 +123,14 @@ button{font:inherit;color:inherit}
 #intro .iSuiv{border:0;border-radius:12px;background:var(--tete);color:#fff;font-size:16px;font-weight:600;padding:12px 22px;cursor:pointer}
 @media (prefers-color-scheme: dark){ #intro .iPoints i.on{background:#7FA7DD} #intro .iSuiv,#intro .iAction:not(.clair){background:#2F5FA8} #intro .iImg img{box-shadow:none} }
 /* ---------- Quoi de neuf : après une mise à jour, et depuis Paramètres › Version et mises à jour ---------- */
-#nouv{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+#nouv{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.45);display:none;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;box-sizing:border-box;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
 #nouv.on{display:flex}
-#nouv .nBoite{background:var(--carte);color:var(--encre);border-radius:16px;max-width:520px;width:100%;max-height:100%;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+/* toute la fenêtre défile (plus fiable dans le WebView qu'une zone intérieure) ; OK reste collé en bas */
+#nouv .nBoite{background:var(--carte);color:var(--encre);border-radius:16px;max-width:520px;width:100%;margin:auto;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 #nouv .nTete{padding:18px 20px 6px}
 #nouv h2{margin:0;font-size:21px;line-height:1.25}
 #nouv .nSous{margin:4px 0 0;font-size:13.5px;color:var(--doux)}
-#nouv .nCorps{overflow-y:auto;padding:4px 20px 6px;-webkit-overflow-scrolling:touch}
+#nouv .nCorps{padding:4px 20px 6px}
 #nouv h3{margin:14px 0 6px;font-size:16px}
 #nouv ul{margin:0;padding-left:20px}
 #nouv li{margin:0 0 7px;font-size:15px;line-height:1.45}
@@ -141,7 +142,7 @@ button{font:inherit;color:inherit}
 #nouv summary{font-weight:600;font-size:15px;cursor:pointer;padding:2px 0}
 #nouv summary small{font-weight:400;color:var(--doux);margin-left:6px}
 #nouv details > div{padding-top:4px}
-#nouv .nBas{padding:12px 20px 16px;display:flex;justify-content:flex-end}
+#nouv .nBas{position:sticky;bottom:0;padding:12px 20px 16px;display:flex;justify-content:flex-end;background:var(--carte);border-radius:0 0 16px 16px;border-top:1px solid var(--trait)}
 #nouv .nOk{border:0;border-radius:12px;background:var(--tete);color:#fff;font-size:16px;font-weight:600;padding:11px 24px;cursor:pointer}
 @media (prefers-color-scheme: dark){ #nouv .nOk{background:#2F5FA8} #nouv .nBoite{box-shadow:none;border:1px solid var(--trait)} }
 /* ---------- Thème sombre : suit le réglage du téléphone ---------- */
@@ -3904,7 +3905,7 @@ if(window.BoulotAndroid){
       +(notes && A && A.historiqueVersions?'<div class="nHisto" id="nHisto"><button class="nHistoB" id="nHistoB">🕘 Versions précédentes</button></div>':'');
     tagAffiche=tag||'';
     const bH=$('nHistoB'); if(bH) bH.onclick=historique;
-    $('nCorps').scrollTop=0; box.classList.add('on'); $('nOk').focus();
+    box.classList.add('on'); box.scrollTop=0; $('nOk').focus();
   }
   // ---- Versions précédentes : chargées seulement à la demande, gardées 24 h ----
   let tagAffiche='', histoAttente=[];
