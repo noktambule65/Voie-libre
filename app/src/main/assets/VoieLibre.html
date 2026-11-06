@@ -135,6 +135,12 @@ button{font:inherit;color:inherit}
 #nouv li{margin:0 0 7px;font-size:15px;line-height:1.45}
 #nouv p{margin:0 0 8px;font-size:15px;line-height:1.45}
 #nouv .nInfo{color:var(--doux);font-style:italic}
+#nouv .nHisto{margin:14px 0 4px;border-top:1px solid var(--trait);padding-top:12px}
+#nouv .nHistoB{width:100%;border:1px solid var(--trait);background:transparent;color:var(--encre);border-radius:10px;padding:10px;font-size:15px;cursor:pointer}
+#nouv details{border-bottom:1px solid var(--trait);padding:8px 0}
+#nouv summary{font-weight:600;font-size:15px;cursor:pointer;padding:2px 0}
+#nouv summary small{font-weight:400;color:var(--doux);margin-left:6px}
+#nouv details > div{padding-top:4px}
 #nouv .nBas{padding:12px 20px 16px;display:flex;justify-content:flex-end}
 #nouv .nOk{border:0;border-radius:12px;background:var(--tete);color:#fff;font-size:16px;font-weight:600;padding:11px 24px;cursor:pointer}
 @media (prefers-color-scheme: dark){ #nouv .nOk{background:#2F5FA8} #nouv .nBoite{box-shadow:none;border:1px solid var(--trait)} }
@@ -3842,8 +3848,38 @@ if(window.BoulotAndroid){
   function afficher(notes, tag, info){
     let v=''; try{ v=A&&A.versionAppli?A.versionAppli():''; }catch(e){}
     $('nSous').textContent=[v?'Version installée '+v:'', tag?'note de la version '+tag:''].filter(Boolean).join(' · ');
-    $('nCorps').innerHTML=(info?'<p class="nInfo">'+esc(info)+'</p>':'')+(notes?rendre(notes):'');
+    $('nCorps').innerHTML=(info?'<p class="nInfo">'+esc(info)+'</p>':'')+(notes?rendre(notes):'')
+      +(notes && A && A.historiqueVersions?'<div class="nHisto" id="nHisto"><button class="nHistoB" id="nHistoB">🕘 Versions précédentes</button></div>':'');
+    tagAffiche=tag||'';
+    const bH=$('nHistoB'); if(bH) bH.onclick=historique;
     $('nCorps').scrollTop=0; box.classList.add('on'); $('nOk').focus();
+  }
+  // ---- Versions précédentes : chargées seulement à la demande, gardées 24 h ----
+  let tagAffiche='', histoAttente=[];
+  const MOIS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const dateFr=iso=>{ const d=new Date(iso); return isNaN(d)?'':d.getDate()+(d.getDate()===1?'er':'')+' '+MOIS[d.getMonth()]+' '+d.getFullYear(); };
+  window.vlHistoRecu=json=>{ let r={}; try{ r=JSON.parse(json)||{}; }catch(e){}
+    if(r.ok && Array.isArray(r.versions)) ecrit('vl-histo-cache',JSON.stringify({t:Date.now(),versions:r.versions}));
+    const L=histoAttente; histoAttente=[]; L.forEach(f=>{ try{ f(r); }catch(e){} }); };
+  function dessinerHisto(versions, info){
+    const z=$('nHisto'); if(!z) return;
+    const L=versions.filter(v=>v.tag!==tagAffiche);
+    z.innerHTML='<h3>Versions précédentes</h3>'+(info?'<p class="nInfo">'+esc(info)+'</p>':'')
+      +(L.length?L.map(v=>'<details><summary>'+esc(v.tag)+(v.date?'<small>'+esc(dateFr(v.date))+'</small>':'')+'</summary><div>'
+        +(v.notes?rendre(v.notes):'<p class="nInfo">Pas de note pour cette version.</p>')+'</div></details>').join('')
+        :'<p class="nInfo">Aucune autre version officielle.</p>');
+  }
+  function historique(){
+    const z=$('nHisto'); if(!z) return;
+    let c=null; try{ c=JSON.parse(lit('vl-histo-cache')||'null'); }catch(e){}
+    if(c && Array.isArray(c.versions) && Date.now()-c.t<24*3600e3){ dessinerHisto(c.versions); return; }
+    z.innerHTML='<p class="nInfo">Chargement des versions précédentes…</p>';
+    histoAttente.push(r=>{
+      if(r.ok && Array.isArray(r.versions)) dessinerHisto(r.versions);
+      else if(c && Array.isArray(c.versions)) dessinerHisto(c.versions,'Pas de connexion à GitHub : voici la dernière liste reçue.');
+      else if($('nHisto')) $('nHisto').innerHTML='<p class="nInfo">Impossible de lire les versions précédentes sur GitHub. Vérifie ta connexion et réessaie.</p>';
+    });
+    if(histoAttente.length===1){ try{ A.historiqueVersions(); }catch(e){ window.vlHistoRecu('{}'); } }
   }
   let enCours=[];
   window.vlNotesRecues=json=>{ let r={}; try{ r=JSON.parse(json)||{}; }catch(e){}

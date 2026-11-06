@@ -196,6 +196,42 @@ final class MiseAJour {
         return r.toString();
     }
 
+    /**
+     * Historique des versions officielles (pré-versions et brouillons exclus), les plus récentes d'abord.
+     * GitHub ne filtre pas : liste des 100 dernières versions (une vingtaine de Ko compressés), triée ici.
+     * Réponse JSON {ok, versions:[{tag, date, notes}]}. Hors du fil principal.
+     */
+    static String historique(Context c) {
+        JSONObject r = new JSONObject();
+        HttpURLConnection h = null;
+        try {
+            h = (HttpURLConnection) new URL(API.replace("/latest", "?per_page=100")).openConnection();
+            h.setConnectTimeout(15000);
+            h.setReadTimeout(20000);
+            h.setRequestProperty("Accept", "application/vnd.github+json");
+            h.setRequestProperty("User-Agent", "VoieLibre-Android");
+            if (h.getResponseCode() != 200) { r.put("ok", false); return r.toString(); }
+            JSONArray l = new JSONArray(lire(h.getInputStream())), sortie = new JSONArray();
+            for (int k = 0; k < l.length(); k++) {
+                JSONObject o = l.optJSONObject(k);
+                if (o == null || o.optBoolean("draft") || o.optBoolean("prerelease")) continue;
+                String n = o.optString("body", "").trim();
+                JSONObject v = new JSONObject();
+                v.put("tag", o.optString("tag_name", ""));
+                v.put("date", o.optString("published_at", ""));
+                v.put("notes", n.equals(NOTE_PAR_DEFAUT) ? "" : n);
+                sortie.put(v);
+            }
+            r.put("ok", true);
+            r.put("versions", sortie);
+        } catch (Exception e) {
+            try { r.put("ok", false); } catch (Exception ignore) { }
+        } finally {
+            if (h != null) h.disconnect();
+        }
+        return r.toString();
+    }
+
     private static int numero(String tag) {
         String n = tag == null ? "" : tag.replaceAll("[^0-9]", "");
         try { return n.isEmpty() ? 0 : Integer.parseInt(n); } catch (Exception e) { return 0; }

@@ -502,6 +502,15 @@ public class Pont {
         }).start();
     }
 
+    /** « Quoi de neuf » › Versions précédentes : rendu à la page par window.vlHistoRecu(json). */
+    @JavascriptInterface
+    public void historiqueVersions() {
+        new Thread(() -> {
+            final String js = "window.vlHistoRecu&&window.vlHistoRecu(" + JSONObject.quote(MiseAJour.historique(ctx)) + ")";
+            if (web != null) surEcran(() -> web.evaluateJavascript(js, null));
+        }).start();
+    }
+
     /** Version installée, affichée dans Paramètres › Aide (ex. « 1.42 »). */
     @JavascriptInterface
     public String versionAppli() { return MiseAJour.nomVersion(ctx); }
