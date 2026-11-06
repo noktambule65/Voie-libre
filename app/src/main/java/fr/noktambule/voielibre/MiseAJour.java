@@ -177,6 +177,32 @@ final class MiseAJour {
         return !n.isEmpty() && !n.equals(NOTE_PAR_DEFAUT);
     }
 
+    /** Version la plus récente (pré-versions comprises) ayant une vraie note, sans dépasser la version installée. */
+    private static JSONObject derniereNote(long installee) {
+        HttpURLConnection h = null;
+        try {
+            h = (HttpURLConnection) new URL(API.replace("/latest", "?per_page=100")).openConnection();
+            h.setConnectTimeout(15000);
+            h.setReadTimeout(20000);
+            h.setRequestProperty("Accept", "application/vnd.github+json");
+            h.setRequestProperty("User-Agent", "VoieLibre-Android");
+            if (h.getResponseCode() != 200) return null;
+            JSONArray l = new JSONArray(lire(h.getInputStream()));
+            JSONObject meilleure = null;
+            for (int k = 0; k < l.length(); k++) {
+                JSONObject o = l.optJSONObject(k);
+                int n = o == null ? 0 : numero(o.optString("tag_name"));
+                if (!vraieNote(o) || n <= 0 || n > installee) continue;
+                if (meilleure == null || n > numero(meilleure.optString("tag_name"))) meilleure = o;
+            }
+            return meilleure;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (h != null) h.disconnect();
+        }
+    }
+
     /**
      * Note « Quoi de neuf » : celle de la version installée si elle a une vraie note sur GitHub,
      * sinon celle de la dernière version officielle. Réponse JSON {ok, notes, tag}. Hors du fil principal.
@@ -184,7 +210,9 @@ final class MiseAJour {
     static String quoiDeNeuf(Context c) {
         JSONObject r = new JSONObject();
         try {
-            JSONObject o = release(API.replace("/latest", "/tags/v" + versionInstallee(c)));
+            long installee = versionInstallee(c);
+            JSONObject o = release(API.replace("/latest", "/tags/v" + installee));
+            if (!vraieNote(o)) o = derniereNote(installee);   // pré-version sans note : dernière vraie note jusqu'à celle-ci
             if (!vraieNote(o)) o = release(API);
             boolean ok = vraieNote(o);
             r.put("ok", ok);
