@@ -3161,7 +3161,7 @@ const $=id=>document.getElementById(id);
 // Rubriques de l'accueil. « app » = appli embarquée ; la Météo et les Paramètres partagent la même (le planning).
 const RUBRIQUES=[
   {id:'meteo',   app:'planning', mode:'meteo',     titre:'Météo'},
-  {id:'journee', app:'journee',  mode:'ouverture', titre:'Voir ma journée'}
+  {id:'journee', app:'journee',  mode:'ouverture', titre:'Voir ma journée', fil:'Planning'}   // fil : nom dans la barre du haut (vues Journée et Semaines)
 ];
 
 // Paramètres (lien Graou, import du planning, notifications, réveil, météo) : volet du planning, ouvert depuis l'accueil
@@ -3670,7 +3670,7 @@ function versAccueil(){ if(history.state && history.state.boulot) history.back()
 let FIL_SOUS=[];
 function dessinerFil(){
   const fil=$('fil'); if(!fil || !courante) return;
-  const etapes=[{t:'Menu principal', go:versAccueil}, {t:courante.titre, go:()=>allerNiveau(0)}]
+  const etapes=[{t:'Menu principal', go:versAccueil}, {t:courante.fil||courante.titre, go:()=>allerNiveau(0)}]
     .concat(FIL_SOUS.map((t,i)=>({t, go:()=>allerNiveau(i+1)})));
   fil.innerHTML='';
   etapes.forEach((e,i)=>{
