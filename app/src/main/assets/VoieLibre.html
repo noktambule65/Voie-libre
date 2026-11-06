@@ -1576,6 +1576,56 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const b=document.createElement('button'); b.className='action clair'; b.textContent='✈️ Mode avion automatique au départ des trains (MacroDroid)';
       b.onclick=ouvrirModeAvion; mettre(cO, p, b);
     }
+    // Sauvegarde des réglages : fichier à garder ou à s'envoyer, pour un changement de téléphone (la sauvegarde
+    // Android est coupée). Jamais le lien Graou ni le planning : seules les clés de réglages ci-dessous partent.
+    if(NATIF && NATIF.enregistrer){
+      const CLES_REGLAGES=['bo-notif','bo-reveil','bo-repos'];
+      const cS=carte('💾','Sauvegarde des réglages','rSauve');
+      const pS=document.createElement('p'); pS.className='petit';
+      pS.innerHTML='Avant de <b>changer de téléphone</b> ou de réinstaller Voie libre, exporte tes réglages dans un fichier : notifications, rappels de service et phrases personnalisées, réveil (délais par gare, sonneries), météo, widget et affichage, mode avion.<br><br>'
+        +'Garde ce fichier (il est enregistré dans Téléchargements › Voie libre) ou envoie-le-toi, puis sur le nouveau téléphone touche « Importer des réglages ».<br><br>'
+        +'🔒 Ton <b>lien Graou</b> et ton planning ne sont <b>pas</b> dans le fichier : tu les rajouteras dans Planning et synchro.';
+      const texteFichier=()=>{ const d={}; CLES_REGLAGES.forEach(k=>{ const v=charger(k,null); if(v!==null) d[k]=v; });
+        let v=''; try{ v=NATIF.versionAppli?NATIF.versionAppli():''; }catch(e){}
+        return JSON.stringify({appli:'Voie libre', type:'reglages', format:1, date:new Date().toISOString(), version:v, donnees:d},null,1); };
+      const b64=t=>btoa(unescape(encodeURIComponent(t)));
+      const nomFichier=()=>{ const d=new Date(), z=n=>String(n).padStart(2,'0'); return 'Voie-libre-reglages-'+d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'.json'; };
+      const ligneS=document.createElement('div'); ligneS.className='ligne2';
+      const bE=document.createElement('button'); bE.className='action'; bE.textContent='Exporter mes réglages';
+      bE.onclick=()=>{ try{ NATIF.enregistrer(nomFichier(),'application/json',b64(texteFichier())); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('export des réglages',e); } };
+      const bP=document.createElement('button'); bP.className='action clair'; bP.textContent='Envoyer le fichier';
+      bP.onclick=()=>{ try{ NATIF.partagerFichier(nomFichier(),'application/json',b64(texteFichier()),'Mes réglages Voie libre'); }catch(e){} };
+      ligneS.append(bE,bP);
+      const bI=document.createElement('button'); bI.className='action clair'; bI.textContent='Importer des réglages';
+      const fI=document.createElement('input'); fI.type='file'; fI.accept='.json,application/json,text/plain,*/*'; fI.hidden=true;
+      const zI=document.createElement('div');
+      bI.onclick=()=>{ fI.value=''; fI.click(); };
+      fI.onchange=()=>{
+        const f=fI.files&&fI.files[0]; if(!f) return;
+        if(f.size>1024*1024){ zI.innerHTML='<p class="petit">⚠️ Ce fichier est trop gros pour être un fichier de réglages Voie libre.</p>'; return; }
+        const r=new FileReader();
+        r.onload=()=>{
+          let o=null; try{ o=JSON.parse(String(r.result)); }catch(e){}
+          const ok=o && o.appli==='Voie libre' && o.type==='reglages' && o.donnees && typeof o.donnees==='object';
+          const d={}; if(ok) CLES_REGLAGES.forEach(k=>{ const v=o.donnees[k]; if(v && typeof v==='object') d[k]=v; });
+          if(!ok || !Object.keys(d).length){ zI.innerHTML='<p class="petit">⚠️ Ce fichier n’est pas un fichier de réglages Voie libre.</p>'; return; }
+          const dt=new Date(o.date), quand=isNaN(dt)?'':' du '+dt.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+          zI.innerHTML='<p class="petit">Fichier'+esc(quand)+(o.version?' (version '+esc(o.version)+')':'')+'. Tes réglages actuels seront <b>remplacés</b> ; ton lien Graou et ton planning ne changent pas.</p>'
+            +'<div class="ligne2"><button class="action" data-rempl="1">Remplacer mes réglages</button><button class="action clair" data-annul="1">Annuler</button></div>';
+          zI.querySelector('[data-annul]').onclick=()=>{ zI.innerHTML=''; };
+          zI.querySelector('[data-rempl]').onclick=()=>{
+            Object.keys(d).forEach(k=>sauver(k,d[k]));
+            try{ if(d['bo-notif']) NATIF.reglerNotifs(JSON.stringify(d['bo-notif'])); }catch(e){}
+            try{ if(d['bo-reveil'] && NATIF.reglerReveils) NATIF.reglerReveils(JSON.stringify(d['bo-reveil'])); }catch(e){}
+            zI.innerHTML='<p class="petit">✔ Réglages importés. Si une sonnerie choisie n’existe pas sur ce téléphone, choisis-la à nouveau dans Réveil.</p>';
+            try{ localStorage.setItem('vl-carteP','rSauve'); }catch(e){}
+            setTimeout(()=>{ try{ const T=window.top; T.location.hash='param//'; T.location.reload(); }catch(e){ location.reload(); } },1800);
+          };
+        };
+        r.readAsText(f);
+      };
+      mettre(cS, pS, ligneS, bI, fI, zI);
+    }
     const cA=carte('💡','Aide','rAide');
     const cV=NATIF?carte('🔄','Version et mises à jour','rVersion'):null;
     let montrerTesteur=null;
@@ -1637,6 +1687,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       ['Voie libre a-t-elle accès à Graou ?','Non. Voie libre ne se connecte pas à Graou : elle ne connaît ni ton identifiant ni ton mot de passe, et ne peut rien y modifier. Elle utilise seulement le lien d’abonnement que Graou propose lui-même (Paramètres › onglet Export) pour afficher ton planning dans n’importe quelle application d’agenda, comme Google Agenda ou Outlook. Ce lien donne un agenda en lecture seule, que ton téléphone télécharge directement chez Graou, sans passer par aucun autre serveur. Il reste dans ton téléphone ; comme il suffit pour lire ton planning, ne le partage pas.'],
       ['Le widget ne se met pas à jour','Touche ⟳ sur le widget. S’il reste figé, ouvre Voie libre une fois : certains téléphones mettent en pause les applis peu ouvertes. Dans les réglages Android de Voie libre, choisir une batterie « Sans restriction » aide.'],
       ['Je ne reçois pas les rappels','Dans ⚙ Paramètres › Rappels de service, active les rappels voulus. Si Android bloque les notifications de Voie libre, ⚙ Paramètres › Notifications affiche un bouton « Autoriser les notifications » qui ouvre directement le bon réglage.'],
+      ['Je change de téléphone : comment garder mes réglages ?','Sur l’ancien téléphone, va dans ⚙ Paramètres › Sauvegarde des réglages et touche « Exporter mes réglages » (ou « Envoyer le fichier » pour te l’envoyer par mail ou messagerie). Sur le nouveau, installe Voie libre, puis touche « Importer des réglages » au même endroit et choisis le fichier. Ton lien Graou n’est pas dans le fichier : rajoute-le dans Planning et synchro.'],
       ['Comment faire les mises à jour ?','Voie libre te prévient quand une nouvelle version est prête, avec la liste des nouveautés : touche « Télécharger », accepte l’avertissement du navigateur (« Télécharger quand même »), puis ouvre le fichier comme pour la première installation. Tes réglages, ton planning et ton widget sont conservés. Tu peux aussi vérifier à la main dans ⚙ Paramètres › Version et mises à jour.'],
       ['D’où vient la météo ?','D’Open-Meteo, un service de prévisions gratuit. Seules des coordonnées lui sont envoyées (celles des gares, ou ta position si tu l’actives), jamais ton planning.']];
     const bF=document.createElement('button'); bF.className='action clair'; bF.textContent='❓ Questions fréquentes';
@@ -1674,6 +1725,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       ['rMeteo','🌦️','Météo','Lieu des jours de repos et de congé'],
       ['rAffichage','🎨','Widget et affichage','Thème, affichage par défaut du widget'],
       ['rAvance','🛠️','Options avancées','Mode avion automatique'],
+      ['rSauve','💾','Sauvegarde des réglages','Exporter ou importer, pour changer de téléphone'],
       ['rAide','💡','Aide','Questions fréquentes, présentation, widget, contact'],
       ['rVersion','🔄','Version et mises à jour','Version installée, mises à jour']].filter(e=>$(e[0]));
     const menuP=document.createElement('nav'); menuP.id='menuP';
