@@ -85,9 +85,12 @@ button{font:inherit;color:inherit}
 #cadre{position:fixed;inset:0;display:none;flex-direction:column;background:var(--fond)}
 #cadre.on{display:flex}
 #barre{flex:none;display:flex;align-items:center;gap:8px;background:var(--tete);color:#fff;padding:calc(4px + env(safe-area-inset-top,0px)) 8px 4px}
-#retour{border:0;background:rgba(255,255,255,.13);color:#fff;border-radius:9px;height:34px;padding:0 12px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
-#retour:active{background:rgba(255,255,255,.26)}
-#titreRub{flex:1;min-width:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}
+#fil{flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;white-space:nowrap;min-height:34px}
+#fil::-webkit-scrollbar{display:none}
+#fil button{flex:none;border:0;background:rgba(255,255,255,.13);color:#fff;border-radius:9px;height:32px;padding:0 10px;font-size:14px;font-weight:600;cursor:pointer}
+#fil button:active{background:rgba(255,255,255,.26)}
+#fil .sep{flex:none;opacity:.6;font-size:15px;padding:0 3px}
+#fil .ici{flex:none;font-size:14px;font-weight:700;padding:0 4px}
 #zone{flex:1;min-height:0;position:relative}
 #zone iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:none;background:#fff}
 #zone iframe.on{display:block}
@@ -137,7 +140,7 @@ button{font:inherit;color:inherit}
 </div>
 
 <div id="cadre">
-  <div id="barre"><button id="retour" aria-label="Retour à l’accueil">‹ Voie libre</button><div id="titreRub"></div></div>
+  <div id="barre"><nav id="fil" aria-label="Où je suis"></nav></div>
   <div id="zone"><div id="charge">Chargement…</div></div>
 </div>
 
@@ -1653,9 +1656,25 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     menuP.innerHTML=ENTREES.map(e=>`<button class="itemP" data-carte="${e[0]}"><span class="icP">${e[1]}</span><span class="txtP"><b>${e[2]}</b><small>${e[3]}</small></span><span class="chevP">›</span></button>`).join('');
     const retourP=document.createElement('button'); retourP.id='retourP'; retourP.className='action clair'; retourP.textContent='‹ Paramètres'; retourP.style.display='none';
     const premiere=pan.querySelector('.carteP'); premiere.before(retourP); premiere.before(menuP);
-    const versMenu=()=>{ pan.querySelectorAll('.carteP').forEach(c=>c.classList.remove('ouverteP')); menuP.style.display=''; retourP.style.display='none'; pan.scrollTop=0; };
+    // Fil d'Ariane de la barre du haut (Menu principal › Paramètres › rubrique › page) : niveaux envoyés à l'appli
+    let carteFil=null;
+    const pagesOuvertes=()=>[...document.querySelectorAll('body > .page.ouvert')];
+    const filEnvoyer=()=>{ try{
+      if(!document.body.classList.contains('b-seul')) return;   // Paramètres seulement (pas la Météo)
+      const L=carteFil?[carteFil]:[];
+      pagesOuvertes().forEach(p=>{ const h=p.querySelector('.ptete h2'); if(h&&h.textContent.trim()) L.push(h.textContent.trim()); });
+      parent.vlFil && parent.vlFil(L);
+    }catch(e){} };
+    // retour à un niveau du fil : 0 = menu Paramètres, puis la rubrique, puis chaque page ouverte par-dessus
+    window.vlFilRetour=n=>{ const P=pagesOuvertes();
+      if(n<=0){ P.forEach(p=>p.remove()); versMenu(); return; }
+      P.slice(Math.max(0, n-(carteFil?1:0))).forEach(p=>p.remove()); filEnvoyer(); };
+    try{ new MutationObserver(filEnvoyer).observe(document.body,{childList:true}); }catch(e){}
+    const versMenu=()=>{ pan.querySelectorAll('.carteP').forEach(c=>c.classList.remove('ouverteP')); menuP.style.display=''; retourP.style.display='none'; pan.scrollTop=0;
+      carteFil=null; filEnvoyer(); };
     const ouvrirRubrique=id=>{ const c=$(id); if(!c){ versMenu(); return; } pan.querySelectorAll('.carteP').forEach(x=>x.classList.toggle('ouverteP',x===c));
-      menuP.style.display='none'; retourP.style.display=''; pan.scrollTop=0; try{ window.scrollTo(0,0); }catch(e){} };
+      menuP.style.display='none'; retourP.style.display=''; pan.scrollTop=0; try{ window.scrollTo(0,0); }catch(e){}
+      const e=ENTREES.find(x=>x[0]===id); carteFil=e?e[2]:null; filEnvoyer(); };
     menuP.addEventListener('click',e=>{ const b=e.target.closest('[data-carte]'); if(b) ouvrirRubrique(b.dataset.carte); });
     retourP.onclick=versMenu;
     // à l'ouverture de Paramètres : le menu, ou la rubrique demandée (après le rechargement du thème, par « Prochains rappels »…)
@@ -3615,7 +3634,7 @@ function ouvrir(id, depuisHistorique){
   try{ window.__vlDiagNote && window.__vlDiagNote('ouvre « '+id+' »'); }catch(e){}
   const r=id==='param'?PARAMETRES:RUBRIQUES.find(x=>x.id===id); if(!r) return;
   courante=r;
-  $('titreRub').textContent=r.titre;
+  FIL_SOUS=[]; dessinerFil();
   Object.values(CADRES).forEach(c=>c.f.classList.remove('on'));
   const f=cadre(r.app, fr=>{ if(r.mode){ try{ fr.contentWindow.boulotMode(r.mode); }catch(e){ window.vlNoteErreur('ouverture de « '+id+' »',e); } } });
   f.classList.add('on');
@@ -3647,7 +3666,29 @@ function accueil(){
 })();
 // Le retour de l'accueil passe par l'historique : le bouton « retour » d'Android fait pareil
 function versAccueil(){ if(history.state && history.state.boulot) history.back(); else accueil(); }
-$('retour').onclick=versAccueil;
+// Fil d'Ariane : Menu principal › rubrique › niveaux envoyés par la rubrique (Paramètres : rubrique, page…) ; chaque étape ramène à son niveau
+let FIL_SOUS=[];
+function dessinerFil(){
+  const fil=$('fil'); if(!fil || !courante) return;
+  const etapes=[{t:'Menu principal', go:versAccueil}, {t:courante.titre, go:()=>allerNiveau(0)}]
+    .concat(FIL_SOUS.map((t,i)=>({t, go:()=>allerNiveau(i+1)})));
+  fil.innerHTML='';
+  etapes.forEach((e,i)=>{
+    if(i) { const s=document.createElement('span'); s.className='sep'; s.textContent='›'; fil.appendChild(s); }
+    const derniere=i===etapes.length-1;
+    const b=document.createElement(derniere?'span':'button'); b.className=derniere?'ici':''; b.textContent=(i===0?'‹ ':'')+e.t;
+    if(!derniere) b.onclick=e.go; else b.setAttribute('aria-current','page');
+    fil.appendChild(b);
+  });
+  if(etapes.length===2){ const b=fil.querySelector('button'); if(b) b.textContent='‹ Menu principal'; }
+  fil.scrollLeft=fil.scrollWidth;
+}
+function allerNiveau(n){
+  if(!courante) return; const c=CADRES[courante.app];
+  try{ if(c && c.f.contentWindow.vlFilRetour) c.f.contentWindow.vlFilRetour(n); }catch(e){}
+}
+// niveaux envoyés par la rubrique affichée
+window.vlFil=L=>{ FIL_SOUS=Array.isArray(L)?L.slice(0,6):[]; dessinerFil(); };
 // Appelé par le planning quand on ferme le volet Paramètres
 // Appelé par le planning (bouton « Ajouter mon planning ») ; la fermeture ramène à la rubrique d'avant
 window.boulotOuvrir=id=>ouvrir(id);
