@@ -148,6 +148,54 @@ final class MiseAJour {
         }
     }
 
+    // ---------- Quoi de neuf : note de version GitHub ----------
+
+    /** Texte mis par défaut par la compilation sur les pré-versions : pas une vraie note. */
+    static final String NOTE_PAR_DEFAUT = "Nouvelle version de Voie libre.";
+
+    /** Corps JSON d'une adresse de l'API GitHub, ou null (statut ≠ 200, réseau). Hors du fil principal. */
+    private static JSONObject release(String adresse) {
+        HttpURLConnection h = null;
+        try {
+            h = (HttpURLConnection) new URL(adresse).openConnection();
+            h.setConnectTimeout(15000);
+            h.setReadTimeout(20000);
+            h.setRequestProperty("Accept", "application/vnd.github+json");
+            h.setRequestProperty("User-Agent", "VoieLibre-Android");
+            if (h.getResponseCode() != 200) return null;
+            return new JSONObject(lire(h.getInputStream()));
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (h != null) h.disconnect();
+        }
+    }
+
+    private static boolean vraieNote(JSONObject o) {
+        if (o == null || o.optBoolean("draft")) return false;
+        String n = o.optString("body", "").trim();
+        return !n.isEmpty() && !n.equals(NOTE_PAR_DEFAUT);
+    }
+
+    /**
+     * Note « Quoi de neuf » : celle de la version installée si elle a une vraie note sur GitHub,
+     * sinon celle de la dernière version officielle. Réponse JSON {ok, notes, tag}. Hors du fil principal.
+     */
+    static String quoiDeNeuf(Context c) {
+        JSONObject r = new JSONObject();
+        try {
+            JSONObject o = release(API.replace("/latest", "/tags/v" + versionInstallee(c)));
+            if (!vraieNote(o)) o = release(API);
+            boolean ok = vraieNote(o);
+            r.put("ok", ok);
+            if (ok) {
+                r.put("notes", o.optString("body", "").trim());
+                r.put("tag", o.optString("tag_name", ""));
+            }
+        } catch (Exception e) { /* réponse vide : ok absent */ }
+        return r.toString();
+    }
+
     private static int numero(String tag) {
         String n = tag == null ? "" : tag.replaceAll("[^0-9]", "");
         try { return n.isEmpty() ? 0 : Integer.parseInt(n); } catch (Exception e) { return 0; }

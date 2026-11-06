@@ -133,6 +133,8 @@ button{font:inherit;color:inherit}
 #nouv h3{margin:14px 0 6px;font-size:16px}
 #nouv ul{margin:0;padding-left:20px}
 #nouv li{margin:0 0 7px;font-size:15px;line-height:1.45}
+#nouv p{margin:0 0 8px;font-size:15px;line-height:1.45}
+#nouv .nInfo{color:var(--doux);font-style:italic}
 #nouv .nBas{padding:12px 20px 16px;display:flex;justify-content:flex-end}
 #nouv .nOk{border:0;border-radius:12px;background:var(--tete);color:#fff;font-size:16px;font-weight:600;padding:11px 24px;cursor:pointer}
 @media (prefers-color-scheme: dark){ #nouv .nOk{background:#2F5FA8} #nouv .nBoite{box-shadow:none;border:1px solid var(--trait)} }
@@ -3813,45 +3815,67 @@ if(window.BoulotAndroid){
 </div>
 
 <script>
-/* ---- Quoi de neuf : affiché une fois après une mise à jour qui apporte des nouveautés ----
-   À tenir à jour à chaque version publique : même contenu que la note de version GitHub. */
+/* ---- Quoi de neuf : note de version lue sur GitHub ----
+   Celle de la version installée si elle a une vraie note, sinon celle de la dernière version officielle.
+   Affichée une fois après une mise à jour (et de nouveau seulement si la note change), et depuis
+   Paramètres › Version et mises à jour. Dernière note reçue gardée pour l'affichage hors connexion. */
 (function(){
-  const NOUVEAUTES={
-    depuis:'1.115',
-    sections:[
-      ['Nouveau : partager sa journée avec un proche',[
-        'Partage « Pour un proche » : en plus du partage habituel, une version sans jargon pour la famille ou les amis, pour la journée comme pour les semaines. Noms de gares en clair, activités expliquées (essais, attelage, mise en stationnement…), lieu de découché indiqué, repos et congés en toutes lettres.',
-        'Image de partage plus lisible : graphique sans la météo, plus compact, et des horaires qui ne sont plus jamais coupés.']],
-      ['Navigation',[
-        'Nouvelle barre du haut : à la place du bouton « Voie libre », on voit le chemin où l’on se trouve (par exemple Menu principal › Paramètres › Planning et synchro). Touche une étape pour y revenir directement.',
-        'Le bouton « ‹ Paramètres », devenu inutile, a été retiré.']],
-      ['Améliorations',[
-        'Graphique plus clair : les cadres (F1, RS, MS…) ne chevauchent plus les numéros de train.',
-        'Confidentialité : ton lien Graou n’est plus copié dans la sauvegarde Google ni lors d’un transfert vers un nouveau téléphone.',
-        'Message clair si un fichier ou un lien Graou est trop lourd, au lieu d’un blocage.',
-        'Cette fenêtre « Quoi de neuf ? » s’affiche après une mise à jour, et reste disponible dans ⚙ Paramètres › Version et mises à jour.',
-        'Améliorations internes pour une appli plus fiable et plus facile à faire évoluer.']]
-    ]
-  };
   const $=id=>document.getElementById(id), box=$('nouv'), A=window.BoulotAndroid;
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  // empreinte du contenu : la fenêtre ne revient que si les nouveautés changent (pas à chaque pré-version)
-  const txt=JSON.stringify(NOUVEAUTES); let h=0; for(let i=0;i<txt.length;i++) h=(h*31+txt.charCodeAt(i))|0;
-  const EMPREINTE=String(h);
-  function ouvrir(){
+  const lit=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+  const ecrit=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+  const empreinte=t=>{ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return String(h); };
+  // Markdown simple de GitHub : titres (# ou ligne **en gras**), puces (- * •), paragraphes, **gras**
+  function rendre(md){
+    const enLigne=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1');
+    let h='', ul=false;
+    const fermerUl=()=>{ if(ul){ h+='</ul>'; ul=false; } };
+    String(md).replace(/\r/g,'').split('\n').forEach(l=>{
+      const t=l.trim(); let m;
+      if(!t){ fermerUl(); return; }
+      if((m=t.match(/^#{1,6}\s+(.*)$/)) || (m=t.match(/^\*\*([^*]+)\*\*:?$/))){ fermerUl(); h+='<h3>'+enLigne(m[1])+'</h3>'; }
+      else if((m=t.match(/^[-*•]\s+(.*)$/))){ if(!ul){ h+='<ul>'; ul=true; } h+='<li>'+enLigne(m[1])+'</li>'; }
+      else { fermerUl(); h+='<p>'+enLigne(t)+'</p>'; }
+    });
+    fermerUl(); return h;
+  }
+  function afficher(notes, tag, info){
     let v=''; try{ v=A&&A.versionAppli?A.versionAppli():''; }catch(e){}
-    $('nSous').textContent=(v?'Version '+v+' · ':'')+'nouveautés depuis la version '+NOUVEAUTES.depuis;
-    $('nCorps').innerHTML=NOUVEAUTES.sections.map(([t,L])=>'<h3>'+esc(t)+'</h3><ul>'+L.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>').join('');
+    $('nSous').textContent=[v?'Version installée '+v:'', tag?'note de la version '+tag:''].filter(Boolean).join(' · ');
+    $('nCorps').innerHTML=(info?'<p class="nInfo">'+esc(info)+'</p>':'')+(notes?rendre(notes):'');
     $('nCorps').scrollTop=0; box.classList.add('on'); $('nOk').focus();
   }
-  function fermer(){ try{ localStorage.setItem('vl-nouv-vu',EMPREINTE); }catch(e){} box.classList.remove('on'); }
+  let enCours=[];
+  window.vlNotesRecues=json=>{ let r={}; try{ r=JSON.parse(json)||{}; }catch(e){}
+    if(r.ok && r.notes) ecrit('vl-nouv-cache',JSON.stringify({notes:r.notes,tag:r.tag||''}));
+    const L=enCours; enCours=[]; L.forEach(f=>{ try{ f(r); }catch(e){} }); };
+  const demander=f=>{ enCours.push(f); if(enCours.length===1){ try{ A.quoiDeNeuf(); }catch(e){ window.vlNotesRecues('{}'); } } };
+  let montree='';
+  function fermer(){ if(montree) ecrit('vl-nouv-vu',montree); box.classList.remove('on'); }
   $('nOk').onclick=fermer;
   box.addEventListener('click',e=>{ if(e.target===box) fermer(); });
-  window.vlQuoiDeNeuf=ouvrir;
-  if(/[?&]sync=1/.test(location.search)) return;   // jamais pendant une synchro invisible
-  let vu=null, intro=true; try{ vu=localStorage.getItem('vl-nouv-vu'); intro=!!localStorage.getItem('vl-intro-vu'); }catch(e){ return; }
-  if(!intro){ try{ localStorage.setItem('vl-nouv-vu',EMPREINTE); }catch(e){} return; }   // première installation : la présentation suffit
-  if(vu!==EMPREINTE) ouvrir();
+  // bouton de Paramètres : toujours relu sur GitHub ; hors connexion, dernière note reçue
+  window.vlQuoiDeNeuf=function(){
+    if(!A || !A.quoiDeNeuf){ afficher('', '', 'Les nouveautés sont lues sur GitHub depuis l’appli Android.'); return; }
+    montree=''; afficher('', '', 'Chargement des nouveautés…');
+    demander(r=>{
+      if(r.ok && r.notes){ montree=empreinte(r.notes); afficher(r.notes, r.tag); return; }
+      let c=null; try{ c=JSON.parse(lit('vl-nouv-cache')||'null'); }catch(e){}
+      if(c && c.notes){ montree=empreinte(c.notes); afficher(c.notes, c.tag, 'Pas de connexion à GitHub : voici les dernières nouveautés reçues.'); }
+      else afficher('', '', 'Impossible de lire les nouveautés sur GitHub. Vérifie ta connexion et réessaie.');
+    });
+  };
+  // après une mise à jour : une demande par version installée (redemandée au lancement suivant si GitHub ne répond pas)
+  if(/[?&]sync=1/.test(location.search) || !A || !A.quoiDeNeuf) return;
+  let v=''; try{ v=A.versionAppli?A.versionAppli():''; }catch(e){}
+  if(!v || lit('vl-nouv-ver')===v) return;
+  setTimeout(()=>demander(r=>{
+    if(!(r.ok && r.notes)) return;
+    ecrit('vl-nouv-ver',v);
+    const h=empreinte(r.notes);
+    if(!lit('vl-intro-vu')){ ecrit('vl-nouv-vu',h); return; }   // première installation : la présentation suffit
+    if(lit('vl-nouv-vu')!==h && !box.classList.contains('on') && !document.getElementById('intro').classList.contains('on')){ montree=h; afficher(r.notes, r.tag); }
+  }),1500);
 })();
 </script>
 </body>

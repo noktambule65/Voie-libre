@@ -493,6 +493,15 @@ public class Pont {
     @JavascriptInterface
     public void reglerTesteur(boolean on) { MiseAJour.reglerTesteur(ctx, on); }
 
+    /** « Quoi de neuf » : note de version lue sur GitHub, rendue à la page par window.vlNotesRecues(json). */
+    @JavascriptInterface
+    public void quoiDeNeuf() {
+        new Thread(() -> {
+            final String js = "window.vlNotesRecues&&window.vlNotesRecues(" + JSONObject.quote(MiseAJour.quoiDeNeuf(ctx)) + ")";
+            if (web != null) surEcran(() -> web.evaluateJavascript(js, null));
+        }).start();
+    }
+
     /** Version installée, affichée dans Paramètres › Aide (ex. « 1.42 »). */
     @JavascriptInterface
     public String versionAppli() { return MiseAJour.nomVersion(ctx); }
