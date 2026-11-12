@@ -717,6 +717,9 @@ function htmlService(x, k){
   return h+'</ul></div>';
 }
 function htmlJourEntier(x, k){
+  if(x.cat==='d')   // « d » : journée de service dont les horaires ne sont pas encore connus
+    return `<div class="carte"><div class="bandeau" style="background:${COUL.d.bg};color:${COUL.d.fg}"><span class="code">Journée de service</span></div>
+    <ul class="lieux"><li><div class="nom">Horaires pas encore connus</div><div class="q">Ils s’afficheront ici dès qu’ils seront dans Graou.</div></li></ul></div>`;
   const c=COUL[x.cat], r=reglageRepos(), h1=Math.min(+r.h1,+r.h2), h2=Math.max(+r.h1,+r.h2), hh=h=>pad(Math.min(23,h))+':00';
   return `<div class="carte"><div class="bandeau" style="background:${c.bg};color:${c.fg}"><span class="code">${esc(x.ev.titre)}</span></div>
     <ul class="lieux"><li>${MAISON?`<div class="nom">${esc(r.gps?'Ma position'+(r.lieu?' · '+r.lieu:''):MAISON.n)}</div><div class="q">${h1}h → ${h2}h</div>${bandeMeteo(MAISON,k,hh(h1),k,hh(h2))}`
@@ -2616,6 +2619,10 @@ function rendre(){
   const larg=Math.max(260,Math.min((v.clientWidth||360)-22,880));   // largeur utile de la carte
   let h='';
   liste.forEach(x=>{
+    if(!x.s && x.cat==='d'){   // « d » : journée de service dont les horaires ne sont pas encore connus
+      h+=`<div class="carte"><div class="bandeau d"><span class="code">Journée de service</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div><div class="msg" style="padding:16px"><b>Horaires pas encore connus</b>Ils s’afficheront ici dès qu’ils seront dans Graou.</div></div>`;
+      return;
+    }
     if(!x.s){
       h+=`<div class="carte"><div class="bandeau ${x.cat}"><span class="code">${esc(String(x.ev.titre||'').replace(/^•\s*/,''))}</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div><div class="msg" style="padding:16px">Pas de service ce jour-là.</div></div>`;
       return;
