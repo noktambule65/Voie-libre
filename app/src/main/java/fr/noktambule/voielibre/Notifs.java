@@ -44,6 +44,7 @@ public class Notifs extends BroadcastReceiver {
     private static final String CANAL_DEPART = "depart_train";
     private static final String ACTION_OK_DEPART = "fr.noktambule.voielibre.OK_DEPART";
     private static final String ACTION_TACHE = "fr.noktambule.voielibre.TACHE";
+    private static final String ACTION_MAJ_DEPART = "fr.noktambule.voielibre.MAJ_DEPART";
     private static final String ACTION_NOTE = "fr.noktambule.voielibre.NOTE";
     private static final String CANAL_REVEIL = "reveil_oublie";
     private static final String ACTION_REVEIL = "fr.noktambule.voielibre.REVEIL_OUBLIE";
@@ -1069,7 +1070,7 @@ public class Notifs extends BroadcastReceiver {
                 String grand = depart ? (dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT")
                         : (dans > 0 ? "ARRIVÉ IL Y A " + dans + " MIN" : "ARRIVÉE MAINTENANT");
                 alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + h, t.optString("ou"),
-                        (depart ? "Départ " : "Arrivée ") + h, texte, t.optString("date"), 180000L);
+                        (depart ? "Départ " : "Arrivée ") + h, texte, t.optString("date"), 180000L, depart ? cible : 0L);
                 continue;
             }
             montrer(ctx, id, CANAL_TACHE, texte, quandTxt + " · " + detail, null,
@@ -1100,7 +1101,54 @@ public class Notifs extends BroadcastReceiver {
         String grand = dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT";
         alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + t.optString("h"), t.optString("ou"),
                 "Départ " + t.optString("h"), note, t.optString("date"),
-                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()));
+                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()), t.optLong("t"));
+    }
+
+    // ---------- Compte à rebours du départ ----------
+    // Le décompte à la seconde est tenu par Android (Chronometer, négatif une fois l'heure passée) : il continue même
+    // téléphone en veille. Seul le texte change, à deux moments : « DÉPART MAINTENANT » à l'heure, « DÉPART DÉPASSÉ »
+    // une minute après. Rien ne revient si l'alerte a été fermée (OK ou balayée).
+
+    /** Texte du bandeau selon le moment : avant, à l'heure (± 30 s), après. */
+    static String grandDepart(long depart, long now) {
+        if (now < depart - 30000L) return "DÉPART DANS";
+        if (now < depart + 60000L) return "DÉPART MAINTENANT";
+        return "DÉPART DÉPASSÉ";
+    }
+
+    /** Titre de la notification (lecteurs d'écran, montre connectée…) : « Départ dans 3 min », « Départ dépassé »… */
+    private static String titreRouge(String grand, long depart, long now) {
+        if (depart > 0 && "DÉPART DANS".equals(grand))
+            return "Départ dans " + Math.max(1, Math.round((depart - now) / 60000.0)) + " min";
+        return grand.charAt(0) + grand.substring(1).toLowerCase(Locale.FRANCE);
+    }
+
+    /** Décompte affiché sur l'écran rouge : « 02:59 », puis « −01:05 » une fois l'heure passée. */
+    static String decompte(long depart, long now) {
+        long s = (depart - now) / 1000L;
+        boolean neg = s < 0; if (neg) s = -s;
+        return (neg ? "−" : "") + String.format(Locale.FRANCE, "%02d:%02d", s / 60, s % 60);
+    }
+
+    private static PendingIntent piMaj(Context ctx, int id, int etape, Intent extras) {
+        Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_MAJ_DEPART).putExtra("id", id);
+        if (extras != null) i.putExtras(extras);
+        return PendingIntent.getBroadcast(ctx, id * 2 + etape, i,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** Annule les changements de texte encore prévus pour l'alerte id (OK, balayée, écran rouge fermé). */
+    static void annulerMajDepart(Context ctx, int id) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null || id == 0) return;
+        for (int e = 0; e < 2; e++) { PendingIntent p = piMaj(ctx, id, e, null); am.cancel(p); p.cancel(); }
+    }
+
+    private static boolean alerteAffichee(Context ctx, int id) {
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        if (nm == null) return false;
+        for (android.service.notification.StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == id) return true;
+        return false;
     }
 
     /**
@@ -1109,8 +1157,15 @@ public class Notifs extends BroadcastReceiver {
      * portent l'identifiant de la notification : deux alertes affichées en même temps gardent chacune leur bouton OK.
      */
     private static void alerteRouge(Context ctx, int id, String grand, String quoi, String train, String trajet,
-                                    String debutTexte, String note, String date, long duree) {
+                                    String debutTexte, String note, String date, long duree, long depart) {
+        alerteRouge(ctx, id, grand, quoi, train, trajet, debutTexte, note, date, duree, depart, false);
+    }
+
+    private static void alerteRouge(Context ctx, int id, String grand, String quoi, String train, String trajet,
+                                    String debutTexte, String note, String date, long duree, long depart, boolean miseAJour) {
         if (!autorisees(ctx)) return;
+        long now = System.currentTimeMillis();
+        if (depart > 0) grand = grandDepart(depart, now);
         canaux(ctx);
         android.widget.RemoteViews petit = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart);
         petit.setTextViewText(R.id.dGrand, grand);
@@ -1120,14 +1175,23 @@ public class Notifs extends BroadcastReceiver {
         petit.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
         // version compacte limitée en hauteur : la phrase de la gare remplace la ligne train · trajet (visible une fois déplié)
         if (!note.isEmpty()) petit.setViewVisibility(R.id.dLigne, android.view.View.GONE);
+        boolean chrono = depart > 0 && !"DÉPART MAINTENANT".equals(grand);
         android.widget.RemoteViews grandV = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart_grand);
         grandV.setTextViewText(R.id.dGrand, grand);
         grandV.setTextViewText(R.id.dTrain, train);
         grandV.setTextViewText(R.id.dTrajet, trajet);
         grandV.setTextViewText(R.id.dNote, note);
         grandV.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
+        if (chrono) {
+            long base = android.os.SystemClock.elapsedRealtime() + (depart - now);
+            for (android.widget.RemoteViews v : new android.widget.RemoteViews[]{petit, grandV}) {
+                v.setChronometer(R.id.dChrono, base, null, true);
+                v.setChronometerCountDown(R.id.dChrono, true);
+                v.setViewVisibility(R.id.dChrono, android.view.View.VISIBLE);
+            }
+        }
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
-                .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note)
+                .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note).putExtra("depart", depart)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         PendingIntent pEcran = PendingIntent.getActivity(ctx, id, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent pOk = PendingIntent.getBroadcast(ctx, id, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
@@ -1137,7 +1201,7 @@ public class Notifs extends BroadcastReceiver {
         Notification.Builder b = new Notification.Builder(ctx, CANAL_DEPART)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(0xFFE53935)
-                .setContentTitle(grand.charAt(0) + grand.substring(1).toLowerCase(Locale.FRANCE) + " : " + quoi)
+                .setContentTitle(titreRouge(grand, depart, now) + " : " + quoi)
                 .setContentText(debutTexte + (trajet.isEmpty() ? "" : " · " + trajet) + (note.isEmpty() ? "" : " · " + note))
                 .setStyle(new Notification.DecoratedCustomViewStyle())
                 .setCustomContentView(petit)
@@ -1147,11 +1211,34 @@ public class Notifs extends BroadcastReceiver {
                 .setContentIntent(ouvrir(ctx, 2004, "journee", "date", date))
                 .addAction(ok)
                 .setAutoCancel(true)
+                .setDeleteIntent(pOk)   // balayée : les changements de texte prévus sont annulés
+                .setOnlyAlertOnce(true)
                 .setTimeoutAfter(duree);
         // l'alerte « urgente » fait persister le bandeau ; sans l'autorisation, bandeau rouge normal (quelques secondes)
         if (pleinEcranAutorise(ctx)) b.setFullScreenIntent(pEcran, true);
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(id, b.build());
+        // changements de texte à venir : à l'heure, puis une minute après (seulement à la première pose)
+        if (depart > 0 && !miseAJour) {
+            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            Intent ex = new Intent().putExtra("quoi", quoi).putExtra("train", train).putExtra("trajet", trajet)
+                    .putExtra("debut", debutTexte).putExtra("note", note).putExtra("date", date).putExtra("depart", depart)
+                    .putExtra("fin", now + duree);
+            long[] quand = {depart - 30000L, depart + 60000L};
+            for (int e = 0; e < 2; e++)
+                if (am != null && quand[e] > now && quand[e] < now + duree)
+                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand[e], piMaj(ctx, id, e, ex));
+        }
+    }
+
+    /** Changement de texte prévu : seulement si l'alerte est encore affichée (sinon rien ne revient). */
+    private static void majDepart(Context ctx, Intent i) {
+        int id = i.getIntExtra("id", 0);
+        long fin = i.getLongExtra("fin", 0), now = System.currentTimeMillis();
+        if (id == 0 || fin <= now || !alerteAffichee(ctx, id)) return;
+        alerteRouge(ctx, id, "", i.getStringExtra("quoi"), i.getStringExtra("train"), i.getStringExtra("trajet"),
+                i.getStringExtra("debut"), i.getStringExtra("note"), i.getStringExtra("date"), fin - now,
+                i.getLongExtra("depart", 0), true);
     }
 
     /** Prochain rappel de découché (un seul à la fois ; le suivant est programmé quand il sonne). */
@@ -1297,6 +1384,11 @@ public class Notifs extends BroadcastReceiver {
         if (ACTION_OK_DEPART.equals(intent.getAction())) {
             NotificationManager nm = ctx.getSystemService(NotificationManager.class);
             if (nm != null) nm.cancel(intent.getIntExtra("id", 0));
+            annulerMajDepart(ctx, intent.getIntExtra("id", 0));
+            return;
+        }
+        if (ACTION_MAJ_DEPART.equals(intent.getAction())) {
+            try { majDepart(ctx, intent); } catch (Exception ex) { erreur(ctx, "compte à rebours du départ", ex); }
             return;
         }
         if (ACTION_REVEIL.equals(intent.getAction())) {

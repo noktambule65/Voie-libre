@@ -9,14 +9,31 @@
     android:paddingEnd="14dp"
     android:paddingTop="6dp"
     android:paddingBottom="6dp">
-    <TextView
-        android:id="@+id/dGrand"
+    <!-- « DÉPART DANS » + compte à rebours tenu par Android lui-même (négatif une fois l'heure passée) -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFFFF"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:maxLines="1" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/dGrand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+        <Chronometer
+            android:id="@+id/dChrono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:fontFeatureSettings="tnum"
+            android:visibility="gone" />
+    </LinearLayout>
     <TextView
         android:id="@+id/dLigne"
         android:layout_width="match_parent"
