@@ -1,0 +1,43 @@
+name: APK d'essai (Play Protect)
+
+# Versions d'essai, une par branche essai-* : jamais proposées en mise à jour (nom sans numéro),
+# numéro de version 138 pour s'installer par-dessus la v138 et laisser passer les vraies versions suivantes.
+on:
+  push:
+    branches: ['essai-*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Déchiffrer la clé de signature
+        env:
+          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
+        run: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/voie-libre.jks.chiffre -out app/voie-libre.jks -pass env:VOIE_LIBRE_MDP
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Compiler l'APK
+        env:
+          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
+          VL_NUMERO: '138'
+        run: gradle assembleRelease --no-daemon --stacktrace
+      - name: Publier l'essai
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          N="${GITHUB_REF_NAME}"
+          cp app/build/outputs/apk/release/app-release.apk "Voie-libre-$N.apk"
+          gh release delete "$N" --cleanup-tag -y || true
+          gh release create "$N" "Voie-libre-$N.apk" --title "Essai Play Protect : $N" \
+            --notes "Version d'essai pour trouver ce qui déclenche Play Protect. Ne pas diffuser." --prerelease --target "$GITHUB_SHA"
+      - if: always()
+        run: rm -f app/voie-libre.jks

@@ -3,7 +3,7 @@ plugins {
 }
 
 // Le numéro de version suit le numéro de compilation GitHub : chaque APK remplace le précédent.
-def numero = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+def numero = (System.getenv('VL_NUMERO') ?: System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 // Mot de passe de la clé de signature : secret VOIE_LIBRE_MDP du dépôt (jamais écrit dans le code).
 def mdp = System.getenv('VOIE_LIBRE_MDP')
 
@@ -16,7 +16,7 @@ android {
         minSdk 29
         targetSdk 34
         versionCode numero
-        versionName "1.${numero}"
+        versionName "1.${numero}-essai-a"
     }
 
     // Clé de signature fixe (déchiffrée par GitHub Actions) : indispensable pour installer les mises à jour par-dessus.
