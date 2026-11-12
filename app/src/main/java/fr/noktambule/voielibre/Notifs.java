@@ -1175,21 +1175,12 @@ public class Notifs extends BroadcastReceiver {
         petit.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
         // version compacte limitée en hauteur : la phrase de la gare remplace la ligne train · trajet (visible une fois déplié)
         if (!note.isEmpty()) petit.setViewVisibility(R.id.dLigne, android.view.View.GONE);
-        boolean chrono = depart > 0 && !"DÉPART MAINTENANT".equals(grand);
         android.widget.RemoteViews grandV = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart_grand);
         grandV.setTextViewText(R.id.dGrand, grand);
         grandV.setTextViewText(R.id.dTrain, train);
         grandV.setTextViewText(R.id.dTrajet, trajet);
         grandV.setTextViewText(R.id.dNote, note);
         grandV.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
-        if (chrono) {
-            long base = android.os.SystemClock.elapsedRealtime() + (depart - now);
-            for (android.widget.RemoteViews v : new android.widget.RemoteViews[]{petit, grandV}) {
-                v.setChronometer(R.id.dChrono, base, null, true);
-                v.setChronometerCountDown(R.id.dChrono, true);
-                v.setViewVisibility(R.id.dChrono, android.view.View.VISIBLE);
-            }
-        }
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
                 .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note).putExtra("depart", depart)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
