@@ -75,7 +75,6 @@ public class DepartActivity extends Activity {
         ok.setOnClickListener(v -> {
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null && id != 0) nm.cancel(id);
-            Notifs.annulerMajDepart(this, id);
             finish();
         });
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);

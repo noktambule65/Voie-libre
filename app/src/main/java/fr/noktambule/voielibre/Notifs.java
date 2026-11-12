@@ -1130,27 +1130,6 @@ public class Notifs extends BroadcastReceiver {
         return (neg ? "−" : "") + String.format(Locale.FRANCE, "%02d:%02d", s / 60, s % 60);
     }
 
-    private static PendingIntent piMaj(Context ctx, int id, int etape, Intent extras) {
-        Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_MAJ_DEPART).putExtra("id", id);
-        if (extras != null) i.putExtras(extras);
-        return PendingIntent.getBroadcast(ctx, id * 2 + etape, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    /** Annule les changements de texte encore prévus pour l'alerte id (OK, balayée, écran rouge fermé). */
-    static void annulerMajDepart(Context ctx, int id) {
-        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        if (am == null || id == 0) return;
-        for (int e = 0; e < 2; e++) { PendingIntent p = piMaj(ctx, id, e, null); am.cancel(p); p.cancel(); }
-    }
-
-    private static boolean alerteAffichee(Context ctx, int id) {
-        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-        if (nm == null) return false;
-        for (android.service.notification.StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == id) return true;
-        return false;
-    }
-
     /**
      * Alerte rouge (départ de train ou phrase personnalisée réglée en « écran rouge ») : bandeau persistant jusqu'à OK
      * si le téléphone est utilisé, écran rouge plein écran s'il est éteint ou verrouillé. Les requêtes (écran et OK)
@@ -1175,21 +1154,12 @@ public class Notifs extends BroadcastReceiver {
         petit.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
         // version compacte limitée en hauteur : la phrase de la gare remplace la ligne train · trajet (visible une fois déplié)
         if (!note.isEmpty()) petit.setViewVisibility(R.id.dLigne, android.view.View.GONE);
-        boolean chrono = depart > 0 && !"DÉPART MAINTENANT".equals(grand);
         android.widget.RemoteViews grandV = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart_grand);
         grandV.setTextViewText(R.id.dGrand, grand);
         grandV.setTextViewText(R.id.dTrain, train);
         grandV.setTextViewText(R.id.dTrajet, trajet);
         grandV.setTextViewText(R.id.dNote, note);
         grandV.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
-        if (chrono) {
-            long base = android.os.SystemClock.elapsedRealtime() + (depart - now);
-            for (android.widget.RemoteViews v : new android.widget.RemoteViews[]{petit, grandV}) {
-                v.setChronometer(R.id.dChrono, base, null, true);
-                v.setChronometerCountDown(R.id.dChrono, true);
-                v.setViewVisibility(R.id.dChrono, android.view.View.VISIBLE);
-            }
-        }
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
                 .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note).putExtra("depart", depart)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
@@ -1211,34 +1181,11 @@ public class Notifs extends BroadcastReceiver {
                 .setContentIntent(ouvrir(ctx, 2004, "journee", "date", date))
                 .addAction(ok)
                 .setAutoCancel(true)
-                .setDeleteIntent(pOk)   // balayée : les changements de texte prévus sont annulés
-                .setOnlyAlertOnce(true)
                 .setTimeoutAfter(duree);
         // l'alerte « urgente » fait persister le bandeau ; sans l'autorisation, bandeau rouge normal (quelques secondes)
         if (pleinEcranAutorise(ctx)) b.setFullScreenIntent(pEcran, true);
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(id, b.build());
-        // changements de texte à venir : à l'heure, puis une minute après (seulement à la première pose)
-        if (depart > 0 && !miseAJour) {
-            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-            Intent ex = new Intent().putExtra("quoi", quoi).putExtra("train", train).putExtra("trajet", trajet)
-                    .putExtra("debut", debutTexte).putExtra("note", note).putExtra("date", date).putExtra("depart", depart)
-                    .putExtra("fin", now + duree);
-            long[] quand = {depart - 30000L, depart + 60000L};
-            for (int e = 0; e < 2; e++)
-                if (am != null && quand[e] > now && quand[e] < now + duree)
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand[e], piMaj(ctx, id, e, ex));
-        }
-    }
-
-    /** Changement de texte prévu : seulement si l'alerte est encore affichée (sinon rien ne revient). */
-    private static void majDepart(Context ctx, Intent i) {
-        int id = i.getIntExtra("id", 0);
-        long fin = i.getLongExtra("fin", 0), now = System.currentTimeMillis();
-        if (id == 0 || fin <= now || !alerteAffichee(ctx, id)) return;
-        alerteRouge(ctx, id, "", i.getStringExtra("quoi"), i.getStringExtra("train"), i.getStringExtra("trajet"),
-                i.getStringExtra("debut"), i.getStringExtra("note"), i.getStringExtra("date"), fin - now,
-                i.getLongExtra("depart", 0), true);
     }
 
     /** Prochain rappel de découché (un seul à la fois ; le suivant est programmé quand il sonne). */
@@ -1384,11 +1331,6 @@ public class Notifs extends BroadcastReceiver {
         if (ACTION_OK_DEPART.equals(intent.getAction())) {
             NotificationManager nm = ctx.getSystemService(NotificationManager.class);
             if (nm != null) nm.cancel(intent.getIntExtra("id", 0));
-            annulerMajDepart(ctx, intent.getIntExtra("id", 0));
-            return;
-        }
-        if (ACTION_MAJ_DEPART.equals(intent.getAction())) {
-            try { majDepart(ctx, intent); } catch (Exception ex) { erreur(ctx, "compte à rebours du départ", ex); }
             return;
         }
         if (ACTION_REVEIL.equals(intent.getAction())) {
