@@ -54,12 +54,13 @@ public class DepartActivity extends Activity {
         if (tic != null) minuterie.removeCallbacks(tic);
         tic = null;
         if (depart > 0) {
+            boolean parMinute = getIntent().getBooleanExtra("minute", false);
             TextView chiffres = texte("", 56, true);
             chiffres.setFontFeatureSettings("tnum");
-            l.addView(chiffres);
+            if (!parMinute) l.addView(chiffres);
             tic = new Runnable() { @Override public void run() {
                 long now = System.currentTimeMillis();
-                grand.setText(Notifs.grandDepart(depart, now));
+                grand.setText(parMinute ? Notifs.grandMinute(depart, now) : Notifs.grandDepart(depart, now));
                 chiffres.setText(Notifs.decompte(depart, now));
                 minuterie.postDelayed(this, 1000L - now % 1000L);
             } };

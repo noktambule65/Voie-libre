@@ -1105,9 +1105,11 @@ public class Notifs extends BroadcastReceiver {
     }
 
     // ---------- Compte à rebours du départ ----------
-    // Le décompte à la seconde est tenu par Android (Chronometer, négatif une fois l'heure passée) : il continue même
-    // téléphone en veille. Seul le texte change, à deux moments : « DÉPART MAINTENANT » pile à l'heure, « DÉPART DÉPASSÉ »
-    // une minute après, gardé 10 minutes. Rien ne revient si l'alerte a été fermée (OK ou balayée).
+    // À la seconde (par défaut) : décompte tenu par Android (Chronometer, négatif une fois l'heure passée), il continue
+    // même téléphone en veille ; seul le texte change, « DÉPART MAINTENANT » pile à l'heure, « DÉPART DÉPASSÉ » une minute
+    // après, gardé 10 minutes. À la minute (option) : texte réécrit à chaque minute pleine (« DÉPART DANS 2 MIN »,
+    // « DÉPASSÉ DE 3 MIN ») ; écran éteint, Android peut retarder ces mises à jour (veille). Rien ne revient si
+    // l'alerte a été fermée (OK ou balayée).
 
     /** L'alerte de départ reste affichée jusqu'à 11 min après l'heure : 1 min « maintenant » + 10 min « dépassé ». */
     static final long MAINTIEN_DEPART = 11 * 60000L;
@@ -1117,6 +1119,26 @@ public class Notifs extends BroadcastReceiver {
         if (now < depart) return "DÉPART DANS";
         if (now < depart + 60000L) return "DÉPART MAINTENANT";
         return "DÉPART DÉPASSÉ";
+    }
+
+    /** Option « à la minute » (Paramètres › rappel de départ) : « DÉPART DANS 3 MIN », puis « DÉPASSÉ DE 2 MIN ». */
+    static boolean decompteMinute(Context ctx) {
+        JSONObject rt = reglagesTaches(ctx).optJSONObject("train");
+        return rt != null && "minute".equals(rt.optString("decompte"));
+    }
+
+    /** Texte « à la minute » : arrondi à la minute supérieure avant le départ, minutes écoulées après. */
+    static String grandMinute(long depart, long now) {
+        if (now < depart) return "DÉPART DANS " + Math.max(1, (depart - now + 59999L) / 60000L) + " MIN";
+        if (now < depart + 60000L) return "DÉPART MAINTENANT";
+        return "DÉPART DÉPASSÉ DE " + (now - depart) / 60000L + " MIN";
+    }
+
+    /** Prochain changement de texte : seconde → à l'heure puis +1 min ; minute → à chaque minute pleine, jusqu'à +10 min. */
+    private static long prochainChangement(long depart, long now, boolean parMinute) {
+        if (!parMinute) return now < depart ? depart : now < depart + 60000L ? depart + 60000L : 0;
+        long i = Math.floorDiv(now - depart, 60000L) + 1;
+        return i > 10 ? 0 : depart + i * 60000L;
     }
 
     /** Titre de la notification (lecteurs d'écran, montre connectée…) : « Départ dans 3 min », « Départ dépassé »… */
@@ -1168,7 +1190,8 @@ public class Notifs extends BroadcastReceiver {
                                     String debutTexte, String note, String date, long duree, long depart, boolean miseAJour) {
         if (!autorisees(ctx)) return;
         long now = System.currentTimeMillis();
-        if (depart > 0) grand = grandDepart(depart, now);
+        boolean parMinute = depart > 0 && decompteMinute(ctx);
+        if (depart > 0) grand = parMinute ? grandMinute(depart, now) : grandDepart(depart, now);
         canaux(ctx);
         android.widget.RemoteViews petit = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart);
         petit.setTextViewText(R.id.dGrand, grand);
@@ -1178,7 +1201,7 @@ public class Notifs extends BroadcastReceiver {
         petit.setViewVisibility(R.id.dNote, note.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
         // version compacte limitée en hauteur : la phrase de la gare remplace la ligne train · trajet (visible une fois déplié)
         if (!note.isEmpty()) petit.setViewVisibility(R.id.dLigne, android.view.View.GONE);
-        boolean chrono = depart > 0 && !"DÉPART MAINTENANT".equals(grand);
+        boolean chrono = depart > 0 && !parMinute && !"DÉPART MAINTENANT".equals(grand);
         android.widget.RemoteViews grandV = new android.widget.RemoteViews(ctx.getPackageName(), R.layout.notif_depart_grand);
         grandV.setTextViewText(R.id.dGrand, grand);
         grandV.setTextViewText(R.id.dTrain, train);
@@ -1195,7 +1218,7 @@ public class Notifs extends BroadcastReceiver {
         }
         Intent ecran = new Intent(ctx, DepartActivity.class).putExtra("id", id).putExtra("grand", grand)
                 .putExtra("train", train).putExtra("trajet", trajet).putExtra("note", note).putExtra("depart", depart)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
+                .putExtra("minute", parMinute).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
         PendingIntent pEcran = PendingIntent.getActivity(ctx, id, ecran, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent pOk = PendingIntent.getBroadcast(ctx, id, new Intent(ctx, Notifs.class).setAction(ACTION_OK_DEPART).putExtra("id", id),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -1221,16 +1244,17 @@ public class Notifs extends BroadcastReceiver {
         if (pleinEcranAutorise(ctx)) b.setFullScreenIntent(pEcran, true);
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(id, b.build());
-        // changements de texte à venir : à l'heure, puis une minute après (seulement à la première pose)
-        if (depart > 0 && !miseAJour) {
+        // prochain changement de texte (chaque mise à jour programme la suivante) ; rien après la fin de l'alerte
+        if (depart > 0) {
             AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            long fin = now + duree;
             Intent ex = new Intent().putExtra("quoi", quoi).putExtra("train", train).putExtra("trajet", trajet)
                     .putExtra("debut", debutTexte).putExtra("note", note).putExtra("date", date).putExtra("depart", depart)
-                    .putExtra("fin", now + duree);
-            long[] quand = {depart, depart + 60000L};
-            for (int e = 0; e < 2; e++)
-                if (am != null && quand[e] > now && quand[e] < now + duree)
-                    am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand[e], piMaj(ctx, id, e, ex));
+                    .putExtra("fin", fin);
+            long q = prochainChangement(depart, now, parMinute);
+            // une demi-seconde après la minute pleine : jamais un affichage arrondi du mauvais côté
+            if (am != null && q > 0 && q + 500L < fin)
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, q + 500L, piMaj(ctx, id, 0, ex));
         }
     }
 

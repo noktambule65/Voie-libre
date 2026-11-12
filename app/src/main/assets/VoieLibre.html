@@ -1207,6 +1207,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         <label class="coche"><input type="checkbox" data-on="train"${t.train.on?' checked':''}> Train conduit ${champ('train',t.train.min)} avant</label>
         <label class="coche long sousOpt"><input type="checkbox" data-avion="1"${t.train.horsAvion?' checked':''}><span>Pas de notification si le téléphone est en mode avion</span></label>
         <label class="coche long sousOpt"><input type="checkbox" data-plein="1"${t.train.plein!==false?' checked':''}><span>Écran rouge plein écran quand l’écran est éteint ou verrouillé<small>L’écran s’allume avec « Départ dans X min » en gros, jusqu’à OK. Téléphone en cours d’utilisation, le bandeau rouge reste affiché jusqu’à OK (Android n’autorise pas mieux).</small></span></label>
+        <label class="coche long sousOpt sansCase"><span>Décompte : <select data-decompte="1"><option value="seconde"${t.train.decompte!=='minute'?' selected':''}>à la seconde (02:59, 02:58…)</option><option value="minute"${t.train.decompte==='minute'?' selected':''}>à la minute (« Départ dans 3 min »)</option></select><small>À la seconde, le décompte est tenu par Android et reste toujours juste. À la minute, le texte est mis à jour chaque minute ; écran éteint, Android peut retarder ces mises à jour : l’heure de départ affichée sur la ligne du train, elle, est toujours exacte.</small></span></label>
         ${pleinEcranHtml()}
         <div class="sousTitreP">Phrases personnalisées</div>
         ${notesHtml(t.train)}
@@ -1245,6 +1246,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const h=c.querySelector('[data-hors]'); if(h) t.rs.horsTrain=h.checked;
       const av=c.querySelector('[data-avion]'); if(av) t.train.horsAvion=av.checked;
       const pl=c.querySelector('[data-plein]'); if(pl) t.train.plein=pl.checked;
+      const dc=c.querySelector('[data-decompte]'); if(dc) t.train.decompte=dc.value;
       return t; };
     const changer=()=>{ const o={modif:$('nModif').checked, dec:$('nDec').checked, heure:+$('nHeure').value||18,
       ch3:$('nCh3').checked, chVeille:$('nChV').checked, chHeure:+$('nHeureCh').value||18, taches:changerT(),

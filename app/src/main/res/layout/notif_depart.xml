@@ -22,7 +22,7 @@
             android:textColor="#FFFFFFFF"
             android:textSize="22sp"
             android:textStyle="bold"
-            android:maxLines="1" />
+            android:maxLines="2" />
         <Chronometer
             android:id="@+id/dChrono"
             android:layout_width="wrap_content"
