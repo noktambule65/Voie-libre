@@ -26,9 +26,9 @@ public class DepartActivity extends Activity {
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true); }
         // l'écran reste allumé tant que l'alerte est affichée ; elle se ferme toute seule 3 min après (comme la notification)
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        // avec une heure de départ : fermé en même temps que la notification (2 min après le départ)
+        // avec une heure de départ : fermé en même temps que la notification (11 min après le départ)
         long dep = getIntent().getLongExtra("depart", 0);
-        long duree = dep > 0 ? Math.max(60000L, dep + 120000L - System.currentTimeMillis()) : 3 * 60 * 1000L;
+        long duree = dep > 0 ? Math.max(60000L, dep + Notifs.MAINTIEN_DEPART - System.currentTimeMillis()) : 3 * 60 * 1000L;
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::finish, duree);
         afficher();
     }

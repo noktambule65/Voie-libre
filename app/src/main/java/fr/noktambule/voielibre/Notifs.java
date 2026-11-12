@@ -1095,23 +1095,26 @@ public class Notifs extends BroadcastReceiver {
 
     /**
      * Départ de train, téléphone en cours d'utilisation : bandeau rouge en gros, qui reste affiché jusqu'à OK
-     * (alerte « urgente » d'Android, comme un appel entrant). Retiré tout seul 2 min après le départ.
+     * (alerte « urgente » d'Android, comme un appel entrant). Retiré tout seul 11 min après le départ.
      */
     private static void alerteDepart(Context ctx, int id, JSONObject t, long dans, String note) {
         String grand = dans > 0 ? "DÉPART DANS " + dans + " MIN" : "DÉPART MAINTENANT";
         alerteRouge(ctx, id, grand, t.optString("quoi"), t.optString("quoi") + " · " + t.optString("h"), t.optString("ou"),
                 "Départ " + t.optString("h"), note, t.optString("date"),
-                Math.max(60000L, t.optLong("t") + 120000L - System.currentTimeMillis()), t.optLong("t"));
+                Math.max(60000L, t.optLong("t") + MAINTIEN_DEPART - System.currentTimeMillis()), t.optLong("t"));
     }
 
     // ---------- Compte à rebours du départ ----------
     // Le décompte à la seconde est tenu par Android (Chronometer, négatif une fois l'heure passée) : il continue même
-    // téléphone en veille. Seul le texte change, à deux moments : « DÉPART MAINTENANT » à l'heure, « DÉPART DÉPASSÉ »
-    // une minute après. Rien ne revient si l'alerte a été fermée (OK ou balayée).
+    // téléphone en veille. Seul le texte change, à deux moments : « DÉPART MAINTENANT » pile à l'heure, « DÉPART DÉPASSÉ »
+    // une minute après, gardé 10 minutes. Rien ne revient si l'alerte a été fermée (OK ou balayée).
 
-    /** Texte du bandeau selon le moment : avant, à l'heure (± 30 s), après. */
+    /** L'alerte de départ reste affichée jusqu'à 11 min après l'heure : 1 min « maintenant » + 10 min « dépassé ». */
+    static final long MAINTIEN_DEPART = 11 * 60000L;
+
+    /** Texte du bandeau selon le moment : avant, pile à l'heure (pendant une minute), puis dépassé. */
     static String grandDepart(long depart, long now) {
-        if (now < depart - 30000L) return "DÉPART DANS";
+        if (now < depart) return "DÉPART DANS";
         if (now < depart + 60000L) return "DÉPART MAINTENANT";
         return "DÉPART DÉPASSÉ";
     }
@@ -1224,7 +1227,7 @@ public class Notifs extends BroadcastReceiver {
             Intent ex = new Intent().putExtra("quoi", quoi).putExtra("train", train).putExtra("trajet", trajet)
                     .putExtra("debut", debutTexte).putExtra("note", note).putExtra("date", date).putExtra("depart", depart)
                     .putExtra("fin", now + duree);
-            long[] quand = {depart - 30000L, depart + 60000L};
+            long[] quand = {depart, depart + 60000L};
             for (int e = 0; e < 2; e++)
                 if (am != null && quand[e] > now && quand[e] < now + duree)
                     am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand[e], piMaj(ctx, id, e, ex));
