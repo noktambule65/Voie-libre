@@ -406,6 +406,20 @@ public class VoieLibreWidget extends AppWidgetProvider {
         am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + delai, diffusion(ctx, TIC, 11));
     }
 
+    /**
+     * Thème de l'appareil, Android 12 et plus : les deux versions du graphique (claire et sombre) sont confiées au
+     * lanceur, qui affiche la bonne quand le téléphone change de thème. Sinon le graphique restait dans le thème du
+     * dernier dessin (graphique clair dans un widget passé en sombre, par exemple au coucher du soleil).
+     */
+    private static boolean deuxThemes() { return Build.VERSION.SDK_INT >= 31 && !themeImpose; }
+
+    private static void poserGraphe(RemoteViews v, Bitmap clair, Bitmap sombre, boolean nuit) {
+        if (deuxThemes() && clair != null && sombre != null)
+            v.setIcon(R.id.graphe, "setImageIcon", android.graphics.drawable.Icon.createWithBitmap(clair),
+                    android.graphics.drawable.Icon.createWithBitmap(sombre));
+        else v.setImageViewBitmap(R.id.graphe, nuit ? (sombre != null ? sombre : clair) : clair);
+    }
+
     private static Bitmap assombrir(Bitmap b) {
         float k = -0.8f, o = 229.5f;
         ColorMatrix m = new ColorMatrix(new float[]{
@@ -718,7 +732,7 @@ public class VoieLibreWidget extends AppWidgetProvider {
                 v.setTextViewText(R.id.sousTitre, n + (n > 1 ? " semaines" : " semaine"));
                 Bitmap bm = grilleSemaines(ctx, im, n);
                 if (bm != null) {
-                    v.setImageViewBitmap(R.id.graphe, nuit ? assombrir(bm) : bm);
+                    poserGraphe(v, bm, deuxThemes() || nuit ? assombrir(bm) : null, nuit);
                     v.setViewVisibility(R.id.graphe, View.VISIBLE);
                     v.setOnClickPendingIntent(R.id.graphe, ouvrirJournee(ctx, 1000 + id, dateIso(l0), true));
                 } else v.setViewVisibility(R.id.graphe, View.GONE);
@@ -754,10 +768,11 @@ public class VoieLibreWidget extends AppWidgetProvider {
                 nbSem = Math.max(0, Math.min(k, ss.length() - semDebut));
             }
         }
-        Bitmap b = a != null ? journees(ctx, jours, i, semDebut, nbSem, nuit) : null;
+        Bitmap b = a != null ? journees(ctx, jours, i, semDebut, nbSem, deuxThemes() ? false : nuit) : null;
+        Bitmap bSombre = b != null && deuxThemes() ? journees(ctx, jours, i, semDebut, nbSem, true) : null;
         if (a != null && b == null) noterEchec(ctx, "graphique non assemblé (" + j.optString("date") + ")");
         if (b != null) {
-            v.setImageViewBitmap(R.id.graphe, b);
+            if (deuxThemes()) poserGraphe(v, b, bSombre, nuit); else v.setImageViewBitmap(R.id.graphe, b);
             v.setViewVisibility(R.id.graphe, View.VISIBLE);
             v.setOnClickPendingIntent(R.id.graphe, ouvrirJournee(ctx, 1000 + id, j.optString("date"), false));
         } else {
