@@ -66,6 +66,8 @@ public class MainActivity extends Activity {
         racine.addView(web, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(racine);
+        bordABord();
+        retourModerne();
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -83,6 +85,12 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Pont(this, web), "BoulotAndroid");
 
         web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void doUpdateVisitedHistory(WebView v, String url, boolean recharge) {
+                super.doUpdateVisitedHistory(v, url, recharge);
+                majRetour();   // le retour d'Android suit l'historique de la page (fil d'Ariane)
+            }
+
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
                 return chargeur.shouldInterceptRequest(r.getUrl());
@@ -172,6 +180,7 @@ public class MainActivity extends Activity {
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
                 if (web != null) web.setVisibility(View.GONE);
                 barresSysteme(false);
+                majRetour();
             }
 
             @Override
@@ -183,6 +192,7 @@ public class MainActivity extends Activity {
                 barresSysteme(true);
                 if (rappelPleinEcran != null) rappelPleinEcran.onCustomViewHidden();
                 rappelPleinEcran = null;
+                majRetour();
             }
         };
         web.setWebChromeClient(chrome);
@@ -308,12 +318,65 @@ public class MainActivity extends Activity {
         rappelFichiers = null;
     }
 
+    // ---------- Retour d'Android ----------
+    // Android 13 et plus : l'appli déclare à l'avance si elle gère le retour (retour prédictif, obligatoire en
+    // visant Android 16). Elle ne le gère que s'il reste une page où revenir (ou une vidéo en plein écran) ;
+    // sinon Android ferme l'appli lui-même, avec son animation. Android 10 à 12 : onBackPressed, comme avant.
+
+    private Object rappelRetour;          // android.window.OnBackInvokedCallback (API 33+)
+    private boolean retourInscrit = false;
+
+    private void retourModerne() {
+        if (android.os.Build.VERSION.SDK_INT < 33) return;
+        rappelRetour = (android.window.OnBackInvokedCallback) this::retour;
+        majRetour();
+    }
+
+    /** Inscrit ou retire le rappel de retour selon qu'il reste une page où revenir. */
+    private void majRetour() {
+        if (android.os.Build.VERSION.SDK_INT < 33 || rappelRetour == null) return;
+        boolean gere = vuePleinEcran != null || (web != null && web.canGoBack());
+        if (gere == retourInscrit) return;
+        android.window.OnBackInvokedDispatcher d = getOnBackInvokedDispatcher();
+        if (gere) d.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                (android.window.OnBackInvokedCallback) rappelRetour);
+        else d.unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) rappelRetour);
+        retourInscrit = gere;
+    }
+
+    private void retour() {
+        if (vuePleinEcran != null) { chrome.onHideCustomView(); return; }
+        if (web != null && web.canGoBack()) { web.goBack(); return; }
+        finish();
+    }
+
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
         if (vuePleinEcran != null) { chrome.onHideCustomView(); return; }
         if (web != null && web.canGoBack()) { web.goBack(); return; }
         super.onBackPressed();
+    }
+
+    // ---------- Affichage bord à bord ----------
+    // Obligatoire en visant Android 15 et plus : la page s'étend sous les barres du téléphone. On la décale
+    // de la hauteur de ces barres (et du clavier) ; le fond du cadre garde la couleur du bandeau derrière.
+    private void bordABord() {
+        if (android.os.Build.VERSION.SDK_INT < 30) return;   // Android 10 : affichage classique, inchangé
+        getWindow().setDecorFitsSystemWindows(false);
+        getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+        racine.setBackgroundColor(getResources().getColor(R.color.bandeau, getTheme()));
+        android.view.WindowInsetsController c = getWindow().getInsetsController();
+        if (c != null) c.setSystemBarsAppearance(0, android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);   // icônes claires sur fond sombre
+        racine.setOnApplyWindowInsetsListener((v, ins) -> {
+            android.graphics.Insets b = ins.getInsets(android.view.WindowInsets.Type.systemBars()
+                    | android.view.WindowInsets.Type.displayCutout());
+            android.graphics.Insets k = ins.getInsets(android.view.WindowInsets.Type.ime());
+            v.setPadding(b.left, b.top, b.right, Math.max(b.bottom, k.bottom));
+            return android.view.WindowInsets.CONSUMED;
+        });
     }
 
     @Override

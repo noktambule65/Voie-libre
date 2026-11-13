@@ -83,6 +83,13 @@ public class DepartActivity extends Activity {
         p.topMargin = 60;
         l.addView(ok, p);
         setContentView(l);
+        // bord à bord (Android 15 et plus) : le fond rouge passe sous les barres, le texte reste dégagé
+        if (android.os.Build.VERSION.SDK_INT >= 30) l.setOnApplyWindowInsetsListener((v, ins) -> {
+            android.graphics.Insets b = ins.getInsets(android.view.WindowInsets.Type.systemBars()
+                    | android.view.WindowInsets.Type.displayCutout());
+            v.setPadding(48 + b.left, 48 + b.top, 48 + b.right, 48 + b.bottom);
+            return android.view.WindowInsets.CONSUMED;
+        });
     }
 
     @Override

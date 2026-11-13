@@ -11,13 +11,13 @@ def estEssai = System.getenv('VL_TEST') == '1'
 
 android {
     namespace 'fr.noktambule.voielibre'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId estEssai ? 'fr.noktambule.voielibre.test' : 'fr.noktambule.voielibre'
         manifestPlaceholders = [nomAppli: estEssai ? 'Voie libre test' : 'Voie libre']
         minSdk 29
-        targetSdk 34
+        targetSdk 36
         versionCode numero
         versionName "1.${numero}"
     }
