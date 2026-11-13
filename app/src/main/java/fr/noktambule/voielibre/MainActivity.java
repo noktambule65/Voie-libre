@@ -66,6 +66,7 @@ public class MainActivity extends Activity {
         racine.addView(web, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(racine);
+        nuitConnue = getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
         bordABord();
         retourModerne();
 
@@ -316,6 +317,19 @@ public class MainActivity extends Activity {
         }
         rappelFichiers.onReceiveValue(res);
         rappelFichiers = null;
+    }
+
+    // ---------- Thème du téléphone qui change appli ouverte (mode sombre programmé, au coucher du soleil…) ----------
+    // L'écran n'est pas recréé tout seul (uiMode dans configChanges) : la page restait claire dans un téléphone
+    // passé en sombre, jusqu'au prochain lancement. On recrée l'écran quand le thème jour/nuit change vraiment.
+    private int nuitConnue = -1;
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration c) {
+        super.onConfigurationChanged(c);
+        int n = c.uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        if (nuitConnue != -1 && n != nuitConnue) { nuitConnue = n; recreate(); return; }
+        nuitConnue = n;
     }
 
     // ---------- Retour d'Android ----------
