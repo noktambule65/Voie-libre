@@ -1174,6 +1174,15 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nEtat').innerHTML=(AND.apercu||ok)?'':'⚠️ Android bloque les notifications de Voie libre : aucun rappel ne s’affichera.'
         +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).');
       const bA=$('nAutorise'); if(bA) bA.onclick=()=>{ try{ AND.ouvrirReglagesNotifs(); }catch(e){} };
+      // Alarmes à l'heure exacte (version Play Store : autorisation à accorder par l'utilisateur) ; sans elle, Android
+      // peut décaler les rappels de quelques minutes
+      let exact=true; try{ exact=!AND.alarmesExactesAutorisees || AND.alarmesExactesAutorisees(); }catch(e){}
+      const unRappel=['modif','dec','ch3','chVeille','reveilOn','neige','neigeJour','sync'].some(k=>o[k]) || Object.values(o.taches||{}).some(x=>x&&x.on);
+      if(!AND.apercu && !exact && unRappel){
+        $('nEtat').insertAdjacentHTML('beforeend','<span style="display:block;margin-top:8px">⚠️ <b>Rappels à l’heure exacte non autorisés</b> : Android peut les décaler de quelques minutes.</span>'
+          +'<button class="action autoriseNotif" id="nExact">⏰ Autoriser les rappels à l’heure exacte</button>');
+        $('nExact').onclick=()=>{ try{ AND.reglerAlarmesExactes(); }catch(e){} };
+      }
       let dg=''; try{ dg=AND.diagWidget?AND.diagWidget():''; }catch(e){}
       $('wDiag').textContent=dg?'Widget : dernier affichage raté le '+dg+' (rattrapé automatiquement).':''; };
     // Alerte « Graou non mis à jour » : seuil au moins double de la fréquence de synchro (un tour manqué ou retardé ne déclenche rien)
@@ -3347,6 +3356,8 @@ function prochainsRappels(L, now, bloque){
   const lignes=[];
   // raccourci : un appui ouvre la demande d'Android (ou l'écran des notifications de l'appli si elle a déjà été refusée)
   if(bloque) lignes.push('<span class="ml alerte">⚠️ Notifications bloquées</span><span class="autoNotif" role="button" data-autorise="1">🔔 Autoriser</span>');
+  else { const A=window.BoulotAndroid; let exact=true; try{ exact=!(A&&A.alarmesExactesAutorisees) || A.alarmesExactesAutorisees(); }catch(e){}
+    if(!exact) lignes.push('<span class="ml alerte">⚠️ Rappels pas à l’heure exacte</span><span class="autoNotif" role="button" data-exact="1">⏰ Autoriser</span>'); }
   L2.slice(0,bloque?2:3).forEach(r=>lignes.push(`<span class="rp"><i>${r.ic}</i><span><b>${escS(r.quand)}</b> ${r.txt}</span></span>`));
   if(!L2.length && !bloque) lignes.push('<span class="rp vide">Aucun rappel prévu</span>');
   const alertes=[N.modif?'planning modifié':'', N.sync?'synchro Graou':''].filter(Boolean);
@@ -3513,6 +3524,10 @@ $('rubriques').innerHTML=TUILES.map(t=>`<button class="tuile" data-t="${t.id}"><
 $('rubriques').addEventListener('click',e=>{
   if(e.target.closest('[data-autorise]')){   // tuile « Prochains rappels » : autoriser les notifications sans passer par Paramètres
     const A=window.BoulotAndroid; try{ A.demanderNotifs?A.demanderNotifs():A.ouvrirReglagesNotifs(); }catch(err){}
+    return;
+  }
+  if(e.target.closest('[data-exact]')){   // même tuile : autoriser les alarmes à l'heure exacte
+    const A=window.BoulotAndroid; try{ A.reglerAlarmesExactes(); }catch(err){}
     return;
   }
   const b=e.target.closest('[data-t]'); if(!b) return;

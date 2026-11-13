@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Version Play Store : USE_EXACT_ALARM est réservée par Google aux réveils et agendas (déclaration à justifier).
+     On la retire et on garde SCHEDULE_EXACT_ALARM sur toutes les versions d'Android : l'utilisateur l'accorde
+     lui-même (Réglages › Alarmes et rappels) ; Voie libre le lui propose dans Paramètres › Rappels de service. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:remove="android:maxSdkVersion" />
+</manifest>

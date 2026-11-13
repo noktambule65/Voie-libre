@@ -42,10 +42,10 @@ jobs:
       - name: Compiler l'APK
         env:
           VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: gradle assembleGithubRelease --no-daemon --stacktrace
 
       - name: Renommer l'APK
-        run: cp app/build/outputs/apk/release/app-release.apk "Voie-libre-v${{ github.run_number }}.apk"
+        run: cp app/build/outputs/apk/github/release/app-github-release.apk "Voie-libre-v${{ github.run_number }}.apk"
 
       # Publiée en PRÉ-VERSION : les appli des collègues ne la voient pas.
       # Feu vert après test : modifier la release sur GitHub, décocher « Set as a pre-release »

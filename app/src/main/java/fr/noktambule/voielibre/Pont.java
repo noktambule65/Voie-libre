@@ -268,6 +268,27 @@ public class Pont {
     @JavascriptInterface
     public boolean pleinEcranAutorise() { return Notifs.pleinEcranAutorise(ctx); }
 
+    /** Alarmes à l'heure exacte permises (toujours vrai avec USE_EXACT_ALARM ; à accorder par l'utilisateur sinon). */
+    @JavascriptInterface
+    public boolean alarmesExactesAutorisees() {
+        if (Build.VERSION.SDK_INT < 31) return true;
+        android.app.AlarmManager am = (android.app.AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        return am == null || am.canScheduleExactAlarms();
+    }
+
+    /** Ouvre le réglage « Alarmes et rappels » de Voie libre. */
+    @JavascriptInterface
+    public void reglerAlarmesExactes() {
+        if (Build.VERSION.SDK_INT < 31 || act == null) return;
+        try {
+            act.startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    Uri.parse("package:" + ctx.getPackageName())));
+        } catch (Exception e) {
+            try { act.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + ctx.getPackageName()))); } catch (Exception ignore) { }
+        }
+    }
+
     /** Ouvre le réglage Android de cette autorisation (Android 14+). */
     @JavascriptInterface
     public void reglerPleinEcran() {

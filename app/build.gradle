@@ -8,9 +8,7 @@ def numero = (System.getenv('VL_NUMERO') ?: System.getenv('GITHUB_RUN_NUMBER') ?
 def mdp = System.getenv('VOIE_LIBRE_MDP')
 // Appli d'essai (VL_TEST=1) : autre identifiant, autre nom, clé jetable — s'installe à côté de la vraie, sans la toucher.
 def estEssai = System.getenv('VL_TEST') == '1'
-// Version Play Store (VL_PLAY=1) : mises à jour par le Play Store uniquement (rien vers GitHub).
-// VL_ID : identifiant de l'appli sur le Play Store, s'il diffère de celui de GitHub.
-def estPlay = System.getenv('VL_PLAY') == '1'
+// Identifiant de l'appli sur le Play Store, s'il diffère de celui de GitHub (VL_ID).
 def idPlay = System.getenv('VL_ID')
 
 android {
@@ -18,8 +16,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId estEssai ? 'fr.noktambule.voielibre.test' : (estPlay && idPlay ? idPlay : 'fr.noktambule.voielibre')
-        resValue 'string', 'distribution', estPlay ? 'play' : 'github'
+        applicationId estEssai ? 'fr.noktambule.voielibre.test' : 'fr.noktambule.voielibre'
         manifestPlaceholders = [nomAppli: estEssai ? 'Voie libre test' : 'Voie libre']
         minSdk 29
         targetSdk 36
@@ -40,6 +37,21 @@ android {
             storePassword 'voielibre-essai'
             keyAlias 'essai'
             keyPassword 'voielibre-essai'
+        }
+    }
+
+    // Deux distributions : « github » (APK, mises à jour par GitHub) et « play » (AAB pour Google Play :
+    // pas de mise à jour par GitHub, alarmes exactes accordées par l'utilisateur — voir src/play/AndroidManifest.xml).
+    flavorDimensions 'distrib'
+    productFlavors {
+        github {
+            dimension 'distrib'
+            resValue 'string', 'distribution', 'github'
+        }
+        play {
+            dimension 'distrib'
+            resValue 'string', 'distribution', 'play'
+            if (idPlay) applicationId idPlay
         }
     }
 

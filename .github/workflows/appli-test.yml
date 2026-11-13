@@ -25,12 +25,12 @@ jobs:
       - name: Compiler l'APK d'essai
         env:
           VL_TEST: '1'
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: gradle assembleGithubRelease --no-daemon --stacktrace
       - name: Publier l'essai
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk Voie-libre-test.apk
+          cp app/build/outputs/apk/github/release/app-github-release.apk Voie-libre-test.apk
           gh release delete appli-test --cleanup-tag -y || true
           gh release create appli-test Voie-libre-test.apk --title "Voie libre test (appli d'essai)" \
             --notes "Copie d'essai de Voie libre, installée à côté de la vraie appli. Compilée le $(date -u +'%d/%m/%Y à %H:%M') UTC depuis ${GITHUB_SHA::7}. Ne pas diffuser." \

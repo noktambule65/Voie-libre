@@ -46,12 +46,15 @@ Document de travail : réponses à préparer pour la Play Console. À relire ava
 
 ## Autorisations sensibles (déclarations)
 
-- **USE_EXACT_ALARM** : l'appli comporte un réveil et des alertes à heure précise avant chaque train (fonction principale). Si refusé : passer à SCHEDULE_EXACT_ALARM, autorisation accordée par l'utilisateur dans les réglages.
-- **USE_FULL_SCREEN_INTENT** : alerte de départ affichée sur l'écran verrouillé, comme un réveil. Si refusé : retirer le plein écran de la version Play, le bandeau rouge reste.
+- **Alarmes exactes** : la version Play n'utilise **pas** USE_EXACT_ALARM (réservée aux réveils et agendas, déclaration obligatoire). Elle utilise SCHEDULE_EXACT_ALARM, que l'utilisateur accorde lui-même ; l'appli le lui propose (Paramètres › Rappels de service et tuile « Prochains rappels »). Aucune déclaration à remplir. Sans cette autorisation, les rappels arrivent quand même, avec quelques minutes d'écart possibles.
+- **USE_FULL_SCREEN_INTENT** : déclaration à remplir. Cas d'usage : alerte de départ d'un train affichée sur l'écran verrouillé, comme un réveil, à l'heure choisie par l'utilisateur. Depuis Android 14, cette autorisation n'est accordée d'office qu'aux applis de réveil et d'appel ; sinon l'utilisateur l'accorde lui-même et l'appli le lui propose déjà (Paramètres › Rappels de service › « Bandeau rouge non autorisé › Autoriser »). Si Google refuse la déclaration : retirer l'autorisation de la version Play (même méthode que pour USE_EXACT_ALARM, dans src/play/AndroidManifest.xml) ; l'alerte reste en bandeau rouge, sans l'écran plein écran verrouillé.
 - **Position approximative** : facultative, météo locale uniquement.
 
 ## Technique (déjà prêt)
 
 - Vise Android 16 (API 36), affichage bord à bord, retour prédictif.
-- Version Play sans recherche de mise à jour sur GitHub (VL_PLAY=1).
+- Version Play (variante « play ») : sans recherche de mise à jour sur GitHub, sans USE_EXACT_ALARM.
+- Aucune notification activée par défaut ; autorisations demandées seulement quand l'utilisateur active un rappel.
+- Pas de bibliothèque native (aucune contrainte de pages de 16 Ko), pas de trafic en clair (HTTPS partout), sauvegarde Android désactivée.
+- Signal pour MacroDroid : facultatif, désactivé par défaut, décrit dans les règles de confidentialité.
 - Paquet AAB : onglet Actions › « Version Play Store (AAB) » › Run workflow, avec un numéro de version.

@@ -27,11 +27,15 @@ Ces services reçoivent seulement ce qui est nécessaire à la réponse (des coo
 
 Le planning, les réglages, le lien Graou et le journal de diagnostic sont enregistrés uniquement dans l'application, sur ton téléphone. Ils ne sont pas copiés dans la sauvegarde Google. Les supprimer : désinstaller l'application, ou effacer ses données dans les réglages Android.
 
+## Signaux pour les applis d'automatisation (facultatif)
+
+Si tu actives Paramètres › Options avancées › Mode avion automatique, Voie libre envoie au départ et à l'arrivée de tes trains un signal Android (numéro de train, gares, heure) que des applis d'automatisation installées sur ton téléphone, comme MacroDroid, peuvent recevoir pour passer le téléphone en mode avion. Ce signal reste sur ton téléphone. L'option est désactivée par défaut.
+
 Le fichier « Mes réglages » (Paramètres › Sauvegarde des réglages) n'est créé que si tu le demandes ; il ne contient ni le lien Graou ni le planning.
 
 ## Autorisations
 
-- **Notifications, alarmes exactes, écran plein écran** : rappels et alertes avant tes trains, réveil.
+- **Notifications, alarmes à l'heure exacte, écran plein écran** : rappels et alertes avant tes trains, uniquement ceux que tu actives (aucun n'est activé au départ).
 - **Démarrage du téléphone** : reprogrammer ces rappels après un redémarrage.
 - **Position approximative** (facultative) : météo du lieu où tu te trouves.
 

@@ -1253,8 +1253,16 @@ public class Notifs extends BroadcastReceiver {
                     .putExtra("fin", fin);
             long q = prochainChangement(depart, now, parMinute);
             // une demi-seconde après la minute pleine : jamais un affichage arrondi du mauvais côté
-            if (am != null && q > 0 && q + 500L < fin)
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, q + 500L, piMaj(ctx, id, 0, ex));
+            if (am != null && q > 0 && q + 500L < fin) {
+                PendingIntent pm = piMaj(ctx, id, 0, ex);
+                try {
+                    if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, q + 500L, pm);
+                    else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, q + 500L, pm);
+                } catch (SecurityException se) {
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, q + 500L, pm);
+                }
+            }
         }
     }
 
@@ -1394,8 +1402,10 @@ public class Notifs extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
+        // démarrage, mise à jour, ou alarmes exactes autorisées par l'utilisateur : tout est reprogrammé
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())
-                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) { programmer(ctx); return; }
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())
+                || "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED".equals(intent.getAction())) { programmer(ctx); return; }
         if (ACTION_HEURE.equals(intent.getAction())) {
             if (prefs(ctx).getBoolean("ch3", false) || prefs(ctx).getBoolean("chVeille", false))
                 try { rappelHeure(ctx, intent.getIntExtra("type", 1), intent.getLongExtra("instant", 0)); } catch (Exception ex) { erreur(ctx, "rappel changement d’heure", ex); }
