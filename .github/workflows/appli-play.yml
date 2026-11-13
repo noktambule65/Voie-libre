@@ -67,7 +67,7 @@ jobs:
       - name: Autorisations de la version Play (contrôle)
         run: |
           m=$(find app/build/intermediates -path '*playRelease*' -name AndroidManifest.xml | grep -i merged | head -1)
-          echo "Manifeste fusionné : $m"; grep -o 'uses-permission[^>]*' "$m"
+          echo "Manifeste fusionné : $m"; grep -o 'package="[^"]*"' "$m" | head -1; grep -o 'uses-permission[^>]*' "$m"
           if grep -o 'uses-permission[^>]*' "$m" | grep -q '\.USE_EXACT_ALARM"'; then echo "::error::USE_EXACT_ALARM ne doit pas figurer dans la version Play"; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
