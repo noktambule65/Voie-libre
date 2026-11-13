@@ -7,15 +7,15 @@ def numero = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 // Mot de passe de la clé de signature : secret VOIE_LIBRE_MDP du dépôt (jamais écrit dans le code).
 def mdp = System.getenv('VOIE_LIBRE_MDP')
 // Appli d'essai (VL_TEST=1) : autre identifiant, autre nom, clé jetable — s'installe à côté de la vraie, sans la toucher.
-def essai = System.getenv('VL_TEST') == '1'
+def estEssai = System.getenv('VL_TEST') == '1'
 
 android {
     namespace 'fr.noktambule.voielibre'
     compileSdk 34
 
     defaultConfig {
-        applicationId essai ? 'fr.noktambule.voielibre.test' : 'fr.noktambule.voielibre'
-        manifestPlaceholders = [nomAppli: essai ? 'Voie libre test' : 'Voie libre']
+        applicationId estEssai ? 'fr.noktambule.voielibre.test' : 'fr.noktambule.voielibre'
+        manifestPlaceholders = [nomAppli: estEssai ? 'Voie libre test' : 'Voie libre']
         minSdk 29
         targetSdk 34
         versionCode numero
@@ -41,7 +41,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            if (essai) signingConfig signingConfigs.essai
+            if (estEssai) signingConfig signingConfigs.essai
             else if (mdp) signingConfig signingConfigs.voielibre
         }
     }
