@@ -212,7 +212,53 @@ final class MiseAJour {
      * Note « Quoi de neuf » : celle de la version installée si elle a une vraie note sur GitHub,
      * sinon celle de la dernière version officielle. Réponse JSON {ok, notes, tag}. Hors du fil principal.
      */
+    // ---------- Version Play Store : notes intégrées à l'appli ----------
+    // Fichier docs/nouveautes.md du dépôt, copié dans l'appli à la compilation (assets/nouveautes.md) :
+    // une section « ## 1.NNN » par version, la plus récente en haut. Pas besoin de réseau.
+
+    /** Sections du fichier de nouveautés : [numéro, notes], dans l'ordre du fichier. */
+    private static java.util.List<String[]> sectionsNouveautes(Context c) {
+        java.util.List<String[]> l = new java.util.ArrayList<>();
+        try (InputStream in = c.getAssets().open("nouveautes.md")) {
+            String num = null; StringBuilder sb = new StringBuilder();
+            for (String ligne : lire(in).split("\n")) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("^##\\s*(?:version\\s*)?(?:1\\.)?(\\d+)\\s*$",
+                        java.util.regex.Pattern.CASE_INSENSITIVE).matcher(ligne.trim());
+                if (m.matches()) {
+                    if (num != null) l.add(new String[]{num, sb.toString().trim()});
+                    num = m.group(1); sb.setLength(0);
+                } else if (num != null) sb.append(ligne).append('\n');
+            }
+            if (num != null) l.add(new String[]{num, sb.toString().trim()});
+        } catch (Exception ignore) { }
+        return l;
+    }
+
+    private static String quoiDeNeufPlay(Context c) throws Exception {
+        JSONObject r = new JSONObject();
+        long installee = versionInstallee(c);
+        String[] meilleure = null;
+        for (String[] s : sectionsNouveautes(c)) {
+            long n = Long.parseLong(s[0]);
+            if (n <= installee && !s[1].isEmpty() && (meilleure == null || n > Long.parseLong(meilleure[0]))) meilleure = s;
+        }
+        r.put("ok", meilleure != null);
+        if (meilleure != null) { r.put("notes", meilleure[1]); r.put("tag", "1." + meilleure[0]); }
+        return r.toString();
+    }
+
+    private static String historiquePlay(Context c) throws Exception {
+        JSONObject r = new JSONObject();
+        JSONArray sortie = new JSONArray();
+        for (String[] s : sectionsNouveautes(c))
+            sortie.put(new JSONObject().put("tag", "1." + s[0]).put("date", "").put("notes", s[1]));
+        r.put("ok", true);
+        r.put("versions", sortie);
+        return r.toString();
+    }
+
     static String quoiDeNeuf(Context c) {
+        if (versionPlay(c)) try { return quoiDeNeufPlay(c); } catch (Exception e) { return "{}"; }
         JSONObject r = new JSONObject();
         try {
             long installee = versionInstallee(c);
@@ -235,6 +281,7 @@ final class MiseAJour {
      * Réponse JSON {ok, versions:[{tag, date, notes}]}. Hors du fil principal.
      */
     static String historique(Context c) {
+        if (versionPlay(c)) try { return historiquePlay(c); } catch (Exception e) { return "{\"ok\":false}"; }
         JSONObject r = new JSONObject();
         HttpURLConnection h = null;
         try {

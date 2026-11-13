@@ -35,6 +35,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      # Nouveautés : intégrées à l'appli (« Quoi de neuf ? ») et préparées pour la Play Console (500 caractères au plus)
+      - name: Préparer les nouveautés
+        env:
+          NUMERO: ${{ inputs.numero }}
+        run: |
+          cp docs/nouveautes.md app/src/main/assets/nouveautes.md
+          python3 - <<'PY'
+          import os, re
+          n = os.environ['NUMERO']
+          t = open('docs/nouveautes.md', encoding='utf-8').read()
+          m = re.search(r'^##\s*(?:1\.)?' + re.escape(n) + r'\s*$(.*?)(?=^##\s|\Z)', t, re.M | re.S)
+          if not m:
+              print(f"::warning::Aucune section « ## 1.{n} » dans docs/nouveautes.md : « Quoi de neuf ? » montrera la précédente.")
+              open('notes-play.txt', 'w', encoding='utf-8').write('')
+          else:
+              txt = m.group(1).strip()
+              txt = re.sub(r'\*\*(.+?)\*\*', r'\1', txt)
+              txt = re.sub(r'^\s*[-*]\s+', '• ', txt, flags=re.M)
+              txt = re.sub(r'\n{3,}', '\n\n', txt)
+              open('notes-play.txt', 'w', encoding='utf-8').write('<fr-FR>\n' + txt + '\n</fr-FR>\n')
+              if len(txt) > 500:
+                  print(f"::warning::Note de version de {len(txt)} caractères : la Play Console en accepte 500 au plus. À raccourcir dans docs/nouveautes.md.")
+          PY
       - name: Compiler l'AAB
         env:
           VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
@@ -45,6 +68,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Voie-libre-play-${{ inputs.numero }}
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: |
+            app/build/outputs/bundle/release/app-release.aab
+            notes-play.txt
       - if: always()
         run: rm -f app/voie-libre.jks
