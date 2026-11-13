@@ -7,9 +7,11 @@ Document de travail : réponses à préparer pour la Play Console. À relire ava
 - **Nom** : Voie libre
 - **Description courte** (80 caractères max, ici 80) : Ta journée de service sur l'écran d'accueil : widget planning, météo et rappels.
 - **Description longue** :
-  Ta journée de service d'un coup d'œil, sans ouvrir l'appli : le widget Voie libre affiche sur ton écran d'accueil ta prise et ta fin de service, tes trains, tes gares et la météo, puis les semaines à venir quand tu l'agrandis. Pendant le service, il te rappelle que seul Pacific fait foi.
+  Ta journée de service d'un coup d'œil, sans ouvrir l'appli : le widget Voie libre affiche sur ton écran d'accueil ta prise et ta fin de service, tes trains, tes gares et la météo, puis les semaines à venir quand tu l'agrandis.
 
-  Voie libre lit ton planning à partir de ton lien d'abonnement Graou :
+  Pour les agents SNCF qui consultent leur planning sur Graou : Voie libre lit ton planning à partir de ton lien d'abonnement Graou (à copier une fois depuis Graou). Sans accès à Graou, l'appli n'a rien à afficher.
+
+  Ce que tu y trouves :
   • widget de l'écran d'accueil, journée et semaines
   • journée détaillée et vue des semaines, découchés et repos
   • météo des gares de ta journée
