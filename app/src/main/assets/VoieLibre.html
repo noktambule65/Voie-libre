@@ -57,6 +57,7 @@ button{font:inherit;color:inherit}
 .tuile small .ml .mv{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .tuile small .ml .mh{flex:none;font-size:12.5px}
 .tuile small .ml.alerte{white-space:normal;display:block;line-height:1.3;margin-top:2px}
+.tuile small .autoNotif{display:inline-block;margin-top:8px;padding:7px 14px;border-radius:999px;background:#C62828;color:#fff;font-weight:700;font-size:15px;line-height:1.2}
 .tuile small .rp{display:flex;gap:6px;align-items:baseline;line-height:1.3;margin:0 0 4px}
 .tuile small .rp i{font-style:normal;flex:none;width:1.3em;text-align:center}
 .tuile small .rp b{color:var(--encre);font-weight:700}
@@ -3340,7 +3341,8 @@ function prochainsRappels(L, now, bloque){
   if(N.ch3||N.chVeille){ const c=prochainChangementHeure(now); if(c) ajouter(c.d,'🕐',quandJour(c.d),'Changement d’heure ('+(c.ete?'heure d’été':'heure d’hiver')+')'); }
   L2.sort((a,b)=>a.d-b.d);
   const lignes=[];
-  if(bloque) lignes.push('<span class="ml alerte">⚠️ Notifications bloquées</span>');
+  // raccourci : un appui ouvre la demande d'Android (ou l'écran des notifications de l'appli si elle a déjà été refusée)
+  if(bloque) lignes.push('<span class="ml alerte">⚠️ Notifications bloquées</span><span class="autoNotif" role="button" data-autorise="1">🔔 Autoriser</span>');
   L2.slice(0,bloque?2:3).forEach(r=>lignes.push(`<span class="rp"><i>${r.ic}</i><span><b>${escS(r.quand)}</b> ${r.txt}</span></span>`));
   if(!L2.length && !bloque) lignes.push('<span class="rp vide">Aucun rappel prévu</span>');
   const alertes=[N.modif?'planning modifié':'', N.sync?'synchro Graou':''].filter(Boolean);
@@ -3505,6 +3507,10 @@ const TUILES=[
 ];
 $('rubriques').innerHTML=TUILES.map(t=>`<button class="tuile" data-t="${t.id}"><span class="tt"><span class="ic" style="background:${t.coul}">${t.ic}</span><b class="ti">${t.titre}</b></span><small>${t.sous}</small></button>`).join('');
 $('rubriques').addEventListener('click',e=>{
+  if(e.target.closest('[data-autorise]')){   // tuile « Prochains rappels » : autoriser les notifications sans passer par Paramètres
+    const A=window.BoulotAndroid; try{ A.demanderNotifs?A.demanderNotifs():A.ouvrirReglagesNotifs(); }catch(err){}
+    return;
+  }
   const b=e.target.closest('[data-t]'); if(!b) return;
   const j=CIBLE?CIBLE.j:'', t=b.dataset.t;
   if(t==='meteo') window.boulotAller('meteo', j);
@@ -3516,6 +3522,8 @@ $('rubriques').addEventListener('click',e=>{
 });
 try{ $('jourj').textContent=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()); }catch(e){}
 majService(); setInterval(()=>{ if(!document.hidden && $('accueil').style.display!=='none') majService(); },60000);
+// retour de la demande d'autorisation d'Android (fenêtre par-dessus l'appli) : la tuile des rappels se met à jour
+window.addEventListener('focus',()=>{ if($('accueil').style.display!=='none') majService(); });
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) majService(); });
 
 // Lecture d'une appli embarquée (les balises sensibles ont été neutralisées à l'assemblage)
