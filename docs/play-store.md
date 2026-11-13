@@ -5,11 +5,21 @@ Document de travail : réponses à préparer pour la Play Console. À relire ava
 ## Fiche de l'application
 
 - **Nom** : Voie libre
-- **Description courte** (80 caractères max) : Ton planning de conduite, la météo des gares et des rappels avant chaque train.
+- **Description courte** (80 caractères max, ici 80) : Ta journée de service sur l'écran d'accueil : widget planning, météo et rappels.
 - **Description longue** :
-  Voie libre affiche ton planning de service à partir de ton lien d'abonnement Graou : journée, semaines, trains, découchés et repos. Elle donne la météo des gares de ta journée, te rappelle tes prises de service et tes départs (avec un compte à rebours), et propose un widget pour l'écran d'accueil.
+  Ta journée de service d'un coup d'œil, sans ouvrir l'appli : le widget Voie libre affiche sur ton écran d'accueil ta prise et ta fin de service, tes trains, tes gares et la météo, puis les semaines à venir quand tu l'agrandis. Pendant le service, il te rappelle que seul Pacific fait foi.
+
+  Voie libre lit ton planning à partir de ton lien d'abonnement Graou :
+  • widget de l'écran d'accueil, journée et semaines
+  • journée détaillée et vue des semaines, découchés et repos
+  • météo des gares de ta journée
+  • rappels avant la prise de service, réveil, alerte de départ avec compte à rebours
+  • partage de ta journée, y compris une version « pour un proche » sans jargon
+
   Tout reste sur ton téléphone : pas de compte, pas de publicité, aucune donnée envoyée au développeur.
   Application non officielle, créée par un conducteur pour ses collègues. Seul Pacific fait foi.
+- **Captures d'écran** (2 à 8) : commencer par le **widget sur un écran d'accueil**, puis le widget agrandi (journée + semaines), puis la journée, les semaines, l'alerte de départ. Planning réel ou anonymisé, jamais de logo SNCF.
+- **Image de présentation** (1024 × 500) : le widget sur un téléphone, avec le titre « Ta journée sur ton écran d'accueil ».
 - **Catégorie** : Productivité (ou Outils)
 - **Adresse de contact** : voielibreadc@gmail.com
 - **Règles de confidentialité** : https://github.com/noktambule65/Voie-libre/blob/main/docs/confidentialite.md
