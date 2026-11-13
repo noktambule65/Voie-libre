@@ -10,7 +10,7 @@ on:
         description: "Numéro de version (doit augmenter à chaque envoi sur Google Play)"
         required: true
       identifiant:
-        description: "Identifiant de l'appli sur Google Play (vide = fr.noktambule.voielibre)"
+        description: "Identifiant de l'appli sur Google Play (vide = fr.voielibre.app)"
         required: false
         default: ""
 

@@ -5,6 +5,7 @@ Document de travail : réponses à préparer pour la Play Console. À relire ava
 ## Fiche de l'application
 
 - **Nom** : Voie libre
+- **Identifiant (nom de package)** : fr.voielibre.app — définitif dès la création de l'appli dans la console
 - **Description courte** (80 caractères max, ici 80) : Ta journée de service sur l'écran d'accueil : widget planning, météo et rappels.
 - **Description longue** :
   Ta journée de service d'un coup d'œil, sans ouvrir l'appli : le widget Voie libre affiche sur ton écran d'accueil ta prise et ta fin de service, tes trains, tes gares et la météo, puis les semaines à venir quand tu l'agrandis.

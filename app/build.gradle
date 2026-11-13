@@ -8,7 +8,7 @@ def numero = (System.getenv('VL_NUMERO') ?: System.getenv('GITHUB_RUN_NUMBER') ?
 def mdp = System.getenv('VOIE_LIBRE_MDP')
 // Appli d'essai (VL_TEST=1) : autre identifiant, autre nom, clé jetable — s'installe à côté de la vraie, sans la toucher.
 def estEssai = System.getenv('VL_TEST') == '1'
-// Identifiant de l'appli sur le Play Store, s'il diffère de celui de GitHub (VL_ID).
+// Identifiant de l'appli sur le Play Store : fr.voielibre.app (définitif une fois publiée ; VL_ID pour un essai).
 def idPlay = System.getenv('VL_ID')
 
 android {
@@ -51,7 +51,8 @@ android {
         play {
             dimension 'distrib'
             resValue 'string', 'distribution', 'play'
-            if (idPlay) applicationId idPlay
+            // appli d'essai : garde son identifiant à elle, jamais celui du Play Store
+            if (!estEssai) applicationId (idPlay ?: 'fr.voielibre.app')
         }
     }
 
