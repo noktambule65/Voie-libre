@@ -1169,7 +1169,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       <details class="sousMenu" id="nTaches"><summary>Notifications avant tâches</summary><div id="nTachesCorps"></div></details>
       <p class="petit" id="nEtat"></p><p class="petit" id="wDiag"></p>`;
     effacer.before(n);
-    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,neige:true,neigeHeure:18,neigeJour:true,sync:true,syncH:12,syncFreq:120,syncPS:false,theme:'auto',widgetVue:'jour',modifPortee:'tout'},charger('bo-notif',{}));
+    const lire=()=>Object.assign({modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,neige:false,neigeHeure:18,neigeJour:false,sync:false,syncH:12,syncFreq:120,syncPS:false,theme:'auto',widgetVue:'jour',modifPortee:'tout'},charger('bo-notif',{}));
     const etat=()=>{ const o=lire(); let ok=true; try{ ok=AND.notifsAutorisees(); }catch(e){}
       $('nEtat').innerHTML=(AND.apercu||ok)?'':'⚠️ Android bloque les notifications de Voie libre : aucun rappel ne s’affichera.'
         +(AND.ouvrirReglagesNotifs?'<button class="action autoriseNotif" id="nAutorise">🔔 Autoriser les notifications</button>':' Autorise-les dans les réglages du téléphone (Applications › Voie libre › Notifications).');
@@ -1190,7 +1190,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       $('nNeige').checked=!!o.neige; $('nNeigeH').value=String(o.neigeHeure); $('nNeigeJ').checked=!!o.neigeJour;
       $('nRv').checked=!!o.reveilOn; $('nRvH').value=String(o.reveilHeure); $('nRvDe').value=String(o.reveilDe); $('nRvA').value=String(o.reveilA); etat(); };
     // Rappels avant tâches : réglages par défaut (minutes avant la tâche) ; délais par gare et phrases ajoutés par chacun
-    const T_DEF={train:{on:true,min:4,horsAvion:true,plein:true,notes:[],noteMin:10,notesArr:[],noteArrMin:5}, ev:{on:false,min:15}, evloc:{on:false,min:15}, taxi:{on:false,min:15}, bus:{on:false,min:15}, eq:{on:true,min:15}, coup:{on:false,min:10},
+    const T_DEF={train:{on:false,min:4,horsAvion:true,plein:true,notes:[],noteMin:10,notesArr:[],noteArrMin:5}, ev:{on:false,min:15}, evloc:{on:false,min:15}, taxi:{on:false,min:15}, bus:{on:false,min:15}, eq:{on:false,min:15}, coup:{on:false,min:10},
       rs:{on:false, horsTrain:true, defaut:15, lieux:{}}};
     // Mode avion automatique (Options avancées) : signal aux applis d'automatisation, désactivé par défaut
     const M_DEF={on:false, dep:{on:true,min:0}, arr:{on:false,min:0}, encha:{on:true,min:20}, evloc:false};
@@ -3308,8 +3308,8 @@ const hm=d=>p2(d.getHours())+':'+p2(d.getMinutes());
 const cleJ=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
 /* ---- Tuile Rappels : les prochains rappels prévus, d'après les réglages (Paramètres › Notifications) ---- */
 const RAPPELS_DEF={modif:false,dec:false,heure:18,ch3:false,chVeille:false,chHeure:18,reveilOn:false,reveilHeure:21,reveilDe:3,reveilA:11,
-  neige:true,neigeHeure:18,neigeJour:true,sync:true};
-const TACHES_DEF={train:{on:true,min:4},ev:{on:false,min:15},eq:{on:true,min:15},coup:{on:false,min:10},rs:{on:false}};
+  neige:false,neigeHeure:18,neigeJour:false,sync:false};   // aucune notification par défaut : chacun active ce qu'il veut
+const TACHES_DEF={train:{on:false,min:4},ev:{on:false,min:15},eq:{on:false,min:15},coup:{on:false,min:10},rs:{on:false}};
 // changement d'heure : dernier dimanche de mars et d'octobre
 function prochainChangementHeure(now){
   for(let y=now.getFullYear(); y<=now.getFullYear()+1; y++) for(const m of [2,9]){
@@ -3320,6 +3320,10 @@ function prochainChangementHeure(now){
 function prochainsRappels(L, now, bloque){
   const N=Object.assign({},RAPPELS_DEF,lireObj('bo-notif')||{});
   const T={}; Object.keys(TACHES_DEF).forEach(k=>T[k]=Object.assign({},TACHES_DEF[k],(N.taches||{})[k]||{}));
+  // aucun rappel choisi (c'est le réglage de départ) : pas d'alerte « notifications bloquées », juste une invitation
+  const actifs=['modif','dec','ch3','chVeille','reveilOn','neige','neigeJour','sync'].some(k=>N[k])
+    || Object.keys(T).some(k=>T[k].on) || Object.values(N.taches||{}).some(x=>x&&x.on);
+  if(!actifs) return '<span class="rp vide">Aucun rappel activé</span><span class="ml">Touche pour choisir les tiens</span>';
   const P=lireObj('vl-prochains')||{}, t0=now.getTime(), lim=t0+14*864e5, L2=[];
   const jh=d=>quandJour(d)+' '+hm(d);
   const ajouter=(d,ic,quand,txt)=>{ if(d && d.getTime()>t0 && d.getTime()<lim) L2.push({d,ic,quand,txt}); };
@@ -3521,6 +3525,20 @@ $('rubriques').addEventListener('click',e=>{
   else if(t==='param') ouvrir('param');
 });
 try{ $('jourj').textContent=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(new Date()); }catch(e){}
+// Depuis la 1.148, aucune notification n'est activée par défaut. Pour ceux qui avaient déjà l'appli, les rappels
+// qui étaient actifs par défaut (train conduit, EQ PREND, neige, Graou non mis à jour) sont écrits tels quels :
+// rien ne s'éteint chez eux à la mise à jour.
+try{ if(!localStorage.getItem('vl-defauts-off')){
+  if(localStorage.getItem('vl-intro-vu') || localStorage.getItem('pl-url') || localStorage.getItem('bo-notif')){
+    const n=JSON.parse(localStorage.getItem('bo-notif')||'{}');
+    ['neige','neigeJour','sync'].forEach(k=>{ if(!(k in n)) n[k]=true; });
+    n.taches=n.taches||{};
+    if(!n.taches.train) n.taches.train={on:true,min:4,horsAvion:true,plein:true,notes:[]}; else if(!('on' in n.taches.train)) n.taches.train.on=true;
+    if(!n.taches.eq) n.taches.eq={on:true,min:15}; else if(!('on' in n.taches.eq)) n.taches.eq.on=true;
+    localStorage.setItem('bo-notif',JSON.stringify(n));
+  }
+  localStorage.setItem('vl-defauts-off','1');
+} }catch(e){ window.vlNoteErreur('reprise des rappels déjà actifs',e); }
 majService(); setInterval(()=>{ if(!document.hidden && $('accueil').style.display!=='none') majService(); },60000);
 // retour de la demande d'autorisation d'Android (fenêtre par-dessus l'appli) : la tuile des rappels se met à jour
 window.addEventListener('focus',()=>{ if($('accueil').style.display!=='none') majService(); });

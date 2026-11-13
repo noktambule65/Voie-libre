@@ -79,11 +79,11 @@ public class Notifs extends BroadcastReceiver {
                     .putBoolean("ch3", o.optBoolean("ch3"))
                     .putBoolean("chVeille", o.optBoolean("chVeille"))
                     .putInt("chHeure", Math.max(0, Math.min(23, o.optInt("chHeure", 18))))
-                    .putBoolean("sync", o.optBoolean("sync", true))
+                    .putBoolean("sync", o.optBoolean("sync", false))
                     .putInt("syncH", Math.max(1, Math.min(168, o.optInt("syncH", 12))))
                     .putBoolean("syncPS", o.optBoolean("syncPS", false))
-                    .putBoolean("neige", o.optBoolean("neige", true))
-                    .putBoolean("neigeJour", o.optBoolean("neigeJour", true))
+                    .putBoolean("neige", o.optBoolean("neige", false))
+                    .putBoolean("neigeJour", o.optBoolean("neigeJour", false))
                     .putInt("neigeHeure", Math.max(0, Math.min(23, o.optInt("neigeHeure", 18))))
                     .putBoolean("rv", o.optBoolean("reveilOn", false))
                     .putInt("rvHeure", Math.max(0, Math.min(23, o.optInt("reveilHeure", 21))))
@@ -684,13 +684,13 @@ public class Notifs extends BroadcastReceiver {
         JSONObject t;
         try { t = new JSONObject(prefs(ctx).getString("taches", "{}")); } catch (Exception e) { t = new JSONObject(); }
         try {
-            if (t.optJSONObject("train") == null) t.put("train", new JSONObject().put("on", true).put("min", 4).put("horsAvion", true)
+            if (t.optJSONObject("train") == null) t.put("train", new JSONObject().put("on", false).put("min", 4).put("horsAvion", true)
                     .put("plein", true).put("notes", new JSONArray()));
             if (t.optJSONObject("ev") == null) t.put("ev", new JSONObject().put("on", false).put("min", 15));
             // EV loc, taxi et bus : réglages propres ; à défaut, ceux de « EV »
             for (String k : new String[]{"evloc", "taxi", "bus"})
                 if (t.optJSONObject(k) == null) t.put(k, new JSONObject(t.optJSONObject("ev").toString()));
-            if (t.optJSONObject("eq") == null) t.put("eq", new JSONObject().put("on", true).put("min", 15));
+            if (t.optJSONObject("eq") == null) t.put("eq", new JSONObject().put("on", false).put("min", 15));
             if (t.optJSONObject("coup") == null) t.put("coup", new JSONObject().put("on", false).put("min", 10));
             if (t.optJSONObject("rs") == null) {
                 // même délai pour toutes les gares par défaut : chacun ajoute ses gares dans Paramètres
@@ -705,7 +705,7 @@ public class Notifs extends BroadcastReceiver {
         String type = tache.optString("type");
         String sous = tache.optString("sous");
         JSONObject c = r.optJSONObject("ev".equals(type) && !sous.isEmpty() ? sous : type);
-        if (c == null || !c.optBoolean("on", true)) return -1;
+        if (c == null || !c.optBoolean("on", false)) return -1;
         if (!"rs".equals(type)) return c.optInt("min", 15);
         JSONObject l = c.optJSONObject("lieux");
         String lieu = tache.optString("lieu");
