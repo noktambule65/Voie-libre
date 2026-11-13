@@ -6,6 +6,13 @@ name: Appli d'essai « Voie libre test »
 # « appli-test » (sans numéro : jamais proposée en mise à jour par Voie libre).
 on:
   workflow_dispatch:
+    inputs:
+      variante:
+        description: "github (comme l'APK actuel) ou play (comme la future version Play Store)"
+        required: true
+        default: github
+        type: choice
+        options: [github, play]
 
 permissions:
   contents: write
@@ -22,16 +29,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      # variante play : notes intégrées (« Quoi de neuf ? ») et numéro 200, comme la première version Play
+      - name: Préparer la variante
+        run: |
+          if [ "${{ inputs.variante }}" = "play" ]; then
+            cp docs/nouveautes.md app/src/main/assets/nouveautes.md
+            echo "VL_NUMERO=$((200 + ${GITHUB_RUN_NUMBER}))" >> "$GITHUB_ENV"
+          fi
       - name: Compiler l'APK d'essai
         env:
           VL_TEST: '1'
-        run: gradle assembleGithubRelease --no-daemon --stacktrace
+        run: |
+          if [ "${{ inputs.variante }}" = "play" ]; then T=assemblePlayRelease; else T=assembleGithubRelease; fi
+          gradle $T --no-daemon --stacktrace
       - name: Publier l'essai
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp app/build/outputs/apk/github/release/app-github-release.apk Voie-libre-test.apk
+          cp app/build/outputs/apk/${{ inputs.variante }}/release/app-${{ inputs.variante }}-release.apk Voie-libre-test.apk
           gh release delete appli-test --cleanup-tag -y || true
           gh release create appli-test Voie-libre-test.apk --title "Voie libre test (appli d'essai)" \
-            --notes "Copie d'essai de Voie libre, installée à côté de la vraie appli. Compilée le $(date -u +'%d/%m/%Y à %H:%M') UTC depuis ${GITHUB_SHA::7}. Ne pas diffuser." \
+            --notes "Copie d'essai de Voie libre (variante ${{ inputs.variante }}), installée à côté de la vraie appli. Compilée le $(date -u +'%d/%m/%Y à %H:%M') UTC depuis ${GITHUB_SHA::7}. Ne pas diffuser." \
             --prerelease --target "$GITHUB_SHA"
