@@ -83,7 +83,7 @@ public class Pont {
                 if (!dossier.exists()) dossier.mkdirs();
                 File f = new File(dossier, nomPropre(nom));
                 try (FileOutputStream o = new FileOutputStream(f)) { o.write(Base64.decode(base64, Base64.DEFAULT)); }
-                Uri u = FileProvider.getUriForFile(act, "fr.noktambule.voielibre.fichiers", f);
+                Uri u = FileProvider.getUriForFile(act, act.getPackageName() + ".fichiers", f);
                 act.runOnUiThread(() -> {
                     Intent i = new Intent(Intent.ACTION_SEND);
                     i.setType(mime == null || mime.isEmpty() ? "application/octet-stream" : mime);

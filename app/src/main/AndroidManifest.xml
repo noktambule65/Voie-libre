@@ -27,7 +27,7 @@
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="Voie libre"
+        android:label="${nomAppli}"
         android:theme="@style/Theme.VoieLibre">
 
         <activity
@@ -70,7 +70,7 @@
         <receiver
             android:name=".VoieLibreWidget"
             android:exported="true"
-            android:label="Voie libre">
+            android:label="${nomAppli}">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -90,7 +90,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="fr.noktambule.voielibre.fichiers"
+            android:authorities="${applicationId}.fichiers"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

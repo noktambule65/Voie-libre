@@ -283,6 +283,8 @@ final class MiseAJour {
      * par jour au plus ; sinon la réponse de la dernière vérification est réutilisée.
      */
     static Resultat verifier(Context c, boolean forcer) {
+        // appli d'essai (« Voie libre test ») : jamais de mise à jour proposée, ce serait la vraie appli
+        if (c.getPackageName().endsWith(".test")) return new Resultat(A_JOUR, null);
         SharedPreferences p = prefs(c);
         long maintenant = System.currentTimeMillis();
         if (forcer || maintenant - p.getLong("quand", 0) > JOUR) {

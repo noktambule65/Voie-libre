@@ -15,9 +15,11 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
+        <!-- largeur restante après le compteur : le texte peut passer sur deux lignes, jamais le compteur -->
         <TextView
             android:id="@+id/dGrand"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:textColor="#FFFFFFFF"
             android:textSize="22sp"
@@ -32,6 +34,8 @@
             android:textSize="22sp"
             android:textStyle="bold"
             android:fontFeatureSettings="tnum"
+            android:maxLines="1"
+            android:singleLine="true"
             android:visibility="gone" />
     </LinearLayout>
     <TextView
