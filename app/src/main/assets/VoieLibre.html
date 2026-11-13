@@ -1663,7 +1663,16 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       cV.querySelector('h3').addEventListener('click',()=>{ const t=Date.now(); nAppuis=(t-tAppui<800)?nAppuis+1:1; tAppui=t;
         if(nAppuis>=7){ nAppuis=0; bD.style.display=''; bR.style.display=''; if(montrerTesteur) montrerTesteur(); bD.scrollIntoView({block:'center',behavior:'smooth'}); } });
     }
-    if(NATIF && NATIF.verifierMaj){
+    const VERSION_PLAY=(()=>{ try{ return !!(NATIF && NATIF.distribution && NATIF.distribution()==='play'); }catch(e){ return false; } })();
+    if(NATIF && NATIF.verifierMaj && VERSION_PLAY){   // Play Store : mises à jour par le Play Store, pas de GitHub ni de mode testeur
+      const pV=document.createElement('p'); pV.className='petit';
+      let v=''; try{ v=NATIF.versionAppli?NATIF.versionAppli():''; }catch(e){}
+      pV.textContent='Version installée : '+(v||'?')+'. Les mises à jour arrivent par le Play Store.';
+      const bN=document.createElement('button'); bN.className='action clair'; bN.textContent='✨ Quoi de neuf ?';
+      bN.onclick=()=>{ try{ window.top.vlQuoiDeNeuf(); }catch(e){} };
+      const premier=cV.querySelector('button'); cV.insertBefore(pV,premier); cV.insertBefore(bN,premier);
+    }
+    if(NATIF && NATIF.verifierMaj && !VERSION_PLAY){
       const pV=document.createElement('p'); pV.className='petit';
       let v=''; try{ v=NATIF.versionAppli?NATIF.versionAppli():''; }catch(e){}
       pV.textContent='Version installée : '+(v||'?')+'. Les nouvelles versions te sont proposées automatiquement.';
@@ -1694,7 +1703,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       ['Le widget ne se met pas à jour','Touche ⟳ sur le widget. S’il reste figé, ouvre Voie libre une fois : certains téléphones mettent en pause les applis peu ouvertes. Dans les réglages Android de Voie libre, choisir une batterie « Sans restriction » aide.'],
       ['Je ne reçois pas les rappels','Dans ⚙ Paramètres › Rappels de service, active les rappels voulus. Si Android bloque les notifications de Voie libre, ⚙ Paramètres › Notifications affiche un bouton « Autoriser les notifications » qui ouvre directement le bon réglage.'],
       ['Je change de téléphone : comment garder mes réglages ?','Sur l’ancien téléphone, va dans ⚙ Paramètres › Sauvegarde des réglages et touche « Exporter mes réglages » (ou « Envoyer le fichier » pour te l’envoyer par mail ou messagerie). Sur le nouveau, installe Voie libre, puis touche « Importer des réglages » au même endroit et choisis le fichier. Ton lien Graou n’est pas dans le fichier : rajoute-le dans Planning et synchro.'],
-      ['Comment faire les mises à jour ?','Voie libre te prévient quand une nouvelle version est prête, avec la liste des nouveautés : touche « Télécharger », accepte l’avertissement du navigateur (« Télécharger quand même »), puis ouvre le fichier comme pour la première installation. Tes réglages, ton planning et ton widget sont conservés. Tu peux aussi vérifier à la main dans ⚙ Paramètres › Version et mises à jour.'],
+      VERSION_PLAY?['Comment faire les mises à jour ?','Par le Play Store, comme toutes tes applis : elles s’installent toutes seules si les mises à jour automatiques sont activées.']:['Comment faire les mises à jour ?','Voie libre te prévient quand une nouvelle version est prête, avec la liste des nouveautés : touche « Télécharger », accepte l’avertissement du navigateur (« Télécharger quand même »), puis ouvre le fichier comme pour la première installation. Tes réglages, ton planning et ton widget sont conservés. Tu peux aussi vérifier à la main dans ⚙ Paramètres › Version et mises à jour.'],
       ['D’où vient la météo ?','D’Open-Meteo, un service de prévisions gratuit. Seules des coordonnées lui sont envoyées (celles des gares, ou ta position si tu l’actives), jamais ton planning.']];
     const bF=document.createElement('button'); bF.className='action clair'; bF.textContent='❓ Questions fréquentes';
     bF.onclick=()=>{ const ov=document.createElement('div'); ov.className='page ouvert'; ov.id='faqPage';

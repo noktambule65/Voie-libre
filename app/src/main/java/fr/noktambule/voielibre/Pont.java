@@ -515,6 +515,10 @@ public class Pont {
     @JavascriptInterface
     public String versionAppli() { return MiseAJour.nomVersion(ctx); }
 
+    /** « play » (mises à jour par le Play Store) ou « github ». */
+    @JavascriptInterface
+    public String distribution() { return MiseAJour.versionPlay(ctx) ? "play" : "github"; }
+
     /** Bouton « Rechercher une mise à jour » (Paramètres › Aide). */
     @JavascriptInterface
     public void verifierMaj() {

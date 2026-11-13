@@ -1,0 +1,50 @@
+name: Version Play Store (AAB)
+
+# Lancée à la main seulement. Fabrique le paquet AAB à déposer sur Google Play :
+# même code que la version GitHub, mais sans la recherche de mise à jour sur GitHub (règle Google Play).
+# Le fichier est rangé dans les « Artifacts » de l'exécution (onglet Actions), pas publié dans les Releases.
+on:
+  workflow_dispatch:
+    inputs:
+      numero:
+        description: "Numéro de version (doit augmenter à chaque envoi sur Google Play)"
+        required: true
+      identifiant:
+        description: "Identifiant de l'appli sur Google Play (vide = fr.noktambule.voielibre)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier le JavaScript de VoieLibre.html
+        run: node .github/verifier-js.js app/src/main/assets/VoieLibre.html
+      - name: Déchiffrer la clé de signature
+        env:
+          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
+        run: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/voie-libre.jks.chiffre -out app/voie-libre.jks -pass env:VOIE_LIBRE_MDP
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Compiler l'AAB
+        env:
+          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
+          VL_PLAY: '1'
+          VL_NUMERO: ${{ inputs.numero }}
+          VL_ID: ${{ inputs.identifiant }}
+        run: gradle bundleRelease --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Voie-libre-play-${{ inputs.numero }}
+          path: app/build/outputs/bundle/release/app-release.aab
+      - if: always()
+        run: rm -f app/voie-libre.jks

@@ -3,18 +3,23 @@ plugins {
 }
 
 // Le numéro de version suit le numéro de compilation GitHub : chaque APK remplace le précédent.
-def numero = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+def numero = (System.getenv('VL_NUMERO') ?: System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 // Mot de passe de la clé de signature : secret VOIE_LIBRE_MDP du dépôt (jamais écrit dans le code).
 def mdp = System.getenv('VOIE_LIBRE_MDP')
 // Appli d'essai (VL_TEST=1) : autre identifiant, autre nom, clé jetable — s'installe à côté de la vraie, sans la toucher.
 def estEssai = System.getenv('VL_TEST') == '1'
+// Version Play Store (VL_PLAY=1) : mises à jour par le Play Store uniquement (rien vers GitHub).
+// VL_ID : identifiant de l'appli sur le Play Store, s'il diffère de celui de GitHub.
+def estPlay = System.getenv('VL_PLAY') == '1'
+def idPlay = System.getenv('VL_ID')
 
 android {
     namespace 'fr.noktambule.voielibre'
     compileSdk 36
 
     defaultConfig {
-        applicationId estEssai ? 'fr.noktambule.voielibre.test' : 'fr.noktambule.voielibre'
+        applicationId estEssai ? 'fr.noktambule.voielibre.test' : (estPlay && idPlay ? idPlay : 'fr.noktambule.voielibre')
+        resValue 'string', 'distribution', estPlay ? 'play' : 'github'
         manifestPlaceholders = [nomAppli: estEssai ? 'Voie libre test' : 'Voie libre']
         minSdk 29
         targetSdk 36

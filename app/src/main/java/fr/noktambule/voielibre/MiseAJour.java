@@ -84,6 +84,11 @@ final class MiseAJour {
 
     // ---------- Mode testeur ----------
 
+    /** Version du Play Store : les mises à jour passent uniquement par le Play Store (règle Google Play). */
+    static boolean versionPlay(Context c) {
+        try { return "play".equals(c.getString(R.string.distribution)); } catch (Exception e) { return false; }
+    }
+
     static boolean testeur(Context c) { return prefs(c).getBoolean("testeur", false); }
 
     /** Active ou désactive le mode testeur ; la prochaine vérification interroge GitHub sans attendre. */
@@ -284,7 +289,7 @@ final class MiseAJour {
      */
     static Resultat verifier(Context c, boolean forcer) {
         // appli d'essai (« Voie libre test ») : jamais de mise à jour proposée, ce serait la vraie appli
-        if (c.getPackageName().endsWith(".test")) return new Resultat(A_JOUR, null);
+        if (c.getPackageName().endsWith(".test") || versionPlay(c)) return new Resultat(A_JOUR, null);
         SharedPreferences p = prefs(c);
         long maintenant = System.currentTimeMillis();
         if (forcer || maintenant - p.getLong("quand", 0) > JOUR) {
