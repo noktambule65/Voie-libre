@@ -24,10 +24,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Vérifier le JavaScript de VoieLibre.html
         run: node .github/verifier-js.js app/src/main/assets/VoieLibre.html
-      - name: Déchiffrer la clé de signature
+      # Clé d'envoi propre au Play Store (Google re-signe ensuite l'appli avec sa propre clé).
+      - name: Déchiffrer la clé d'envoi Play Store
         env:
-          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
-        run: openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/voie-libre.jks.chiffre -out app/voie-libre.jks -pass env:VOIE_LIBRE_MDP
+          VOIE_LIBRE_PLAY_MDP: ${{ secrets.VOIE_LIBRE_PLAY_MDP }}
+        run: |
+          if [ -z "$VOIE_LIBRE_PLAY_MDP" ]; then echo "::error::Secret VOIE_LIBRE_PLAY_MDP absent : à créer dans Settings › Secrets and variables › Actions"; exit 1; fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/voie-libre-play.jks.chiffre -out app/voie-libre-play.jks -pass env:VOIE_LIBRE_PLAY_MDP
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -60,10 +63,14 @@ jobs:
           PY
       - name: Compiler l'AAB
         env:
-          VOIE_LIBRE_MDP: ${{ secrets.VOIE_LIBRE_MDP }}
+          VOIE_LIBRE_PLAY_MDP: ${{ secrets.VOIE_LIBRE_PLAY_MDP }}
           VL_NUMERO: ${{ inputs.numero }}
           VL_ID: ${{ inputs.identifiant }}
         run: gradle bundlePlayRelease --no-daemon --stacktrace
+      - name: Signature de l'AAB (contrôle)
+        run: |
+          keytool -printcert -jarfile app/build/outputs/bundle/playRelease/app-play-release.aab | tee signature.txt
+          grep -q "Voie libre ADC" signature.txt || { echo "::error::L'AAB n'est pas signé avec la clé d'envoi Play Store"; exit 1; }
       - name: Autorisations de la version Play (contrôle)
         run: |
           m=$(find app/build/intermediates -path '*playRelease*' -name AndroidManifest.xml | grep -i merged | head -1)
@@ -76,4 +83,4 @@ jobs:
             app/build/outputs/bundle/playRelease/app-play-release.aab
             notes-play.txt
       - if: always()
-        run: rm -f app/voie-libre.jks
+        run: rm -f app/voie-libre.jks app/voie-libre-play.jks

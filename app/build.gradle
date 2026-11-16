@@ -6,6 +6,8 @@ plugins {
 def numero = (System.getenv('VL_NUMERO') ?: System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
 // Mot de passe de la clé de signature : secret VOIE_LIBRE_MDP du dépôt (jamais écrit dans le code).
 def mdp = System.getenv('VOIE_LIBRE_MDP')
+// Clé d'envoi propre au Play Store (sans lien avec la version GitHub) : secret VOIE_LIBRE_PLAY_MDP.
+def mdpPlay = System.getenv('VOIE_LIBRE_PLAY_MDP')
 // Appli d'essai (VL_TEST=1) : autre identifiant, autre nom, clé jetable — s'installe à côté de la vraie, sans la toucher.
 def estEssai = System.getenv('VL_TEST') == '1'
 // Identifiant de l'appli sur le Play Store : fr.voielibre.app (définitif une fois publiée ; VL_ID pour un essai).
@@ -26,6 +28,12 @@ android {
 
     // Clé de signature fixe (déchiffrée par GitHub Actions) : indispensable pour installer les mises à jour par-dessus.
     signingConfigs {
+        play {
+            storeFile file('voie-libre-play.jks')
+            storePassword mdpPlay
+            keyAlias 'voielibreplay'
+            keyPassword mdpPlay
+        }
         voielibre {
             storeFile file('voie-libre.jks')
             storePassword mdp
@@ -53,6 +61,8 @@ android {
             resValue 'string', 'distribution', 'play'
             // appli d'essai : garde son identifiant à elle, jamais celui du Play Store
             if (!estEssai) applicationId (idPlay ?: 'fr.voielibre.app')
+            // clé d'envoi Play Store : utilisée seulement quand la clé GitHub n'est pas fournie (voir buildTypes)
+            if (!estEssai && mdpPlay) signingConfig signingConfigs.play
         }
     }
 
