@@ -366,6 +366,24 @@ public class Pont {
     @JavascriptInterface
     public void permettreDemandePosition() { MainActivity.demandePositionPermise = true; }
 
+    /**
+     * Journal des rappels (gardé d'une ouverture à l'autre, 80 lignes) : programmation, déclenchement et décision
+     * des vérifications faites en arrière-plan, pour comprendre un rappel qui n'est pas venu.
+     */
+    static void rappel(Context c, String t) {
+        try {
+            String d = new java.text.SimpleDateFormat("dd/MM HH:mm:ss", java.util.Locale.FRANCE).format(new java.util.Date());
+            synchronized (FIL) {
+                android.content.SharedPreferences p = c.getApplicationContext().getSharedPreferences("diag", 0);
+                String av = p.getString("rappels", "");
+                java.util.ArrayList<String> L = new java.util.ArrayList<>();
+                L.add(d + " " + t);
+                if (!av.isEmpty()) for (String l : av.split("\n")) { if (L.size() >= 80) break; L.add(l); }
+                p.edit().putString("rappels", String.join("\n", L)).apply();
+            }
+        } catch (Exception ignore) { }
+    }
+
     @JavascriptInterface
     public void trace(String t) { etape(ctx, t == null ? "" : t, false); }
 
@@ -373,7 +391,9 @@ public class Pont {
     public String diagTrace() {
         android.content.SharedPreferences p = ctx.getSharedPreferences("diag", 0);
         String al = p.getString("alertes", "");
-        return (al.isEmpty() ? "Aucun gel ni erreur détecté.\n" : "GELS ET ERREURS DÉTECTÉS (plus récent en haut) :\n" + al + "\n") + "\nÉtapes :\n" + p.getString("fil", "");
+        String rp = p.getString("rappels", "");
+        return (rp.isEmpty() ? "Aucun rappel suivi pour l'instant.\n" : "RAPPELS (plus récent en haut) :\n" + rp + "\n") + "\n"
+                + (al.isEmpty() ? "Aucun gel ni erreur détecté.\n" : "GELS ET ERREURS DÉTECTÉS (plus récent en haut) :\n" + al + "\n") + "\nÉtapes :\n" + p.getString("fil", "");
     }
 
     @JavascriptInterface

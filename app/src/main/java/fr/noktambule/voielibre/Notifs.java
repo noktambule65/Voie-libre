@@ -540,14 +540,37 @@ public class Notifs extends BroadcastReceiver {
         }
         Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_REVEIL).putExtra("date", date);
         PendingIntent pi = PendingIntent.getBroadcast(ctx, 3004, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        if (quand == 0) { am.cancel(pi); return; }
+        if (quand == 0) {
+            am.cancel(pi);
+            suiviReveil(ctx, !p.getBoolean("rv", false) ? "Réveil oublié : option désactivée, aucune vérification programmée"
+                    : "Réveil oublié : aucune PS entre " + p.getInt("rvDe", 3) + " h et " + p.getInt("rvA", 11) + " h à venir, aucune vérification programmée");
+            return;
+        }
+        boolean exacte = Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms();
         try {
-            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+            if (exacte) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
             else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
         } catch (SecurityException e) {
+            exacte = false;
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
         }
+        JSONObject m = psMatinale(ctx, date);
+        suiviReveil(ctx, "Réveil oublié : vérification programmée le " + jourHeure(quand)
+                + (m == null ? "" : " pour " + m.optString("code") + " PS " + jourHeure(m.optLong("debut")))
+                + (exacte ? " (alarme exacte)" : " (alarme approximative : « Alarmes et rappels » non autorisé)"));
+    }
+
+    /** « 19/11 21:00 » */
+    private static String jourHeure(long t) {
+        return new SimpleDateFormat("dd/MM HH:mm", Locale.FRANCE).format(new Date(t));
+    }
+
+    /** Programmation du rappel de réveil : notée dans le journal seulement quand elle change (programmer() tourne souvent). */
+    private static void suiviReveil(Context ctx, String t) {
+        SharedPreferences p = prefs(ctx);
+        if (t.equals(p.getString("suiviRv", ""))) return;
+        p.edit().putString("suiviRv", t).apply();
+        Pont.rappel(ctx, t);
     }
 
     /**
@@ -555,11 +578,13 @@ public class Notifs extends BroadcastReceiver {
      * programmé ; il compte s'il sonne dans les 4 h qui précèdent la PS.
      */
     private static void verifierReveil(Context ctx, String date) {
-        if (date == null || !prefs(ctx).getBoolean("rv", false)) return;
+        Pont.rappel(ctx, "Réveil oublié : vérification lancée (PS du " + date + ")");
+        prefs(ctx).edit().remove("suiviRv").apply();   // la prochaine programmation sera notée
+        if (date == null || !prefs(ctx).getBoolean("rv", false)) { Pont.rappel(ctx, "  → option désactivée : rien"); return; }
         JSONObject j = psMatinale(ctx, date);   // la journée a pu changer depuis la programmation
-        if (j == null) return;
+        if (j == null) { Pont.rappel(ctx, "  → plus de PS du matin ce jour-là dans le planning : rien"); return; }
         long ps = j.optLong("debut"), now = System.currentTimeMillis();
-        if (ps <= now) return;
+        if (ps <= now) { Pont.rappel(ctx, "  → PS déjà passée : rien"); return; }
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         AlarmManager.AlarmClockInfo r = am == null ? null : am.getNextAlarmClock();
         long t = r == null ? 0 : r.getTriggerTime();
@@ -567,7 +592,14 @@ public class Notifs extends BroadcastReceiver {
         // et dans les 4 h qui précèdent la PS
         long attendu = heureReveilAttendue(ctx, j);
         boolean tropTard = t > attendu, tropTot = t > 0 && t < ps - FENETRE_REVEIL;
-        if (t > 0 && !tropTard && !tropTot) return;   // réveil réglé à la bonne heure : rien à dire
+        String vu = t > 0 ? "réveil trouvé le " + jourHeure(t) + (r.getShowIntent() != null ? " (" + r.getShowIntent().getCreatorPackage() + ")" : "")
+                : "aucun réveil trouvé";
+        if (t > 0 && !tropTard && !tropTot) {   // réveil réglé à la bonne heure : rien à dire
+            Pont.rappel(ctx, "  → " + vu + ", attendu au plus tard " + jourHeure(attendu) + " : bon, pas de notification");
+            return;
+        }
+        Pont.rappel(ctx, "  → " + vu + ", attendu au plus tard " + jourHeure(attendu) + " : notification "
+                + (autorisees(ctx) ? "affichée" : "bloquée (notifications de l'appli désactivées)"));
         String titre = t <= 0 ? "Aucun réveil avant ta PS de demain"
                 : t > ps ? "Ton réveil sonne après ta PS de demain"
                 : tropTard ? "Ton réveil sonne trop tard pour ta PS de demain"
@@ -1429,7 +1461,7 @@ public class Notifs extends BroadcastReceiver {
             return;
         }
         if (ACTION_REVEIL.equals(intent.getAction())) {
-            try { verifierReveil(ctx, intent.getStringExtra("date")); } catch (Exception ex) { erreur(ctx, "réveil oublié", ex); }
+            try { verifierReveil(ctx, intent.getStringExtra("date")); } catch (Exception ex) { erreur(ctx, "réveil oublié", ex); Pont.rappel(ctx, "  → erreur : " + ex); }
             programmer(ctx);
             return;
         }
