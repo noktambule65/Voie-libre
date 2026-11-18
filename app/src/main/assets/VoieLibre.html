@@ -49,7 +49,15 @@ button{font:inherit;color:inherit}
 .tuile b.ti{font-size:15.5px;line-height:1.2}
 .tuile small{width:100%}
 .tuile{min-height:128px}.tuile[data-t="param"]{min-height:0}
-.tuile[data-t="meteo"],.tuile[data-t="param"]{grid-column:span 2}
+.tuile[data-t="meteo"],.tuile[data-t="param"],.tuile[data-t="raccourcis"]{grid-column:span 2}
+.tuile[data-t="raccourcis"]{min-height:0;cursor:default}.tuile[data-t="raccourcis"]:active{transform:none;background:var(--carte)}
+.tuile small .rcL{display:flex;flex-direction:column;gap:8px;margin-top:2px}
+.tuile small a.rc{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--encre);background:#F0F2F5;border-radius:12px;padding:9px 12px;line-height:1.25}
+.tuile small a.rc:active{transform:scale(.98)}
+.tuile small a.rc i{font-style:normal;flex:none;font-size:20px}
+.tuile small a.rc span{display:flex;flex-direction:column;min-width:0}
+.tuile small a.rc b{font-size:15px}
+.tuile small a.rc em{font-style:normal;font-size:12.5px;color:var(--doux)}
 .tuile[data-t="meteo"] small .ml{line-height:1.55}
 .tuile small .ml{display:flex;align-items:baseline;gap:6px;white-space:nowrap;line-height:1.5}
 .tuile small .ml i{font-style:normal;flex:none;width:1.3em;text-align:center}
@@ -150,7 +158,7 @@ button{font:inherit;color:inherit}
 @media (prefers-color-scheme: dark){
   :root{--fond:#0E141B;--encre:#E6EAF0;--doux:#9AA6B5;--trait:#2A3644;--tete:#14243A;--carte:#18212C;color-scheme:dark}
   .rub{box-shadow:none}.rub:active{background:#202B38}.rub .ch{color:#5B6878}
-  .tuile small .puce{background:#232E3B}.tuile{box-shadow:none}.tuile:active{background:#202B38}.tuile .ic{filter:saturate(.8) brightness(.85)}.tuile small .code{color:#8AB4F8}.tuile small .alerte{color:#FF8A80}
+  .tuile small .puce,.tuile small a.rc{background:#232E3B}.tuile{box-shadow:none}.tuile:active{background:#202B38}.tuile .ic{filter:saturate(.8) brightness(.85)}.tuile small .code{color:#8AB4F8}.tuile small .alerte{color:#FF8A80}
   .rub .ic{filter:saturate(.8) brightness(.8)}
   #zone iframe{background:#0E141B}
 }
@@ -1707,6 +1715,11 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         montrerTesteur=()=>{ bT.style.display=''; };
       }
     }
+    if(cV){ const pA=document.createElement('p'); pA.className='petit';
+      pA.innerHTML='ℹ️ Voie libre est une <b>application indépendante</b>, développée par un agent pour ses collègues. Elle n’est <b>ni éditée ni validée par la SNCF</b> ni par aucun organisme public. '
+        +'Ton planning vient de ton lien d’abonnement Graou personnel, la météo d’Open-Meteo, les fonds de carte de l’IGN (Géoplateforme). Les liens vers Graou, Galac’SI ou iCloud ouvrent des sites externes. '
+        +'Seuls les outils officiels de ton entreprise font foi.';
+      cV.appendChild(pA); }
     // Questions fréquentes (mêmes réponses que la page de présentation, sans la question iPhone)
     const FAQ=[
       ['Voie libre a-t-elle accès à Graou ?','Non. Voie libre ne se connecte pas à Graou : elle ne connaît ni ton identifiant ni ton mot de passe, et ne peut rien y modifier. Elle utilise seulement le lien d’abonnement que Graou propose lui-même (Paramètres › onglet Export) pour afficher ton planning dans n’importe quelle application d’agenda, comme Google Agenda ou Outlook. Ce lien donne un agenda en lecture seule, que ton téléphone télécharge directement chez Graou, sans passer par aucun autre serveur. Il reste dans ton téléphone ; comme il suffit pour lire ton planning, ne le partage pas.'],
@@ -3518,9 +3531,16 @@ const TUILES=[
   {id:'semaines', ic:'🗓️', coul:'#E3F1E0', titre:'Semaines',   sous:'Ton planning semaine par semaine'},
   {id:'repos',    ic:'🛋️', coul:'#E3F1E0', titre:'Prochain repos', sous:'Tes repos et congés'},
   {id:'rappels',  ic:'🔔', coul:'#F1E6F8', titre:'Prochains rappels', sous:'Découché, tâches, neige…'},
+  {id:'raccourcis', ic:'🔗', coul:'#FBEFD9', titre:'Raccourcis pratiques', bloc:true,
+   sous:'<span class="rcL">'
+     +'<a class="rc" href="https://www.galacsimobile.sncf.fr" target="_blank" rel="noopener"><i>🚕</i><span><b>Galac’SI</b><em>Réserver un taxi ou un hôtel · site externe</em></span></a>'
+     +'<a class="rc" href="https://www.icloud.com/find/" target="_blank" rel="noopener"><i>📍</i><span><b>Retrouver ma tablette</b><em>Localiser l’iPad ou le faire sonner · iCloud.com (Apple)</em></span></a>'
+     +'</span>'},
   {id:'param',    ic:'⚙️', coul:'#E3E7EE', titre:'Paramètres', sous:'Planning Graou, rappels, météo'}
 ];
-$('rubriques').innerHTML=TUILES.map(t=>`<button class="tuile" data-t="${t.id}"><span class="tt"><span class="ic" style="background:${t.coul}">${t.ic}</span><b class="ti">${t.titre}</b></span><small>${t.sous}</small></button>`).join('');
+// tuile « bloc » (raccourcis) : une div, car elle contient ses propres liens (pas de lien dans un bouton)
+$('rubriques').innerHTML=TUILES.map(t=>{ const bal=t.bloc?'div':'button';
+  return `<${bal} class="tuile" data-t="${t.id}"><span class="tt"><span class="ic" style="background:${t.coul}">${t.ic}</span><b class="ti">${t.titre}</b></span><small>${t.sous}</small></${bal}>`; }).join('');
 $('rubriques').addEventListener('click',e=>{
   if(e.target.closest('[data-autorise]')){   // tuile « Prochains rappels » : autoriser les notifications sans passer par Paramètres
     const A=window.BoulotAndroid; try{ A.demanderNotifs?A.demanderNotifs():A.ouvrirReglagesNotifs(); }catch(err){}

@@ -8,6 +8,13 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
+## 1.201
+
+**Raccourcis pratiques**
+- Nouvelle tuile sur l'accueil : Galac'SI (taxis et hôtels) en un geste
+- « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
+- Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
+
 ## 1.200
 
 **Bienvenue sur le Play Store**
