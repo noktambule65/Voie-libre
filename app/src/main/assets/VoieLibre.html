@@ -2337,6 +2337,8 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   items.filter(it=>it.g==='point').forEach(it=>{
     const xx=X(it.a), info=`${hm(it.a)} · ${it.lieu||''} · ${it.act}`;
     if(/^marche\b/i.test(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${(xx-2).toFixed(1)}" y="${Y-5}" font-size="10" fill="${ENC}" text-anchor="end">+</text>`); return; }
+    // changement de rame : pas de cadre sur le graphique (il reste dans le déroulé de la journée)
+    if(/^changement\s*(de\s*)?rame\b|^ChangementRame\b/i.test(it.act)) return;
     // EQ CÈDE : flèche vers le haut (fin du train) · EQ PREND : flèche vers le bas (début du train), comme Graou
     const eq=it.act.match(/^EQ\s+(C[EÈ]DE|PREND)\b\s*(\S*)/i);
     if(eq){

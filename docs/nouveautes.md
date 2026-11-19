@@ -8,17 +8,19 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.203
+## 1.204
 
 **Raccourcis pratiques**
-- Nouvelle tuile sur l'accueil : Galac'SI (tes réservations de taxi et d'hôtel) en un geste
-- « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
-- Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
+- Galac'SI (tes réservations taxi et hôtel) et « Retrouver ma tablette » (iCloud) depuis l'accueil
 
-**Réveil oublié (fonction expérimentale)**
-- Seuls les réveils d'une appli Horloge comptent : une macro à heure fixe (MacroDroid, Tasker…) ne trompe plus la vérification
-- Si une autre appli masque ton réveil, Voie libre te demande de vérifier toi-même
-- Le journal de diagnostic suit la vérification : programmation, déclenchement, réveil trouvé et décision
+**Réveil oublié (expérimental)**
+- Seuls les réveils d'une appli Horloge comptent : une macro à heure fixe ne trompe plus la vérification
+- Si une autre appli masque ton réveil, tu es prévenu
+- Suivi de la vérification dans le journal de diagnostic
+
+**Divers**
+- Changement de rame retiré du graphique de la journée
+- Mention d'appli indépendante, non affiliée à la SNCF
 
 ## 1.202
 
