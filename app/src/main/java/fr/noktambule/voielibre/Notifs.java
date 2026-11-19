@@ -592,22 +592,33 @@ public class Notifs extends BroadcastReceiver {
         // et dans les 4 h qui précèdent la PS
         long attendu = heureReveilAttendue(ctx, j);
         boolean tropTard = t > attendu, tropTot = t > 0 && t < ps - FENETRE_REVEIL;
-        String vu = t > 0 ? "réveil trouvé le " + jourHeure(t) + (r.getShowIntent() != null ? " (" + r.getShowIntent().getCreatorPackage() + ")" : "")
-                : "aucun réveil trouvé";
-        if (t > 0 && !tropTard && !tropTot) {   // réveil réglé à la bonne heure : rien à dire
+        // Android ne donne que le PREMIER réveil à venir, toutes applis confondues. Une macro à heure fixe
+        // (MacroDroid, Tasker…) ou une autre appli peut en déclarer un sans sonnerie : on ne fait confiance
+        // qu'aux réveils d'une appli Horloge ; sinon on demande à l'agent de vérifier lui-même.
+        String auteur = (r != null && r.getShowIntent() != null) ? r.getShowIntent().getCreatorPackage() : null;
+        boolean horloge = auteur != null && applisHorloge(ctx).contains(auteur);
+        boolean douteux = t > 0 && !tropTard && !tropTot && !horloge;
+        String vu = t > 0 ? "réveil trouvé le " + jourHeure(t) + " (" + (auteur == null ? "appli inconnue" : auteur)
+                + (horloge ? ", horloge" : ", pas une horloge") + ")" : "aucun réveil trouvé";
+        if (t > 0 && !tropTard && !tropTot && horloge) {   // réveil de l'Horloge à la bonne heure : rien à dire
             Pont.rappel(ctx, "  → " + vu + ", attendu au plus tard " + jourHeure(attendu) + " : bon, pas de notification");
             return;
         }
         Pont.rappel(ctx, "  → " + vu + ", attendu au plus tard " + jourHeure(attendu) + " : notification "
                 + (autorisees(ctx) ? "affichée" : "bloquée (notifications de l'appli désactivées)"));
-        String titre = t <= 0 ? "Aucun réveil avant ta PS de demain"
+        String titre = douteux ? "Vérifie ton réveil pour ta PS de demain"
+                : t <= 0 ? "Aucun réveil avant ta PS de demain"
                 : t > ps ? "Ton réveil sonne après ta PS de demain"
                 : tropTard ? "Ton réveil sonne trop tard pour ta PS de demain"
                 : "Aucun réveil à la bonne heure pour ta PS de demain";
         String texte = j.optString("code") + " · PS " + VoieLibreWidget.hm(ps) + " à " + j.optString("lieuPS");
         String detail = texte + "\nRéveil prévu pour cette gare : " + VoieLibreWidget.hm(attendu)
                 + " (" + ((ps - attendu) / 60000L) + " min avant la PS)."
-                + "\n" + (t > 0
+                + "\n" + (douteux
+                ? "Impossible de vérifier : une autre appli que l'Horloge"
+                  + (auteur != null ? " (" + nomAppli(ctx, auteur) + ")" : "") + " a un réveil prévu à " + VoieLibreWidget.hm(t)
+                  + ", qui masque les réveils suivants. Vérifie que ton réveil est bien réglé dans l'Horloge."
+                : t > 0
                 ? "Prochain réveil de l'Horloge : " + jourLong(new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new Date(t)))
                   + " à " + VoieLibreWidget.hm(t) + (t > ps ? ", après ta PS." : tropTard ? ", trop tard." : ", trop tôt.")
                 : "Aucun réveil programmé dans l'Horloge.")
@@ -615,6 +626,27 @@ public class Notifs extends BroadcastReceiver {
         Notification.Action action = actionReveil(ctx, j);
         if (action != null) montrer(ctx, 4, CANAL_REVEIL, titre, texte, detail, ouvrir(ctx, 2005, "journee", "date", date), action);
         else montrer(ctx, 4, CANAL_REVEIL, titre, texte, detail, ouvrir(ctx, 2005, "journee", "date", date));
+    }
+
+    /** Applis Horloge du téléphone (toutes marques) : celles qui savent régler ou afficher les réveils. */
+    private static java.util.Set<String> applisHorloge(Context ctx) {
+        java.util.Set<String> s = new java.util.HashSet<>(java.util.Arrays.asList(
+                "com.sec.android.app.clockpackage", "com.google.android.deskclock", "com.android.deskclock"));
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            for (String a : new String[]{android.provider.AlarmClock.ACTION_SET_ALARM, android.provider.AlarmClock.ACTION_SHOW_ALARMS})
+                for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(new Intent(a), 0))
+                    if (ri.activityInfo != null) s.add(ri.activityInfo.packageName);
+        } catch (Exception ignore) { }
+        s.remove(ctx.getPackageName());
+        return s;
+    }
+
+    private static String nomAppli(Context ctx, String pkg) {
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            return String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)));
+        } catch (Exception e) { return pkg; }
     }
 
     /** Un réveil plus de 4 h avant la PS est jugé trop tôt (sans doute une autre alarme). */
