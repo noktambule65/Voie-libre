@@ -11,7 +11,7 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 ## 1.202
 
 **Raccourcis pratiques**
-- Nouvelle tuile sur l'accueil : Galac'SI (taxis et hôtels) en un geste
+- Nouvelle tuile sur l'accueil : Galac'SI (tes réservations de taxi et d'hôtel) en un geste
 - « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
 - Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
 
@@ -21,7 +21,7 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 ## 1.201
 
 **Raccourcis pratiques**
-- Nouvelle tuile sur l'accueil : Galac'SI (taxis et hôtels) en un geste
+- Nouvelle tuile sur l'accueil : Galac'SI (tes réservations de taxi et d'hôtel) en un geste
 - « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
 - Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
 
