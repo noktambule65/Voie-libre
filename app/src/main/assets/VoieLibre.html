@@ -2410,7 +2410,7 @@ function detailLignes(x){
       const taxi=g==='ev' && /^TAXI\b/i.test(String(it.act).trim()), bal=taxi?'a':'div';
       L.push(`<${bal} class="tr ${g}${taxi?' galT':''}"${taxi?` href="${GALACSI}" target="_blank" rel="noopener"`:''}><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
-        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
+        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${it.estime?' · arrivée estimée (terminus du train après ta FS)':''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
       let fin=it.h2;
@@ -3125,11 +3125,33 @@ window.vlPlanning=(function(){
       const k=n+'@'+it.h1, deja=ref.get(k);
       if(!deja || (estEV(it.act) && !estEV(deja.act))) ref.set(k,it);   // priorité à un EV, sinon le train conduit
     });
-    tous.forEach(it=>{
-      if(it.h2 || it.lieu || !estEV(it.act)) return;
-      const r=ref.get(num(it.act)+'@'+it.h1); if(!r) return;
-      it.h2=r.h2; it.lieu=r.lieu;
-    });
+    // Chaque EV complété garde sa journée : si le train retrouvé arrive APRÈS la fin de service (son terminus est plus
+    // loin que la gare où l'on descend), l'EV n'est gardé que s'il est le dernier déplacement de la journée : il va
+    // alors jusqu'à la gare de FS, avec une arrivée ESTIMÉE (début de l'élément suivant, sinon la FS). Sinon, il reste
+    // sans trajet, comme avant.
+    const mn=h=>{ const m=String(h||'').match(/^(\d{1,2}):(\d{2})/); return m?+m[1]*60+ +m[2]:null; };
+    const deplacement=y=>y.cond || /^(EV|TAXI|BUS|EVLOC)\b/i.test(String(y.act||'').trim());
+    Object.values(INDEX).forEach(l=>l.forEach(x=>{
+      const s=x.s; if(!s || !s.items) return;
+      const p0=mn(s.ps&&s.ps.h);
+      const rel=h=>{ let m=mn(h); if(m===null||p0===null) return m; if(m<p0-180) m+=1440; return m; };
+      const fsH=rel(s.fs&&s.fs.h);
+      s.items.forEach((it,i)=>{
+        if(it.h2 || it.lieu || !estEV(it.act)) return;
+        const r=ref.get(num(it.act)+'@'+it.h1); if(!r) return;
+        const arr=rel(r.h2);
+        if(fsH===null || arr===null || arr<=fsH){ it.h2=r.h2; it.lieu=r.lieu; return; }
+        // arrivée retrouvée après la FS : seulement si aucun déplacement ne suit dans la journée
+        const apres=s.items.slice(i+1);
+        if(apres.some(deplacement) || !(s.fs&&s.fs.lieu)) return;
+        const deb=rel(it.h1), suiv=apres.map(y=>rel(y.h1)).filter(v=>v!==null&&deb!==null&&v>deb);
+        const fin=suiv.length?Math.min(...suiv,fsH):fsH;
+        if(deb===null || fin<=deb) return;
+        const de=String(r.lieu).split('->')[0].trim();
+        it.h2=String(Math.floor(fin/60)%24).padStart(2,'0')+':'+String(fin%60).padStart(2,'0');
+        it.lieu=de+' -> '+s.fs.lieu; it.estime=true;
+      });
+    }));
   }
 
   // Index par jour. Le .ics (avec le déroulé) passe en premier ; un événement du CSV n'est repris que si son

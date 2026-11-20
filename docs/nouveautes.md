@@ -8,7 +8,7 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.206
+## 1.207
 
 **Raccourcis**
 - Galac'SI (réservations taxi et hôtel) et « Retrouver ma tablette »
@@ -19,11 +19,10 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 - Rappel manqué rattrapé dès que possible
 - Heure du téléphone changée : rappels recalculés
 
-**Divers**
+**Planning**
 - Journée en double dans l'export Graou affichée une fois
-- Changement de rame retiré du graphique
-- Mention d'appli indépendante de la SNCF
-- Badge « modifiée » retiré
+- EV complété : s'arrête à ta gare de FS
+- Changement de rame et badge « modifiée » retirés
 
 ## 1.202
 
