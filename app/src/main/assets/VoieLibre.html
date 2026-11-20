@@ -2662,18 +2662,18 @@ function rendre(){
   let h='';
   liste.forEach(x=>{
     if(!x.s && x.cat==='d'){   // « d » : journée de service dont les horaires ne sont pas encore connus
-      h+=`<div class="carte"><div class="bandeau d"><span class="code">Journée de service</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div><div class="msg" style="padding:16px"><b>Horaires pas encore connus</b>Ils s’afficheront ici dès qu’ils seront dans Graou.</div></div>`;
+      h+=`<div class="carte"><div class="bandeau d"><span class="code">Journée de service</span></div><div class="msg" style="padding:16px"><b>Horaires pas encore connus</b>Ils s’afficheront ici dès qu’ils seront dans Graou.</div></div>`;
       return;
     }
     if(!x.s){
-      h+=`<div class="carte"><div class="bandeau ${x.cat}"><span class="code">${esc(String(x.ev.titre||'').replace(/^•\s*/,''))}</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div><div class="msg" style="padding:16px">Pas de service ce jour-là.</div></div>`;
+      h+=`<div class="carte"><div class="bandeau ${x.cat}"><span class="code">${esc(String(x.ev.titre||'').replace(/^•\s*/,''))}</span></div><div class="msg" style="padding:16px">Pas de service ce jour-là.</div></div>`;
       return;
     }
     const g=graphique(x,larg);
     const dateLongue=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(lire(JOUR));
     const rhr=x.a.rhr, decTxt=x.dec?(x.seg===0?'🏠 → 🛏':'🛏 → 🏠')+(rhr&&rhr.duree?' '+esc(rhr.duree):''):'';
     h+=`<div class="carte g">
-      <div class="gtete"><span class="gcode">${esc(x.code)}</span>${x.ev.modif?'<span class="modif">modifiée</span>':''}</div>
+      <div class="gtete"><span class="gcode">${esc(x.code)}</span></div>
       <div class="gdate">${dateLongue}</div>
       ${x.dec&&rhr?`<a class="grhr" href="${GALACSI}" target="_blank" rel="noopener">🛏 RHR ${esc(String(rhr.lieu).toUpperCase())} · ${x.seg===0?'ALLER':'RETOUR'}<span class="galV">réservation ↗</span></a>`:''}
       <table class="gtab"><tr><th colspan="2">PS</th><th colspan="2">FS</th><th>Durée</th>${x.dec?'<th>Découché</th>':''}</tr>

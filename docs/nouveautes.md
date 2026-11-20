@@ -8,7 +8,7 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.205
+## 1.206
 
 **Raccourcis**
 - Galac'SI (réservations taxi et hôtel) et « Retrouver ma tablette »
@@ -16,13 +16,14 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 **Rappels plus fiables**
 - Réveil oublié (expérimental) : seuls les réveils d'une appli Horloge comptent
 - Découché et changement d'heure à la minute près
-- Rappel manqué (téléphone éteint…) montré dès que possible
+- Rappel manqué rattrapé dès que possible
 - Heure du téléphone changée : rappels recalculés
 
 **Divers**
 - Journée en double dans l'export Graou affichée une fois
 - Changement de rame retiré du graphique
 - Mention d'appli indépendante de la SNCF
+- Badge « modifiée » retiré
 
 ## 1.202
 
