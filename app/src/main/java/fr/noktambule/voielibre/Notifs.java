@@ -295,13 +295,56 @@ public class Notifs extends BroadcastReceiver {
     // ---------- Découché la veille ----------
 
     /** Programme les prochains rappels activés : découché et changement d'heure. */
+    /** Alarme à l'heure exacte si Android l'autorise (« Alarmes et rappels »), sinon approximative. */
+    private static void planifier(AlarmManager am, long quand, PendingIntent pi) {
+        try {
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        } catch (SecurityException e) {
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        }
+    }
+
+    // ---------- Rappels déjà faits (pour rattraper un rappel manqué sans jamais le répéter) ----------
+
+    /** Rattrapage : un rappel manqué (téléphone éteint, alarme retardée…) est encore montré jusqu'à 12 h après. */
+    private static final long RATTRAPAGE = 12 * 3600000L;
+
+    private static JSONObject faits(Context ctx) {
+        try { return new JSONObject(prefs(ctx).getString("faits", "{}")); } catch (Exception e) { return new JSONObject(); }
+    }
+
+    static boolean fait(Context ctx, String cle) { return faits(ctx).has(cle); }
+
+    static void marquer(Context ctx, String cle) {
+        JSONObject f = faits(ctx), garde = new JSONObject();
+        long now = System.currentTimeMillis();
+        java.util.Iterator<String> it = f.keys();
+        while (it.hasNext()) { String c = it.next(); long t = f.optLong(c); if (t > now - 4 * 86400000L) try { garde.put(c, t); } catch (Exception ignore) { } }
+        try { garde.put(cle, now); } catch (Exception ignore) { }
+        prefs(ctx).edit().putString("faits", garde.toString()).apply();
+    }
+
+    /**
+     * Première exécution de cette version : les rappels dont l'heure est déjà passée sont considérés comme faits
+     * (l'ancienne version a pu les montrer sans les noter), pour ne pas les répéter après la mise à jour.
+     */
+    private static boolean premierPassage(Context ctx) {
+        SharedPreferences p = prefs(ctx);
+        if (p.getBoolean("faitsInit", false)) return false;
+        p.edit().putBoolean("faitsInit", true).apply();
+        return true;
+    }
+
     static void programmer(Context ctx) {
-        try { programmerDecouche(ctx); } catch (Exception ex) { erreur(ctx, "rappel découché (programmation)", ex); }
+        boolean init = premierPassage(ctx);
+        try { programmerDecouche(ctx, init); } catch (Exception ex) { erreur(ctx, "rappel découché (programmation)", ex); }
         try { programmerHeure(ctx); } catch (Exception ex) { erreur(ctx, "rappel changement d’heure (programmation)", ex); }
         try { programmerTaches(ctx); } catch (Exception ex) { erreur(ctx, "rappels de service (programmation)", ex); }
         try { programmerNotes(ctx); } catch (Exception ex) { erreur(ctx, "rappels phrases (programmation)", ex); }
         try { programmerMacro(ctx); } catch (Exception ex) { erreur(ctx, "rappel macro (programmation)", ex); }
-        try { programmerReveil(ctx); } catch (Exception ex) { erreur(ctx, "rappel réveil oublié (programmation)", ex); }
+        try { programmerReveil(ctx, init); } catch (Exception ex) { erreur(ctx, "rappel réveil oublié (programmation)", ex); }
         try { neige(ctx); } catch (Exception ex) { erreur(ctx, "alerte neige (programmation)", ex); }
         try { synchro(ctx); } catch (Exception ex) { erreur(ctx, "synchro programmée (programmation)", ex); }
         try { programmerSyncPS(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service (programmation)", ex); }
@@ -512,7 +555,7 @@ public class Notifs extends BroadcastReceiver {
     }
 
     /** Prochaine vérification (la veille à l'heure réglée) d'une PS matinale à venir. */
-    private static void programmerReveil(Context ctx) {
+    private static void programmerReveil(Context ctx, boolean init) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         SharedPreferences p = prefs(ctx);
@@ -536,6 +579,12 @@ public class Notifs extends BroadcastReceiver {
                     if (f >= t && f < ps && deb < f) t = Math.max(t, f + 5 * 60000L);
                 }
                 if (t > now && (quand == 0 || t < quand)) { quand = t; date = d; }
+                // vérification manquée (téléphone éteint, alarme retardée…) : faite tout de suite, si la PS est encore loin
+                else if (t <= now && now - t < RATTRAPAGE && now < ps - 30 * 60000L && !fait(ctx, "rv:" + d)) {
+                    if (init) { marquer(ctx, "rv:" + d); continue; }
+                    Pont.rappel(ctx, "Réveil oublié : vérification du " + jourHeure(t) + " manquée, faite maintenant (rattrapage)");
+                    try { verifierReveil(ctx, d); } catch (Exception ex) { erreur(ctx, "réveil oublié (rattrapage)", ex); }
+                }
             }
         }
         Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_REVEIL).putExtra("date", date);
@@ -579,6 +628,7 @@ public class Notifs extends BroadcastReceiver {
      */
     private static void verifierReveil(Context ctx, String date) {
         Pont.rappel(ctx, "Réveil oublié : vérification lancée (PS du " + date + ")");
+        if (date != null) marquer(ctx, "rv:" + date);
         prefs(ctx).edit().remove("suiviRv").apply();   // la prochaine programmation sera notée
         if (date == null || !prefs(ctx).getBoolean("rv", false)) { Pont.rappel(ctx, "  → option désactivée : rien"); return; }
         JSONObject j = psMatinale(ctx, date);   // la journée a pu changer depuis la programmation
@@ -1341,7 +1391,7 @@ public class Notifs extends BroadcastReceiver {
     }
 
     /** Prochain rappel de découché (un seul à la fois ; le suivant est programmé quand il sonne). */
-    private static void programmerDecouche(Context ctx) {
+    private static void programmerDecouche(Context ctx, boolean init) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_DEC);
@@ -1355,13 +1405,19 @@ public class Notifs extends BroadcastReceiver {
                 JSONObject j = jours.optJSONObject(k);
                 if (j == null || !j.optBoolean("dec") || j.optInt("seg") != 0) continue;
                 long t = apresService(jours, veille(j.optString("date"), heure), j.optLong("debut"));
-                if (t > now && (quand == 0 || t < quand)) { quand = t; date = j.optString("date"); }
+                String dj = j.optString("date");
+                if (t > now && (quand == 0 || t < quand)) { quand = t; date = dj; }
+                // rappel manqué (téléphone éteint, alarme retardée…) : montré tout de suite, tant que la PS n'est pas passée
+                else if (t <= now && now - t < RATTRAPAGE && now < j.optLong("debut") && !fait(ctx, "dec:" + dj)) {
+                    if (init) { marquer(ctx, "dec:" + dj); continue; }
+                    try { rappelDecouche(ctx, dj); } catch (Exception ex) { erreur(ctx, "rappel découché (rattrapage)", ex); }
+                }
             }
         }
         PendingIntent pi = PendingIntent.getBroadcast(ctx, 3001, i.putExtra("date", date),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (quand == 0) { am.cancel(pi); return; }
-        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi);
+        planifier(am, quand, pi);
     }
 
     /**
@@ -1435,7 +1491,7 @@ public class Notifs extends BroadcastReceiver {
         if (r != null) i.putExtra("type", (int) r[1]).putExtra("instant", r[2]);
         PendingIntent pi = PendingIntent.getBroadcast(ctx, 3002, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (r == null) { am.cancel(pi); return; }
-        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, r[0], pi);
+        planifier(am, r[0], pi);
     }
 
     private static void rappelHeure(Context ctx, int type, long instant) {
@@ -1469,7 +1525,12 @@ public class Notifs extends BroadcastReceiver {
         // démarrage, mise à jour, ou alarmes exactes autorisées par l'utilisateur : tout est reprogrammé
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())
                 || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())
-                || "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED".equals(intent.getAction())) { programmer(ctx); return; }
+                || "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED".equals(intent.getAction())
+                || Intent.ACTION_TIME_CHANGED.equals(intent.getAction())          // heure du téléphone modifiée
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(intent.getAction())) {   // fuseau modifié
+            programmer(ctx);
+            return;
+        }
         if (ACTION_HEURE.equals(intent.getAction())) {
             if (prefs(ctx).getBoolean("ch3", false) || prefs(ctx).getBoolean("chVeille", false))
                 try { rappelHeure(ctx, intent.getIntExtra("type", 1), intent.getLongExtra("instant", 0)); } catch (Exception ex) { erreur(ctx, "rappel changement d’heure", ex); }
@@ -1514,22 +1575,27 @@ public class Notifs extends BroadcastReceiver {
         }
         if (!ACTION_DEC.equals(intent.getAction())) return;
         String date = intent.getStringExtra("date");
-        if (prefs(ctx).getBoolean("dec", false) && date != null) {
-            JSONArray jours = VoieLibreWidget.jours(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0));
-            for (int k = 0; k < jours.length(); k++) {
-                JSONObject j = jours.optJSONObject(k);
-                if (j == null || !date.equals(j.optString("date")) || !j.optBoolean("dec") || j.optInt("seg") != 0) continue;
-                String ville = j.optString("rhr", "");
-                long d = j.optLong("debut");
-                // décalé après minuit (fin de service tardive) : le découché est alors « aujourd'hui »
-                boolean jourJ = date.equals(new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new Date()));
-                String titre = (jourJ ? "Aujourd'hui : découché" : "Demain : découché") + (ville.isEmpty() ? "" : " à " + ville);
-                String texte = j.optString("code") + " · PS " + VoieLibreWidget.hm(d) + " à " + j.optString("lieuPS");
-                PendingIntent pi = ouvrir(ctx, 2002, "journee", "date", date);
-                montrer(ctx, 2, CANAL_DEC, titre, texte, null, pi);
-                break;
-            }
-        }
+        if (prefs(ctx).getBoolean("dec", false) && date != null)
+            try { rappelDecouche(ctx, date); } catch (Exception ex) { erreur(ctx, "rappel découché", ex); }
         programmer(ctx);   // le suivant
+    }
+
+    /** Notification « Demain : découché à … » pour le découché du jour date (noté comme fait). */
+    private static void rappelDecouche(Context ctx, String date) {
+        marquer(ctx, "dec:" + date);
+        JSONArray jours = VoieLibreWidget.jours(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0));
+        for (int k = 0; k < jours.length(); k++) {
+            JSONObject j = jours.optJSONObject(k);
+            if (j == null || !date.equals(j.optString("date")) || !j.optBoolean("dec") || j.optInt("seg") != 0) continue;
+            String ville = j.optString("rhr", "");
+            long d = j.optLong("debut");
+            // décalé après minuit (fin de service tardive) : le découché est alors « aujourd'hui »
+            boolean jourJ = date.equals(new SimpleDateFormat("yyyy-MM-dd", Locale.FRANCE).format(new Date()));
+            String titre = (jourJ ? "Aujourd'hui : découché" : "Demain : découché") + (ville.isEmpty() ? "" : " à " + ville);
+            String texte = j.optString("code") + " · PS " + VoieLibreWidget.hm(d) + " à " + j.optString("lieuPS");
+            PendingIntent pi = ouvrir(ctx, 2002, "journee", "date", date);
+            montrer(ctx, 2, CANAL_DEC, titre, texte, null, pi);
+            break;
+        }
     }
 }

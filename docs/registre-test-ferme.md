@@ -30,6 +30,7 @@ d'adresse de testeur ici : le dépôt est public.
 | 19/11 | Développeur | Correction du faux réveil | Version 1.203 : seuls les réveils d'une appli Horloge comptent (horloges détectées sur chaque téléphone, toutes marques) ; si une autre appli masque le réveil, avertissement « Vérifie ton réveil » ; mention « fonction expérimentale » |
 | 19/11 | Développeur | Le « changement de rame » encombrait le graphique de la journée | Version 1.204 : retiré du graphique (reste dans le déroulé) |
 | 20/11 | Testeur (venu de X) | Le lien « télécharger sur Google Play » de la page de test ne fonctionnait pas ; installation réussie en passant directement par le Play Store | À ajouter au message d'invitation : « si le lien ne marche pas, cherche Voie libre dans le Play Store » |
+| 20/11 | Développeur | Le découché du 22/12 apparaît deux fois : l'export Graou contient deux exemplaires identiques (seuls l'identifiant et l'étiquette de lieu diffèrent), alors que Graou n'affiche qu'une journée | Version 1.205 : un seul exemplaire gardé, uniquement si les deux sont identiques au caractère près |
 | 20/11 | Groupe Google | Un testeur a un problème de distribution des e-mails du groupe (triangle rouge) | Sans effet sur l'accès au test |
 
 ## Versions publiées pendant le test
@@ -37,7 +38,7 @@ d'adresse de testeur ici : le dépôt est public.
 | Version | Canal | Contenu |
 |---|---|---|
 | 1.200 | Test fermé | Première version Google Play |
-| 1.201 → 1.204 | Test interne (développeur) puis test fermé | Raccourcis pratiques, mention d'indépendance, réveil oublié fiabilisé (horloges seulement, avertissement en cas de doute, journal), Galac'SI, changement de rame retiré du graphique |
+| 1.201 → 1.205 | Test interne (développeur) puis test fermé | Raccourcis pratiques, mention d'indépendance, réveil oublié fiabilisé (horloges seulement, avertissement en cas de doute, journal), Galac'SI, changement de rame retiré du graphique ; 1.205 : découché et changement d'heure à la minute près, rappels manqués rattrapés, recalcul si l'heure du téléphone change, journée en double de l'export Graou affichée une fois |
 
 ## Pour le questionnaire (rappels)
 

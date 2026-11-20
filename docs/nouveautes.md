@@ -8,19 +8,21 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.204
+## 1.205
 
-**Raccourcis pratiques**
-- Galac'SI (tes réservations taxi et hôtel) et « Retrouver ma tablette » (iCloud) depuis l'accueil
+**Raccourcis**
+- Galac'SI (réservations taxi et hôtel) et « Retrouver ma tablette »
 
-**Réveil oublié (expérimental)**
-- Seuls les réveils d'une appli Horloge comptent : une macro à heure fixe ne trompe plus la vérification
-- Si une autre appli masque ton réveil, tu es prévenu
-- Suivi de la vérification dans le journal de diagnostic
+**Rappels plus fiables**
+- Réveil oublié (expérimental) : seuls les réveils d'une appli Horloge comptent
+- Découché et changement d'heure à la minute près
+- Rappel manqué (téléphone éteint…) montré dès que possible
+- Heure du téléphone changée : rappels recalculés
 
 **Divers**
-- Changement de rame retiré du graphique de la journée
-- Mention d'appli indépendante, non affiliée à la SNCF
+- Journée en double dans l'export Graou affichée une fois
+- Changement de rame retiré du graphique
+- Mention d'appli indépendante de la SNCF
 
 ## 1.202
 

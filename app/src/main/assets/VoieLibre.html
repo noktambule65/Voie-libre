@@ -415,8 +415,15 @@ function lireICS(txt){
     ev[gauche.split(';')[0].toUpperCase()]={p:gauche, v:val};
   });
   const res=[];
+  // Doublons de l'export Graou (même journée exportée deux fois sous deux identifiants) : un seul exemplaire est
+  // gardé, et SEULEMENT si les deux sont identiques au caractère près dans toutes leurs lignes, hormis l'identifiant
+  // (UID), l'heure d'export (DTSTAMP) et l'étiquette de lieu (LOCATION), qui ne servent pas à décrire la journée.
+  const vus=new Set();
   out.forEach(e=>{
     if(!e.DTSTART) return;
+    const sig=JSON.stringify(Object.keys(e).filter(k=>k!=='UID'&&k!=='DTSTAMP'&&k!=='LOCATION').sort().map(k=>[e[k].p,e[k].v]));
+    if(vus.has(sig)) return;
+    vus.add(sig);
     const d1=dateICS(e.DTSTART.v), d2=e.DTEND?dateICS(e.DTEND.v):null;
     if(!d1) return;
     let titre=e.SUMMARY?texteICS(e.SUMMARY.v).trim():'';
