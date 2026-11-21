@@ -10,19 +10,20 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
 ## 1.208
 
-**Raccourcis**
-- Galac'SI (réservations taxi et hôtel) et « Retrouver ma tablette »
+**Nouveaux raccourcis**
+- Galac'SI : tes réservations de taxi et d'hôtel
+- Retrouver ma tablette (iCloud)
 
 **Rappels plus fiables**
-- Réveil oublié (expérimental) : seule l'Horloge compte
+- Réveil oublié : seule l'Horloge compte
 - Découché et changement d'heure à la minute près
-- Rappel manqué rattrapé dès que possible
+- Rappel manqué (téléphone éteint) rattrapé
 - Rappels recalculés si l'heure change
 
-**Planning**
-- Journée en double dans l'export Graou affichée une fois
-- EV complété : s'arrête à ta gare de FS
-- Changement de rame et badge « modifiée » retirés
+**Planning plus juste**
+- Journée en double de Graou affichée une fois
+- EV sans arrivée : s'arrête à ta gare de FS
+- Graphique allégé (changement de rame)
 - Aide : taxi ou EV différent de Graou
 
 ## 1.202
