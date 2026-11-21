@@ -15,7 +15,8 @@ d'adresse de testeur ici : le dépôt est public.
 | 18/11/2026 | 1er examen refusé : description de la fiche jugée trompeuse (« informations gouvernementales » sans source). Description réécrite (sources Open-Meteo et IGN, non-affiliation à la SNCF), renvoyée et acceptée le jour même |
 | 18/11/2026 | Test fermé en ligne, invitations envoyées (WhatsApp entre collègues, X) |
 | 19-20/11/2026 | 12 testeurs inscrits atteints (case cochée dans la Play Console) ; groupe : 15 testeurs + le compte développeur le 20/11 |
-| ≈ 3-4/12/2026 | Fin des 14 jours avec 12 testeurs ou plus (à confirmer dans la Play Console) |
+| 21/11/2026 | Tableau de bord Play Console (soir) : « 12 testeurs sont actuellement inscrits pour 1 jour » ; demande d'accès en production encore grisée |
+| ≈ 4/12/2026 | Fin des 14 jours avec 12 testeurs ou plus (à confirmer dans la Play Console) |
 
 ## Retours et problèmes constatés pendant le test
 
