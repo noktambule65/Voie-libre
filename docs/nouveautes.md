@@ -15,16 +15,13 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 - Retrouver ma tablette (iCloud)
 
 **Rappels plus fiables**
-- Réveil oublié : seule l'Horloge compte
+- Alerte « réveil oublié » corrigée
 - Découché et changement d'heure à la minute près
 - Rappel manqué (téléphone éteint) rattrapé
 - Rappels recalculés si l'heure change
 
-**Planning plus juste**
-- Journée en double de Graou affichée une fois
-- EV sans arrivée : s'arrête à ta gare de FS
-- Graphique allégé (changement de rame)
-- Aide : taxi ou EV différent de Graou
+**Aide**
+- Nouvelle question : pourquoi un taxi ou un EV peut s'afficher autrement que sur Graou
 
 ## 1.202
 
