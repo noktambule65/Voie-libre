@@ -16,6 +16,7 @@ d'adresse de testeur ici : le dépôt est public.
 | 18/11/2026 | Test fermé en ligne, invitations envoyées (WhatsApp entre collègues, X) |
 | 19-20/11/2026 | 12 testeurs inscrits atteints (case cochée dans la Play Console) ; groupe : 15 testeurs + le compte développeur le 20/11 |
 | 21/11/2026 | Tableau de bord Play Console (soir) : « 12 testeurs sont actuellement inscrits pour 1 jour » ; demande d'accès en production encore grisée |
+| 22/11/2026 | Tableau de bord (matin) : « 12 testeurs sont actuellement inscrits pour 2 jours sans interruption » |
 | ≈ 4/12/2026 | Fin des 14 jours avec 12 testeurs ou plus (à confirmer dans la Play Console) |
 
 ## Retours et problèmes constatés pendant le test
