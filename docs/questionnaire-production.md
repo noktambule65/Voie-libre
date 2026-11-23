@@ -79,7 +79,7 @@ Proposition : **moins de 1 000** (public restreint de collègues conducteurs).
 
 ### 8. Changements faits à la suite du test fermé
 
-> Mises à jour publiées pendant le test (versions 1.201 à 1.208) :
+> Versions 1.201 à 1.207 éprouvées en test interne, puis regroupées dans la 1.208 publiée aux testeurs le 23/11 :
 > - Rappel « réveil oublié » fiabilisé : seuls les réveils d'une appli Horloge sont pris en compte (toutes
 >   marques de téléphone), avertissement « Vérifie ton réveil » en cas de doute, journal de diagnostic.
 > - Rappels de découché et de changement d'heure à la minute près, rappels manqués rattrapés si le téléphone
