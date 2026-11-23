@@ -2109,6 +2109,9 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .gl .tr .d .rt.ret{background:#E8780C}.gl .tr .d .rt.sup,.gl .tr .d .rt.part{background:#D32F2F}
 .gl .tr.rtsup,.gl .tr.rtpart{border-color:#D32F2F}.gl .tr.rtret{border-color:#E8780C}
 .rtNote{margin:2px 10px 10px;font-size:11.5px;color:var(--doux);line-height:1.4}
+.rtLigne{margin:-2px -4px 6px;padding:6px 9px;border-radius:8px;font-weight:700;font-size:14px}
+.rtLigne.ret{background:#FFF1E3;border:1px solid #F3C48B;color:#8A4B00}.rtLigne.sup{background:#FDECEC;border:1px solid #EF9A9A;color:#B71C1C}.rtLigne.ok{background:#E8F5E9;border:1px solid #A5D6A7;color:#1B5E20}
+.rtSrc{margin-top:4px;font-size:11.5px;color:var(--doux)}
 .chgHeure{margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#FFF3E0;border:1px solid #F3C48B;color:#8A4B00;font-size:14px;line-height:1.4}
 @media (prefers-color-scheme: dark){.chgHeure{background:#2E2214;border-color:#6B4A1F;color:#F3C48B}}
 .sansdetail{padding:0 14px 12px;font-size:13px;color:var(--doux);font-style:italic}
@@ -2304,20 +2307,21 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   const barres=items.filter(it=>it.b!==null);
   barres.forEach(it=>{
     const x1=X(it.a), w=Math.max(1.5,X(it.b)-x1), mid=x1+w/2;
-    const rtE=(it.g==='cond'||it.g==='ev')?rtEtat(JG,it):null, rtC=rtCoul(rtE), rtT=rtTexte(rtE);
-    const info=`${hm(it.a)} → ${hm(it.b)} · ${trajet(it.lieu)} · ${it.act}${it.g==='cond'?' (conduite)':it.g==='ev'?' (en voyageur)':''}${rtT?' · '+rtT:''}`;
+    const rtE=(it.g==='cond'||it.g==='ev')?rtEtat(JG,it):null, rtC=rtCoul(rtE), rtL=rtLigne(rtE,it);
+    const info=`${hm(it.a)} → ${hm(it.b)} · ${trajet(it.lieu)} · ${it.act}${it.g==='cond'?' (conduite)':it.g==='ev'?' (en voyageur)':''}`;
+    const rtA=rtL?` data-rt="${rtL.cls}" data-rtt="${esc(rtL.txt)}" data-rts="${esc(rtL.src)}"`:'';
     if(it.g==='cond'){
       conduite+=reel(it.a,it.b); nbTrains++;
       o.push(`<line x1="${x1.toFixed(1)}" y1="22" x2="${(x1+w).toFixed(1)}" y2="22" stroke="#9E9E9E" stroke-width="1"/>`);
-      o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="${rtC||ENC}"/>`);
-      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}" x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="${RT_R}"/>`);
-      etiquettes.push({x:mid, txt:it.act, info, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
+      o.push(`<rect class="el" data-i="${esc(info)}"${rtA} x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="${rtC||ENC}"/>`);
+      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}"${rtA} x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="${RT_R}"/>`);
+      etiquettes.push({x:mid, txt:it.act, info, rtA, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='ev'){
       o.push(`<line x1="${x1.toFixed(1)}" y1="22" x2="${(x1+w).toFixed(1)}" y2="22" stroke="#9E9E9E" stroke-width="1"/>`);
-      o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="url(#${rtC===RT_R?'hachR':rtC===RT_O?'hachO':'hach'})"/>`);
-      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}" x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="url(#hachR)"/>`);
-      etiquettes.push({x:mid, txt:libEV(it.act), info, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
+      o.push(`<rect class="el" data-i="${esc(info)}"${rtA} x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="url(#${rtC===RT_R?'hachR':rtC===RT_O?'hachO':'hach'})"/>`);
+      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}"${rtA} x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="url(#hachR)"/>`);
+      etiquettes.push({x:mid, txt:libEV(it.act), info, rtA, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='reserve'){
       // vaguelettes arrondies (sinusoïde), trait vertical au début et pointillés au sommet, comme Graou
@@ -2349,16 +2353,19 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     }
   });
   // numéros de train juste au-dessus des barres
-  const finRang=[-1e9,-1e9], occNum=[];
+  const finRang=[-1e9,-1e9], occNum=[], trous=[];   // trous : zones où le trait de l'heure s'interrompt (pastilles)
   etiquettes.sort((a,b)=>a.x-b.x).forEach(e=>{
-    const lw=Math.max(e.txt.length, e.badge?e.badge.length:0)*5.2+2;
+    const lw=Math.max(e.txt.length*5.2+2, e.badge?e.badge.length*5.3+14:0);
     let r=finRang.findIndex(v=>e.x-lw/2>v+3); if(r<0) r=finRang.indexOf(Math.min(...finRang));
     finRang[r]=e.x+lw/2;
     if(e.badge && r+1<finRang.length) finRang[r+1]=Math.max(finRang[r+1], e.x+lw/2);   // le badge occupe le rang du dessus
     occNum.push({x1:e.x-lw/2, x2:e.x+lw/2, y1:Y-7-r*9-8, y2:Y-7-r*9+2});
-    o.push(`<text class="el" data-i="${esc(e.info)}" x="${e.x.toFixed(1)}" y="${Y-7-r*9}" font-size="9" fill="${e.coul||ENC}"${e.coul?' font-weight="700"':''} text-anchor="middle">${esc(e.txt)}</text>`);
-    // retard « +8 » en orange, « supprimé » en rouge, juste au-dessus du numéro (non barré)
-    if(e.badge) o.push(`<text class="el" data-i="${esc(e.info)}" x="${e.x.toFixed(1)}" y="${Y-7-r*9-9}" font-size="8.5" font-weight="700" fill="${e.coul}" text-anchor="middle">${esc(e.badge)}</text>`);
+    o.push(`<text class="el" data-i="${esc(e.info)}"${e.rtA||''} x="${e.x.toFixed(1)}" y="${Y-7-r*9}" font-size="9" fill="${e.coul||ENC}"${e.coul?' font-weight="700"':''} text-anchor="middle">${esc(e.txt)}</text>`);
+    // pastille du retard (« +15 min », orange) ou de la suppression (« supprimé », rouge), au-dessus du numéro
+    if(e.badge){ const pw=e.badge.length*5.3+12, py=Y-7-r*9-23;
+      o.push(`<g class="el" data-i="${esc(e.info)}"${e.rtA||''}><rect x="${(e.x-pw/2).toFixed(1)}" y="${py}" width="${pw.toFixed(1)}" height="13" rx="6.5" fill="${e.coul}" stroke="#fff" stroke-width="1.4"/>`
+        +`<text x="${e.x.toFixed(1)}" y="${py+9.4}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${esc(e.badge)}</text></g>`);
+      trous.push([e.x-pw/2-1, e.x+pw/2+1, py-1, Y-7-r*9+3]); }
   });
   // minutes aux extrémités
   const occMin=[[],[]];
@@ -2426,9 +2433,12 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   [0,1].forEach(j=>{ const k=cle(ajout(lire(jg()),j)), c=changementHeure(k); if(!c) return;
     const mc=j*1440+c.avant*60; if(mc<t0||mc>t1) return; const xx=X(mc).toFixed(1);
     o.push(`<line x1="${xx}" y1="13" x2="${xx}" y2="${H-3}" stroke="#E8902E" stroke-width="1.2" stroke-dasharray="3,2"/><text class="el" data-i="${esc(texteChangement(c,'à '+c.avant+' h'))}" x="${(+xx+2).toFixed(1)}" y="${Y-26}" font-size="8" fill="#E8902E">🕐 ${c.hiver?'−':'+'}1 h</text>`); });
-  if(!sansMaintenant && nm>=t0 && nm<=t1){ const xx=X(nm).toFixed(1); o.push(`<line x1="${xx}" y1="13" x2="${xx}" y2="${H-3}" stroke="#5C6BC0" stroke-width="2.2"/>`); }
+  if(!sansMaintenant && nm>=t0 && nm<=t1){ const xn=X(nm), xx=xn.toFixed(1);
+    // le trait s'interrompt derrière les pastilles de retard pour qu'elles restent lisibles
+    let ys=[[13,H-3]]; trous.filter(t=>xn>=t[0]&&xn<=t[1]).forEach(t=>{ ys=ys.flatMap(([a,b])=>[[a,Math.min(b,t[2])],[Math.max(a,t[3]),b]]).filter(([a,b])=>b>a); });
+    ys.forEach(([a,b])=>o.push(`<line x1="${xx}" y1="${a.toFixed(1)}" x2="${xx}" y2="${b.toFixed(1)}" stroke="#5C6BC0" stroke-width="2.2"/>`)); }
   o.push('</svg>');
-  return {svg:o.join(''), detail:items.length>0, p0, f0, duree:reel(p0,f0), gPS, gFS, conduite, nbTrains, t0, t1, G, pxh, W, H};
+  return {svg:o.join(''), detail:items.length>0, p0, f0, duree:reel(p0,f0), gPS, gFS, conduite, nbTrains, t0, t1, G, pxh, W, H, trous:trous.map(t=>t.map(v=>Math.round(v*10)/10))};
 }
 
 /* ---- Détail de la journée en lignes (présentation de la liste Graou) ---- */
@@ -2909,7 +2919,11 @@ $('vue').addEventListener('click',e=>{
   const mz=e.target.closest('[data-meteo]');
   if(mz){ cadreMeteo(mz.getAttribute('data-meteo')); return; }
   const el=e.target.closest('[data-i]'); if(!el) return;
-  const box=el.closest('.carte').querySelector('.info'); box.textContent=el.getAttribute('data-i'); box.classList.remove('vide');
+  const box=el.closest('.carte').querySelector('.info'); box.classList.remove('vide');
+  // train en retard ou supprimé : ligne dédiée (couleur, retard, arrivée estimée), puis le détail habituel
+  const rt=el.closest('[data-rt]')||(el.querySelector&&el.querySelector('[data-rt]'));
+  if(rt) box.innerHTML=`<div class="rtLigne ${esc(rt.getAttribute('data-rt'))}">${esc(rt.getAttribute('data-rtt'))}</div><div>${esc(el.getAttribute('data-i'))}</div><div class="rtSrc">${esc(rt.getAttribute('data-rts'))}</div>`;
+  else box.textContent=el.getAttribute('data-i');
 });
 $('prec').onclick=()=>{ if(MODE==='mois') return allerSemaine(new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()-7),true); JOUR=cle(ajout(lire(JOUR),-1)); rendre(); };
 $('suiv').onclick=()=>{ if(MODE==='mois') return allerSemaine(new Date(MOIS.getFullYear(),MOIS.getMonth(),MOIS.getDate()+7),true); JOUR=cle(ajout(lire(JOUR),1)); rendre(); };
@@ -3017,7 +3031,17 @@ function rtLire(){ let b=''; try{ b=localStorage.getItem('vl-rt')||''; }catch(e)
 function rtNum(act){ const m=String(act||'').match(/(?:^|\D)(\d{4,6})\s*$/); return m?String(+m[1]):''; }
 // état connu d'un train de la journée j (null si option coupée, pas de numéro ou rien de connu)
 function rtEtat(j,it){ if(!j || !rtOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; return rtLire()[j+'|'+n]||null; }
-function rtBadge(e){ return !e?'':e.e==='sup'?'supprimé':e.e==='part'?(e.cut==='fin'?'terminus avancé':e.cut==='deb'?'départ retardé':'suppr. partielle'):e.e==='ret'?'+'+e.r:''; }
+function rtBadge(e){ return !e?'':e.e==='sup'?'supprimé':e.e==='part'?(e.cut==='fin'?'terminus avancé':e.cut==='deb'?'départ retardé':'suppr. partielle'):e.e==='ret'?'+'+e.r+' min':''; }
+// Ligne dédiée, affichée quand on touche le train : {cls, txt, src}
+function rtLigne(e,it){ if(!e || (e.e==='ok' && !(e.max>0))) return null;
+  const nom=(genre(it)==='ev'?'EV ':'')+rtNum(it.act), q=e.t?new Date(e.t):null;
+  const src='Info SNCF'+(q?' de '+pad(q.getHours())+':'+pad(q.getMinutes()):'')+' · à titre indicatif, seul Pacific fait foi';
+  const arr=it.b!=null?hm(it.b+(e.r||0)):'';
+  if(e.e==='sup') return {cls:'sup', txt:'🔴 '+nom+' supprimé'+(genre(it)==='ev'?' : prévoir un autre moyen':''), src};
+  if(e.e==='part') return {cls:'sup', txt:'🔴 '+nom+(e.cut==='fin'?' : terminus avancé, arrêté après '+rtHm(e.tc):e.cut==='deb'?' : départ retardé, au départ de l’arrêt de '+rtHm(e.tc):' : arrêts supprimés')+(e.r>0?' · +'+e.r+' min':''), src};
+  if(e.e==='ret') return {cls:'ret', txt:'🟠 '+nom+' : +'+e.r+' min'+(arr?' · arrivée estimée '+arr:'')+(e.max>e.r?' (jusqu’à +'+e.max+')':''), src};
+  return {cls:'ok', txt:'🟢 '+nom+' : à l’heure (retard de +'+e.max+' min résorbé)', src};
+}
 const rtHm=t=>{ const d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
 function rtTexte(e){ if(!e) return '';
   const q=e.t?new Date(e.t):null, h=q?' (info SNCF de '+pad(q.getHours())+':'+pad(q.getMinutes())+', à titre indicatif)':'';
@@ -3176,7 +3200,7 @@ window.exporterWidget=function(forcer,sansRT){
             debut:new Date(y,m-1,d,0,g.p0).getTime(), fin:new Date(y,m-1,d,0,g.f0).getTime(),
             lieuPS:(x.s.ps&&x.s.ps.lieu)||g.gPS, lieuFS:(x.s.fs&&x.s.fs.lieu)||g.gFS,
             garePS:(lieuMeteo(x.s.ps&&x.s.ps.lieu)||{}).n||nomGare((x.s.ps&&x.s.ps.lieu)||''),
-            t0:g.t0, t1:g.t1, gx:g.G, pxh:g.pxh, echelle:2, png:await svgVersPng(g.svg,g.W,g.H,2)});
+            t0:g.t0, t1:g.t1, gx:g.G, pxh:g.pxh, echelle:2, trous:g.trous||[], png:await svgVersPng(g.svg,g.W,g.H,2)});
         }
       }
       const semaines=[];

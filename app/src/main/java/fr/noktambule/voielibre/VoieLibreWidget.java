@@ -559,8 +559,24 @@ public class VoieLibreWidget extends AppWidgetProvider {
         Paint pt = new Paint(Paint.ANTI_ALIAS_FLAG);
         pt.setColor(nuit ? 0xFF9FA8F0 : 0xFF5C6BC0);
         pt.setStrokeWidth((float) (2.2 * echelle));
-        float x = (float) ((j.optDouble("gx") + (m - t0) / 60.0 * j.optDouble("pxh")) * echelle);
-        cv.drawLine(x, y0 + (float) (13 * echelle), x, y0 + hauteur - (float) (3 * echelle), pt);
+        double xg = j.optDouble("gx") + (m - t0) / 60.0 * j.optDouble("pxh");
+        float x = (float) (xg * echelle);
+        // Le trait s'interrompt derrière les pastilles de retard ou de suppression (zones « trous » du graphique),
+        // pour qu'elles restent lisibles
+        java.util.List<double[]> seg = new java.util.ArrayList<>();
+        seg.add(new double[]{13, hauteur / echelle - 3});
+        org.json.JSONArray trous = j.optJSONArray("trous");
+        if (trous != null) for (int k = 0; k < trous.length(); k++) {
+            org.json.JSONArray t = trous.optJSONArray(k);
+            if (t == null || t.length() < 4 || xg < t.optDouble(0) || xg > t.optDouble(1)) continue;
+            java.util.List<double[]> n = new java.util.ArrayList<>();
+            for (double[] s : seg) {
+                if (Math.min(s[1], t.optDouble(2)) > s[0]) n.add(new double[]{s[0], Math.min(s[1], t.optDouble(2))});
+                if (s[1] > Math.max(s[0], t.optDouble(3))) n.add(new double[]{Math.max(s[0], t.optDouble(3)), s[1]});
+            }
+            seg = n;
+        }
+        for (double[] s : seg) cv.drawLine(x, y0 + (float) (s[0] * echelle), x, y0 + (float) (s[1] * echelle), pt);
     }
 
     private static String titreJour(JSONObject j) {
