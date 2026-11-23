@@ -1495,7 +1495,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
     (function(){
       const cT=carte('🚦','Retards et suppressions','rRetards');
       const lit=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
-      cT.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="rtOn"> Afficher les retards et suppressions de mes trains <em class="exp">(fonction expérimentale)</em>
+      cT.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="rtOn"><span style="flex:1;min-width:0">Afficher les retards et suppressions de mes trains <em class="exp" style="font-style:normal;font-weight:400;font-size:.85em;color:#B26A00">(fonction expérimentale)</em></span>
         <small>Sur le graphique de la journée, le déroulé et le widget : retard en orange avec les minutes, train supprimé en rouge. Information du flux public de la SNCF (données ouvertes), surtout dans l’heure qui précède le départ, à titre indicatif : seul Pacific fait foi. Ni compte ni clé : l’appli télécharge le flux seulement quand un de tes trains est proche.</small></label>
         <p class="petit" id="rtEtat"></p>`);
       const hh=t=>{ const d=new Date(+t); return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
@@ -1787,6 +1787,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       ['rNotifs','🔔','Notifications','Planning modifié, découché, neige, changement d’heure'],
       ['rService','🚆','Rappels de service','Départ des trains, phrases personnalisées, EV, EQ PREND, RS/PC'],
       ['rReveil','⏰','Réveil','Alarmes, délais et sonneries'],
+      ['rRetards','🚦','Retards et suppressions','Mes trains en retard ou supprimés (expérimental)'],
       ['rMeteo','🌦️','Météo','Lieu des jours de repos et de congé'],
       ['rAffichage','🎨','Widget et affichage','Thème, affichage par défaut du widget'],
       ['rAvance','🛠️','Options avancées','Mode avion automatique'],
