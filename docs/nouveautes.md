@@ -22,23 +22,7 @@ Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
 **Aide**
 - Nouvelle question : pourquoi un taxi ou un EV peut s'afficher autrement que sur Graou
-
-## 1.202
-
-**Raccourcis pratiques**
-- Nouvelle tuile sur l'accueil : Galac'SI (tes réservations de taxi et d'hôtel) en un geste
-- « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
-- Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
-
-**Fiabilité**
-- Le journal de diagnostic suit la vérification « Réveil oublié » : programmation, déclenchement et décision
-
-## 1.201
-
-**Raccourcis pratiques**
-- Nouvelle tuile sur l'accueil : Galac'SI (tes réservations de taxi et d'hôtel) en un geste
-- « Retrouver ma tablette » : localiser l'iPad ou le faire sonner sur iCloud.com
-- Mention « application indépendante, non affiliée à la SNCF » dans ⚙ Paramètres › Version et mises à jour
+- Mention « appli indépendante, non affiliée à la SNCF » dans ⚙ Paramètres
 
 ## 1.200
 
