@@ -2268,7 +2268,11 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   // sansMeteo (image partagée) : ni pictos ni températures, graphique un peu moins haut
   const X=m=>G+(m-t0)/60*pxh, Y=66, H=sansMeteo?130:140, ENC='#222', HEURE='#AEB4E6', HTXT='#8A92D0';
   // retards (orange) et suppressions (rouge) connus par le flux SNCF ; rien si l'option est coupée
-  const RT_O='#E8780C', RT_R='#D32F2F', JG=jg(), rtCoul=e=>!e?null:(e.e==='sup'||e.e==='part')?RT_R:e.e==='ret'?RT_O:null;
+  const RT_O='#E8780C', RT_R='#D32F2F', JG=jg(), rtCoul=e=>!e?null:(e.e==='sup'||(e.e==='part'&&!e.tc))?RT_R:e.e==='part'?(e.r>=1?RT_O:null):e.e==='ret'?RT_O:null;
+  // partie supprimée (terminus avancé / origine retardée) : minutes du graphique [début, fin] de la zone rouge
+  const rtZone=(e,it)=>{ if(!e||e.e!=='part'||!e.tc||!JG) return null; const [y,m,d]=JG.split('-').map(Number);
+    const mc=(e.tc-new Date(y,m-1,d).getTime())/60000; const c=Math.max(it.a,Math.min(it.b,mc));
+    return e.cut==='fin'?[c,it.b]:[it.a,c]; };
   const mn=m=>pad(((m%60)+60)%60),
     // gare écrite en bas du graphique : toujours son code court (« MBC »), même quand Graou donne le nom complet
     // (« Marseille-Blancarde », souvent les journées sans train) ; gare introuvable : premier mot, comme avant
@@ -2305,12 +2309,14 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
       conduite+=reel(it.a,it.b); nbTrains++;
       o.push(`<line x1="${x1.toFixed(1)}" y1="22" x2="${(x1+w).toFixed(1)}" y2="22" stroke="#9E9E9E" stroke-width="1"/>`);
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="${rtC||ENC}"/>`);
-      etiquettes.push({x:mid, txt:it.act, info, coul:rtC, badge:rtC?rtBadge(rtE):''});
+      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}" x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="${RT_R}"/>`);
+      etiquettes.push({x:mid, txt:it.act, info, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='ev'){
       o.push(`<line x1="${x1.toFixed(1)}" y1="22" x2="${(x1+w).toFixed(1)}" y2="22" stroke="#9E9E9E" stroke-width="1"/>`);
       o.push(`<rect class="el" data-i="${esc(info)}" x="${x1.toFixed(1)}" y="${Y-4}" width="${w.toFixed(1)}" height="8" fill="url(#${rtC===RT_R?'hachR':rtC===RT_O?'hachO':'hach'})"/>`);
-      etiquettes.push({x:mid, txt:libEV(it.act), info, coul:rtC, badge:rtC?rtBadge(rtE):''});
+      const z=rtZone(rtE,it); if(z && z[1]>z[0]) o.push(`<rect class="el" data-i="${esc(info)}" x="${X(z[0]).toFixed(1)}" y="${Y-4}" width="${Math.max(1.5,X(z[1])-X(z[0])).toFixed(1)}" height="8" fill="url(#hachR)"/>`);
+      etiquettes.push({x:mid, txt:libEV(it.act), info, coul:z?RT_R:rtC, badge:(z||rtC)?rtBadge(rtE):''});
       minutes.push([x1,it.a,'end'],[x1+w,it.b,'start']);
     } else if(it.g==='reserve'){
       // vaguelettes arrondies (sinusoïde), trait vertical au début et pointillés au sommet, comme Graou
@@ -3010,11 +3016,14 @@ function rtLire(){ let b=''; try{ b=localStorage.getItem('vl-rt')||''; }catch(e)
 function rtNum(act){ const m=String(act||'').match(/(?:^|\D)(\d{4,6})\s*$/); return m?String(+m[1]):''; }
 // état connu d'un train de la journée j (null si option coupée, pas de numéro ou rien de connu)
 function rtEtat(j,it){ if(!j || !rtOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; return rtLire()[j+'|'+n]||null; }
-function rtBadge(e){ return !e?'':e.e==='sup'?'supprimé':e.e==='part'?'suppr. partielle':e.e==='ret'?'+'+e.r:''; }
+function rtBadge(e){ return !e?'':e.e==='sup'?'supprimé':e.e==='part'?(e.cut==='fin'?'terminus avancé':e.cut==='deb'?'départ retardé':'suppr. partielle'):e.e==='ret'?'+'+e.r:''; }
+const rtHm=t=>{ const d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
 function rtTexte(e){ if(!e) return '';
   const q=e.t?new Date(e.t):null, h=q?' (info SNCF de '+pad(q.getHours())+':'+pad(q.getMinutes())+', à titre indicatif)':'';
   if(e.e==='sup') return 'Train supprimé'+h;
-  if(e.e==='part') return 'Arrêts supprimés sur ton trajet'+(e.r>0?', retard +'+e.r+' min':'')+h;
+  if(e.e==='part') return (e.cut==='fin'?'Terminus avancé : train arrêté après l’arrêt prévu à '+rtHm(e.tc)
+      :e.cut==='deb'?'Origine retardée : train au départ de l’arrêt prévu à '+rtHm(e.tc):'Arrêts supprimés sur ton trajet')
+    +(e.r>0?', retard +'+e.r+' min':'')+h;
   if(e.e==='ret') return 'Retard +'+e.r+' min'+(e.max>e.r?' (jusqu’à +'+e.max+')':'')+h;
   if(e.e==='ok' && e.max>0) return 'À l’heure (retard de +'+e.max+' min résorbé)'+h;
   return '';
@@ -3056,17 +3065,30 @@ function rtTrainsUtiles(now){
         if(tb>=deb && ta<=fin) L.push({j, n, ta, tb}); }); }); });
   return L; }
 // état d'un train d'après le flux, limité aux arrêts de ton trajet (heures prévues entre début et fin, ±5 min)
+// Suppression partielle : jamais en milieu de train, seulement terminus avancé (derniers arrêts supprimés)
+// ou origine retardée (premiers arrêts supprimés). La limite est l'heure prévue du dernier (ou du premier)
+// arrêt desservi, toujours donnée par le flux ; seule la partie de ton trajet au-delà est en rouge.
 function rtCalcul(tu, tr){
   if(tu.rel===3) return {e:'sup', r:0};
-  let max=null, saut=0, maxTout=null; const a=tr.ta-5*60e3, b=tr.tb+5*60e3;
-  tu.arrets.forEach(s=>{
+  let max=null, maxTout=null; const a=tr.ta-5*60e3, b=tr.tb+5*60e3;
+  const prevuDe=s=>{ const e=s.dep||s.arr; return e&&e.t?(e.t-(e.r||0))*1000:null; };
+  tu.arrets.forEach(s=>{ if(s.rel===1) return;
     [s.dep,s.arr].forEach(e=>{ if(!e || e.r==null) return; if(maxTout===null||e.r>maxTout) maxTout=e.r;
-      const prevu=e.t?(e.t-e.r)*1000:null; if(prevu!==null && prevu>=a && prevu<=b && (max===null||e.r>max)) max=e.r; });
-    const e=s.dep||s.arr; const prevu=e&&e.t?(e.t-(e.r||0))*1000:null;
-    if(s.rel===1 && (prevu===null || (prevu>=a && prevu<=b))) saut++; });
+      const prevu=e.t?(e.t-e.r)*1000:null; if(prevu!==null && prevu>=a && prevu<=b && (max===null||e.r>max)) max=e.r; }); });
   let r=max!==null?max:(maxTout!==null?maxTout:(tu.retard||0));
   r=Math.max(0,Math.round(r/60));
-  if(saut) return {e:'part', r};
+  const L=tu.arrets, desservis=L.map((s,i)=>s.rel!==1?i:-1).filter(i=>i>=0);
+  if(L.some(s=>s.rel===1)){
+    if(!desservis.length) return {e:'sup', r:0};                       // plus aucun arrêt desservi
+    const i0=desservis[0], i1=desservis[desservis.length-1];
+    const finSup=L.slice(i1+1).some(s=>s.rel===1), debSup=L.slice(0,i0).some(s=>s.rel===1);
+    const marge=60e3;
+    if(finSup){ const tc=prevuDe(L[i1]);                                // terminus avancé
+      if(tc!==null){ if(tc<=tr.ta+marge) return {e:'sup', r:0}; if(tc<tr.tb-marge) return {e:'part', r, cut:'fin', tc}; } }
+    if(debSup){ const tc=prevuDe(L[i0]);                                // origine retardée
+      if(tc!==null){ if(tc>=tr.tb-marge) return {e:'sup', r:0}; if(tc>tr.ta+marge) return {e:'part', r, cut:'deb', tc}; } }
+    if((finSup||debSup) && (finSup?prevuDe(L[i1]):prevuDe(L[i0]))===null) return {e:'part', r};   // limite inconnue : toute la barre
+  }
   return {e:r>=1?'ret':'ok', r};
 }
 // date AAAAMMJJ du flux → écart en jours avec la date du trajet
@@ -3093,8 +3115,8 @@ function rtMaj(forcer){
         if(!cand.length) return;
         cand.sort((u,v)=>Math.abs(rtEcartJours(u.date,tr.ta))-Math.abs(rtEcartJours(v.date,tr.ta)));
         const c=rtCalcul(cand[0],tr), k=tr.j+'|'+tr.n, av=H[k]||{};
-        const nv={e:c.e, r:c.r, max:Math.max(av.max||0, c.r), t:now};
-        if(av.e!==nv.e || av.r!==nv.r || av.max!==nv.max) change=true;
+        const nv={e:c.e, r:c.r, max:Math.max(av.max||0, c.r), t:now}; if(c.cut){ nv.cut=c.cut; nv.tc=c.tc; }
+        if(av.e!==nv.e || av.r!==nv.r || av.max!==nv.max || av.cut!==nv.cut || av.tc!==nv.tc) change=true;
         H[k]=nv; });
       try{ localStorage.setItem('vl-rt-ok', String(now)); localStorage.removeItem('vl-rt-err'); }catch(e){}
       if(change){ try{ localStorage.setItem('vl-rt', JSON.stringify(H)); localStorage.setItem('vl-rt-sig', String(now)); }catch(e){} }
