@@ -1,6 +1,6 @@
 # Voie libre — Règles de confidentialité
 
-*Dernière mise à jour : 13 novembre 2026*
+*Dernière mise à jour : 23 novembre 2026*
 
 Voie libre est une application gratuite et non commerciale qui aide les conducteurs de train à consulter leur planning de service, la météo et à recevoir des rappels avant leurs trains. Elle n'est pas une application officielle de la SNCF.
 
@@ -20,6 +20,7 @@ Voie libre est une application gratuite et non commerciale qui aide les conducte
 | Position approximative du téléphone (**seulement si tu l'actives**) | Météo du lieu où tu te trouves, nom de la commune | Open-Meteo ; Géoplateforme IGN (data.geopf.fr) ou Base Adresse Nationale (api-adresse.data.gouv.fr) pour trouver le nom de la commune |
 | Zone de carte affichée | Afficher les fonds de carte | Géoplateforme IGN (data.geopf.fr), à défaut OpenStreetMap (tile.openstreetmap.org) |
 | Aucune donnée personnelle | Afficher les nouveautés de l'application | GitHub (api.github.com) |
+| Aucune donnée personnelle (**seulement si tu actives** Retards et suppressions) | Télécharger le flux public des retards et suppressions de la SNCF ; l'appli y cherche elle-même tes trains, sur ton téléphone : ni ton planning ni tes numéros de train ne sont envoyés | transport.data.gouv.fr (proxy.transport.data.gouv.fr), données ouvertes de la SNCF |
 
 Ces services reçoivent seulement ce qui est nécessaire à la réponse (des coordonnées, pas ton planning ni ton nom). Leurs propres règles de confidentialité s'appliquent à ces échanges.
 
