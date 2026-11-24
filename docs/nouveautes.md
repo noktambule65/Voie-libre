@@ -8,12 +8,13 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.213
+## 1.214
 
-**Nouveau (expérimental)**
-- Retards et suppressions de tes trains : retard en orange avec les minutes, train supprimé en rouge (seulement la partie supprimée si terminus avancé ou départ retardé), sur le graphique, le déroulé et le widget
-- À activer dans ⚙ Paramètres › Retards et suppressions (désactivé au départ)
-- Flux public de la SNCF, sans compte ni clé, surtout dans l'heure qui précède le départ ; à titre indicatif, seul Pacific fait foi
+**Nouveau (expérimental, à activer dans ⚙ Paramètres)**
+- Voie de départ de tes trains : « v3 » sous le train, en orange si elle change, dès 20 min avant le départ, même appli fermée
+- Retards et suppressions : retard en orange avec les minutes, train supprimé en rouge
+- Sur le graphique, le déroulé et le widget ; consommation de données indiquée
+- Données SNCF, à titre indicatif
 
 ## 1.208
 

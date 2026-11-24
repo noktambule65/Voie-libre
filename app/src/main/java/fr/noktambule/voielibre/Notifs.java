@@ -57,6 +57,7 @@ public class Notifs extends BroadcastReceiver {
     private static final String ACTION_SYNC = "fr.noktambule.voielibre.SYNCHRO_HS";
     private static final int ID_SYNC = 6;
     private static final String ACTION_SYNC_PS = "fr.noktambule.voielibre.SYNCHRO_PS";
+    private static final String ACTION_SYNC_VOIE = "fr.noktambule.voielibre.SYNCHRO_VOIE";
     private static final String ACTION_NEIGE = "fr.noktambule.voielibre.NEIGE";
 
     // ---------- Réglages ----------
@@ -348,6 +349,34 @@ public class Notifs extends BroadcastReceiver {
         try { neige(ctx); } catch (Exception ex) { erreur(ctx, "alerte neige (programmation)", ex); }
         try { synchro(ctx); } catch (Exception ex) { erreur(ctx, "synchro programmée (programmation)", ex); }
         try { programmerSyncPS(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service (programmation)", ex); }
+        try { programmerSyncVoie(ctx); } catch (Exception ex) { erreur(ctx, "synchro voie de départ (programmation)", ex); }
+    }
+
+    // ---------- Voie de départ : synchro légère 19, 10 et 5 min avant chaque train ----------
+
+    /**
+     * La page envoie avec le widget les heures de départ de mes trains (48 h, seulement si l'option « Voie de
+     * départ » est activée) ; la prochaine de ces synchros est programmée, la suivante l'est quand elle a lieu.
+     */
+    private static void programmerSyncVoie(Context ctx) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        long now = System.currentTimeMillis(), quand = 0;
+        JSONArray deps = null;
+        try { deps = new JSONObject(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).getString("donnees", "{}")).optJSONArray("voieDeparts"); }
+        catch (Exception ignore) { }
+        if (deps != null) for (int k = 0; k < deps.length(); k++) {
+            long d = deps.optLong(k);
+            if (d <= 0) continue;
+            for (long av : new long[]{19, 10, 5}) {
+                long t = d - av * 60000L;
+                if (t > now + 30000 && (quand == 0 || t < quand)) quand = t;
+            }
+        }
+        Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_SYNC_VOIE);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3012, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if (quand == 0) { am.cancel(pi); return; }
+        planifier(am, quand, pi);
     }
 
     // ---------- Synchro en plus à l'heure de la PS et 5 min après ----------
@@ -1538,6 +1567,11 @@ public class Notifs extends BroadcastReceiver {
             return;
         }
         if (ACTION_NEIGE.equals(intent.getAction()) || ACTION_SYNC.equals(intent.getAction())) { programmer(ctx); return; }
+        if (ACTION_SYNC_VOIE.equals(intent.getAction())) {
+            try { SyncWorker.synchroVoie(ctx); } catch (Exception ex) { erreur(ctx, "synchro voie de départ", ex); }
+            programmer(ctx);   // la suivante
+            return;
+        }
         if (ACTION_SYNC_PS.equals(intent.getAction())) {
             if (prefs(ctx).getBoolean("syncPS", false)) try { synchroMaintenant(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service", ex); }
             programmer(ctx);   // la suivante

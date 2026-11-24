@@ -40,6 +40,9 @@ public class SyncWorker extends Worker {
     /** Bouton ⟳ du widget : même délai que l'ancienne fenêtre de synchro (le widget affiche « Mise à jour… » 70 s au plus). */
     private static final long DELAI_MANUEL_S = 60;
     private static final String MANUEL = "manuel";
+    private static final String VOIE = "voie";
+    /** Synchro « voie » : la page ne demande que les voies de départ et redessine le widget (quelques Ko). */
+    private static final long DELAI_VOIE_S = 75;
 
     public SyncWorker(@NonNull Context ctx, @NonNull WorkerParameters params) { super(ctx, params); }
 
@@ -74,13 +77,27 @@ public class SyncWorker extends Worker {
                 .enqueueUniqueWork("synchro-widget", ExistingWorkPolicy.KEEP, r);
     }
 
+    /**
+     * Voie de départ (option de Paramètres) : 19, 10 et 5 min avant un train, synchro légère dès que le réseau
+     * est là. Ne télécharge ni Graou ni le flux des retards, seulement la voie à la gare de départ.
+     */
+    static void synchroVoie(Context ctx) {
+        OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
+                .setInputData(new Data.Builder().putBoolean(VOIE, true).build())
+                .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build();
+        WorkManager.getInstance(ctx.getApplicationContext())
+                .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.REPLACE, r);
+    }
+
     @NonNull
     @Override
     public Result doWork() {
         final Context ctx = getApplicationContext();
         final boolean manuel = getInputData().getBoolean(MANUEL, false);
+        final boolean voie = getInputData().getBoolean(VOIE, false);
         try {
-            return synchroniser(ctx, manuel);
+            return synchroniser(ctx, manuel, voie);
         } finally {
             if (manuel) {
                 ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).edit().remove("syncDepuis").apply();
@@ -89,10 +106,10 @@ public class SyncWorker extends Worker {
         }
     }
 
-    private Result synchroniser(Context ctx, boolean manuel) {
+    private Result synchroniser(Context ctx, boolean manuel, boolean voie) {
         // Nouvelle version validée sur GitHub ? (une fois par jour au plus, notification une seule fois par version)
-        // Pas pour le bouton ⟳ : la synchro doit être rapide.
-        if (!manuel) { try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { } }
+        // Pas pour le bouton ⟳ ni la synchro « voie » : elles doivent être rapides.
+        if (!manuel && !voie) { try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { } }
         // L'appli ouverte se met déjà à jour elle-même ; une seconde page dans le même moteur web la ralentirait
         if (MainActivity.visible) return Result.success();
         final Handler principal = new Handler(Looper.getMainLooper());
@@ -141,14 +158,14 @@ public class SyncWorker extends Worker {
                 ponts[0] = pont;
                 pont.finSynchro = fin::countDown;
                 w.addJavascriptInterface(pont, "BoulotAndroid");
-                w.loadUrl(MainActivity.ACCUEIL + "?sync=1");
+                w.loadUrl(MainActivity.ACCUEIL + (voie ? "?sync=voie" : "?sync=1"));
             } catch (Exception e) {
                 fin.countDown();
             }
         });
 
         boolean aTemps = false;
-        try { aTemps = fin.await(manuel ? DELAI_MANUEL_S : DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
+        try { aTemps = fin.await(voie ? DELAI_VOIE_S : manuel ? DELAI_MANUEL_S : DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
         final boolean ok = aTemps && ponts[0] != null && ponts[0].syncOk;
 
         // Laisse le temps à la page d'envoyer les journées au widget, puis libère tout

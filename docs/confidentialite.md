@@ -1,6 +1,6 @@
 # Voie libre — Règles de confidentialité
 
-*Dernière mise à jour : 23 novembre 2026*
+*Dernière mise à jour : 24 novembre 2026*
 
 Voie libre est une application gratuite et non commerciale qui aide les conducteurs de train à consulter leur planning de service, la météo et à recevoir des rappels avant leurs trains. Elle n'est pas une application officielle de la SNCF.
 
@@ -21,12 +21,13 @@ Voie libre est une application gratuite et non commerciale qui aide les conducte
 | Zone de carte affichée | Afficher les fonds de carte | Géoplateforme IGN (data.geopf.fr), à défaut OpenStreetMap (tile.openstreetmap.org) |
 | Aucune donnée personnelle | Afficher les nouveautés de l'application | GitHub (api.github.com) |
 | Aucune donnée personnelle (**seulement si tu actives** Retards et suppressions) | Télécharger le flux public des retards et suppressions de la SNCF ; l'appli y cherche elle-même tes trains, sur ton téléphone : ni ton planning ni tes numéros de train ne sont envoyés | transport.data.gouv.fr (proxy.transport.data.gouv.fr), données ouvertes de la SNCF |
+| Code de la gare de départ de ton prochain train (**seulement si tu actives** Voie de départ), dans les 20 min qui précèdent le départ : ni ton planning ni tes numéros de train ne sont envoyés, l'appli cherche elle-même tes trains dans la réponse | Connaître la voie de départ de tes trains | Train Nomade (api.trainnomade.fr), données SNCF en licence ODbL |
 
 Ces services reçoivent seulement ce qui est nécessaire à la réponse (des coordonnées, pas ton planning ni ton nom). Leurs propres règles de confidentialité s'appliquent à ces échanges.
 
 ## Données sur le téléphone
 
-Le planning, les réglages, le lien Graou et le journal de diagnostic sont enregistrés uniquement dans l'application, sur ton téléphone. Ils ne sont pas copiés dans la sauvegarde Google. Les supprimer : désinstaller l'application, ou effacer ses données dans les réglages Android.
+Le planning, les réglages, le lien Graou, le journal de diagnostic et, si tu actives ces options, l'historique des retards, des voies de tes trains et des données consommées sont enregistrés uniquement dans l'application, sur ton téléphone. Ils ne sont pas copiés dans la sauvegarde Google. Les supprimer : désinstaller l'application, ou effacer ses données dans les réglages Android.
 
 ## Signaux pour les applis d'automatisation (facultatif)
 
