@@ -2353,19 +2353,24 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     }
   });
   // numéros de train juste au-dessus des barres
-  const finRang=[-1e9,-1e9], occNum=[], trous=[];   // trous : zones où le trait de l'heure s'interrompt (pastilles)
+  const finRang=[-1e9,-1e9], occNum=[], trous=[], pastilles=[];   // trous : zones où le trait de l'heure s'interrompt
   etiquettes.sort((a,b)=>a.x-b.x).forEach(e=>{
-    const lw=Math.max(e.txt.length*5.2+2, e.badge?e.badge.length*5.3+14:0);
+    const lw=e.txt.length*5.2+2;                     // les numéros se placent comme sans temps réel
     let r=finRang.findIndex(v=>e.x-lw/2>v+3); if(r<0) r=finRang.indexOf(Math.min(...finRang));
     finRang[r]=e.x+lw/2;
-    if(e.badge && r+1<finRang.length) finRang[r+1]=Math.max(finRang[r+1], e.x+lw/2);   // le badge occupe le rang du dessus
     occNum.push({x1:e.x-lw/2, x2:e.x+lw/2, y1:Y-7-r*9-8, y2:Y-7-r*9+2});
     o.push(`<text class="el" data-i="${esc(e.info)}"${e.rtA||''} x="${e.x.toFixed(1)}" y="${Y-7-r*9}" font-size="9" fill="${e.coul||ENC}"${e.coul?' font-weight="700"':''} text-anchor="middle">${esc(e.txt)}</text>`);
-    // pastille du retard (« +15 min », orange) ou de la suppression (« supprimé », rouge), au-dessus du numéro
-    if(e.badge){ const pw=e.badge.length*5.3+12, py=Y-7-r*9-23;
-      o.push(`<g class="el" data-i="${esc(e.info)}"${e.rtA||''}><rect x="${(e.x-pw/2).toFixed(1)}" y="${py}" width="${pw.toFixed(1)}" height="13" rx="6.5" fill="${e.coul}" stroke="#fff" stroke-width="1.4"/>`
-        +`<text x="${e.x.toFixed(1)}" y="${py+9.4}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${esc(e.badge)}</text></g>`);
-      trous.push([e.x-pw/2-1, e.x+pw/2+1, py-1, Y-7-r*9+3]); }
+    if(e.badge) pastilles.push({e, r});
+  });
+  // pastilles du retard (« +15 ») : au-dessus du numéro, ou un cran plus haut si la place est prise
+  pastilles.forEach(({e,r})=>{
+    const pw=e.badge.length*5.3+12, base=Y-7-r*9-23, x1=e.x-pw/2, x2=e.x+pw/2;
+    const libre=py=>!occNum.some(b=>b.x2>x1-1 && b.x1<x2+1 && b.y2>py-1 && b.y1<py+14);
+    let py=base; for(let k=0;k<3;k++){ const c=base-k*14; if(c<14) break; if(libre(c)){ py=c; break; } }
+    occNum.push({x1, x2, y1:py, y2:py+13});
+    o.push(`<g class="el" data-i="${esc(e.info)}"${e.rtA||''}><rect x="${x1.toFixed(1)}" y="${py}" width="${pw.toFixed(1)}" height="13" rx="6.5" fill="${RT_O}" stroke="#fff" stroke-width="1.4"/>`
+      +`<text x="${e.x.toFixed(1)}" y="${py+9.4}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${esc(e.badge)}</text></g>`);
+    trous.push([x1-1, x2+1, py-1, Y-7-r*9+3]);
   });
   // minutes aux extrémités
   const occMin=[[],[]];
@@ -3031,7 +3036,9 @@ function rtLire(){ let b=''; try{ b=localStorage.getItem('vl-rt')||''; }catch(e)
 function rtNum(act){ const m=String(act||'').match(/(?:^|\D)(\d{4,6})\s*$/); return m?String(+m[1]):''; }
 // état connu d'un train de la journée j (null si option coupée, pas de numéro ou rien de connu)
 function rtEtat(j,it){ if(!j || !rtOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; return rtLire()[j+'|'+n]||null; }
-function rtBadge(e){ return !e?'':e.e==='sup'?'supprimé':e.e==='part'?(e.cut==='fin'?'terminus avancé':e.cut==='deb'?'départ retardé':'suppr. partielle'):e.e==='ret'?'+'+e.r+' min':''; }
+// Pastille : seulement le retard, en court (« +15 »). Une suppression se voit à la barre et au numéro en rouge ;
+// le détail (supprimé, terminus avancé, départ retardé) est dans la ligne dédiée quand on touche le train.
+function rtBadge(e){ return !e?'':(e.e==='ret'||e.e==='part') && e.r>0?'+'+e.r:''; }
 // Ligne dédiée, affichée quand on touche le train : {cls, txt, src}
 function rtLigne(e,it){ if(!e || (e.e==='ok' && !(e.max>0))) return null;
   const nom=(genre(it)==='ev'?'EV ':'')+rtNum(it.act), q=e.t?new Date(e.t):null;
