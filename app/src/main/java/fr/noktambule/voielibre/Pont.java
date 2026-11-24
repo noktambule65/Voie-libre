@@ -566,4 +566,12 @@ public class Pont {
         if (act == null) return;
         surEcran(() -> MiseAJour.manuellement(act));
     }
+
+    /** Voie de départ : voies trouvées appli fermée (VoieDepart), fusionnées par la page avec les siennes. */
+    @JavascriptInterface
+    public String voiesJava() { return VoieDepart.memoireTexte(ctx); }
+
+    /** Voie de départ : données reçues appli fermée, par jour, pour la mesure affichée dans Paramètres. */
+    @JavascriptInterface
+    public String consoVoieJava() { return VoieDepart.consoTexte(ctx); }
 }

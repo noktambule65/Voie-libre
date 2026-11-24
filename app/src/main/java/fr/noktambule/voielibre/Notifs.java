@@ -352,27 +352,16 @@ public class Notifs extends BroadcastReceiver {
         try { programmerSyncVoie(ctx); } catch (Exception ex) { erreur(ctx, "synchro voie de départ (programmation)", ex); }
     }
 
-    // ---------- Voie de départ : synchro légère 19, 10 et 5 min avant chaque train ----------
+    // ---------- Voie de départ : demandes directes à Train Nomade, appli fermée ----------
 
     /**
-     * La page envoie avec le widget les heures de départ de mes trains (48 h, seulement si l'option « Voie de
-     * départ » est activée) ; la prochaine de ces synchros est programmée, la suivante l'est quand elle a lieu.
+     * Prochaine demande de voie (voir VoieDepart) : chaque minute à partir de 20 min avant un départ tant que la
+     * voie n'est pas connue, puis une vérification 5 min avant. Rien si l'option est coupée (liste vide).
      */
-    private static void programmerSyncVoie(Context ctx) {
+    static void programmerSyncVoie(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
-        long now = System.currentTimeMillis(), quand = 0;
-        JSONArray deps = null;
-        try { deps = new JSONObject(ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).getString("donnees", "{}")).optJSONArray("voieDeparts"); }
-        catch (Exception ignore) { }
-        if (deps != null) for (int k = 0; k < deps.length(); k++) {
-            long d = deps.optLong(k);
-            if (d <= 0) continue;
-            for (long av : new long[]{19, 10, 5}) {
-                long t = d - av * 60000L;
-                if (t > now + 30000 && (quand == 0 || t < quand)) quand = t;
-            }
-        }
+        long quand = VoieDepart.prochaine(ctx, System.currentTimeMillis());
         Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_SYNC_VOIE);
         PendingIntent pi = PendingIntent.getBroadcast(ctx, 3012, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         if (quand == 0) { am.cancel(pi); return; }
@@ -1568,8 +1557,16 @@ public class Notifs extends BroadcastReceiver {
         }
         if (ACTION_NEIGE.equals(intent.getAction()) || ACTION_SYNC.equals(intent.getAction())) { programmer(ctx); return; }
         if (ACTION_SYNC_VOIE.equals(intent.getAction())) {
-            try { SyncWorker.synchroVoie(ctx); } catch (Exception ex) { erreur(ctx, "synchro voie de départ", ex); }
-            programmer(ctx);   // la suivante
+            // appli ouverte : c'est la page qui demande (chaque minute) ; sinon demande directe, sans ouvrir la page
+            if (MainActivity.visible) { programmerSyncVoie(ctx); return; }
+            final PendingResult fin = goAsync();
+            new Thread(() -> {
+                try {
+                    if (VoieDepart.verifier(ctx)) SyncWorker.synchroVoie(ctx);   // voie nouvelle ou changée : widget redessiné
+                } catch (Exception ex) { erreur(ctx, "voie de départ", ex); }
+                try { programmerSyncVoie(ctx); } catch (Exception ex) { erreur(ctx, "voie de départ (programmation)", ex); }
+                fin.finish();
+            }).start();
             return;
         }
         if (ACTION_SYNC_PS.equals(intent.getAction())) {

@@ -78,13 +78,12 @@ public class SyncWorker extends Worker {
     }
 
     /**
-     * Voie de départ (option de Paramètres) : 19, 10 et 5 min avant un train, synchro légère dès que le réseau
-     * est là. Ne télécharge ni Graou ni le flux des retards, seulement la voie à la gare de départ.
+     * Voie de départ (option de Paramètres) : VoieDepart vient de trouver une voie nouvelle ou changée, appli
+     * fermée. La page la reprend (sans redemander) et redessine le widget. Ni Graou, ni météo, ni flux des retards.
      */
     static void synchroVoie(Context ctx) {
         OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
-                .setInputData(new Data.Builder().putBoolean(VOIE, true).build())
-                .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setInputData(new Data.Builder().putBoolean(VOIE, true).build())   // pas de réseau nécessaire
                 .build();
         WorkManager.getInstance(ctx.getApplicationContext())
                 .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.REPLACE, r);
