@@ -37,6 +37,7 @@ d'adresse de testeur ici : le dépôt est public.
 | 20/11 | Développeur | Taxi (et parfois EV, coupure) sans gares dans Graou : l'export ne donne que l'heure de début, l'affichage diffère de Graou | Cause identifiée côté Graou ; explication prévue dans l'aide de l'appli |
 | 20/11 | Développeur | EV sans trajet complété automatiquement jusqu'au terminus du train (Pau 18:03) alors que la FS est à Tarbes à 17:29 | Version 1.207 : l'EV s'arrête à la gare de FS (arrivée estimée, signalée), seulement s'il est le dernier déplacement de la journée ; vérifié sur tout le planning : seule cette journée change |
 | 20/11 | Développeur | Le badge « modifiée » reposait sur une interprétation incertaine du point « • » de Graou | Version 1.206 : badge retiré |
+| 24/11 | Testeur (commentaire privé Play, version 1.208, 5 étoiles) | « Bravo et merci, très beau boulot et très utile. Est-ce que les voies des trains en gare peuvent être affichées ? » | Piste étudiée : voies publiées dans les flux temps réel ouverts (à vérifier) |
 | 20/11 | Groupe Google | Un testeur a un problème de distribution des e-mails du groupe (triangle rouge) | Sans effet sur l'accès au test |
 
 ## Versions publiées pendant le test
