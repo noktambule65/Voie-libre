@@ -369,7 +369,8 @@ public class Notifs extends BroadcastReceiver {
             if (v == null || v.isEmpty()) return;
             JSONObject r = new JSONObject(prefs(ctx).getString("voieNotif", "{}"));
             if (!r.optBoolean("on")) return;
-            if (tr.optBoolean("e") && !r.optBoolean("ev", true)) return;
+            boolean arrivee = tr.optBoolean("a");
+            if (!arrivee && tr.optBoolean("e") && !r.optBoolean("ev", true)) return;
             long t = tr.optLong("t");
             long now = System.currentTimeMillis();
             if (t > 0 && now > t + 2 * 60_000L) return;                  // train parti
@@ -378,19 +379,22 @@ public class Notifs extends BroadcastReceiver {
             boolean dans = false;
             if (g != null) for (int i = 0; i < g.length(); i++) if (u.equals(g.optString(i))) dans = true;
             if ("seul".equals(r.optString("mode")) ? !dans : dans) return;
-            String k = tr.optString("j") + "|" + tr.optString("n");
+            String k = VoieDepart.cle(tr);
             String deja = "";
             JSONObject faites = new JSONObject(prefs(ctx).getString("voiesNotifiees", "{}"));
             deja = faites.optString(k, "");
             if (v.equals(deja)) return;
             String n = tr.optString("n");
-            String titre = deja.isEmpty() && (av == null || av.isEmpty()) ? n + " départ voie " + v
-                    : n + " : voie changée, maintenant voie " + v + " (avant " + (av != null && !av.isEmpty() ? av : deja) + ")";
+            boolean premiere = deja.isEmpty() && (av == null || av.isEmpty());
+            String avant = av != null && !av.isEmpty() ? av : deja;
+            String titre = arrivee
+                    ? (premiere ? n + " arrive voie " + v : n + " : voie d'arrivée changée, maintenant voie " + v + " (avant " + avant + ")")
+                    : (premiere ? n + " départ voie " + v : n + " : voie changée, maintenant voie " + v + " (avant " + avant + ")");
             java.util.Calendar c = java.util.Calendar.getInstance();
             c.setTimeInMillis(t);
             String quand = String.format(java.util.Locale.FRANCE, "%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE));
             String gare = tr.optString("g");
-            String texte = (gare.isEmpty() ? "" : gare + " · ") + quand + (tr.optBoolean("e") ? " · EV" : "") + " · à titre indicatif";
+            String texte = (gare.isEmpty() ? "" : gare + " · ") + (arrivee ? "EQ PREND " : "") + quand + (!arrivee && tr.optBoolean("e") ? " · EV" : "") + " · à titre indicatif";
             int id = 7000 + Math.abs(k.hashCode() % 1000);
             montrer(ctx, id, r.optBoolean("son") ? CANAL_VOIE : CANAL_VOIE_DISCRET, titre, texte, null,
                     ouvrir(ctx, id, "journee", "date", tr.optString("j")));

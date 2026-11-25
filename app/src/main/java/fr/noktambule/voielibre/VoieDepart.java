@@ -61,7 +61,8 @@ final class VoieDepart {
     /** Pour la page : données reçues appli fermée, {"AAAA-MM-JJ": [demandes, octets]}. */
     static String consoTexte(Context ctx) { return p(ctx).getString("conso", "{}"); }
 
-    private static String cle(JSONObject tr) { return tr.optString("j") + "|" + tr.optString("n"); }
+    /** Départ « date|numéro » ; arrivée du train d'un EQ PREND « date|numéro|a ». */
+    static String cle(JSONObject tr) { return tr.optString("j") + "|" + tr.optString("n") + (tr.optBoolean("a") ? "|a" : ""); }
 
     private static boolean connue(JSONObject tr, JSONObject mem) {
         JSONObject m = mem.optJSONObject(cle(tr));
@@ -127,7 +128,7 @@ final class VoieDepart {
                 JSONObject av = mem.optJSONObject(k);
                 String vAvant = av != null ? av.optString("v") : tr.optString("v");
                 String avAvant = av != null ? av.optString("av") : tr.optString("av");
-                String v = voie(passages, tr.optString("n"), t);
+                String v = voie(passages, tr.optString("n"), t, tr.optBoolean("a"));
                 boolean verifDue = !vAvant.isEmpty() && now >= t - VERIF - 30_000;
                 if (v.isEmpty() && !verifDue) continue;
                 try {
@@ -154,8 +155,11 @@ final class VoieDepart {
         return change;
     }
 
-    /** Voie du train n au départ de cette gare, à l'heure prévue la plus proche (45 min d'écart au plus). */
-    private static String voie(JSONArray passages, String n, long t) {
+    /**
+     * Voie du train n à cette gare, à l'heure prévue la plus proche (45 min d'écart au plus) :
+     * heure de départ, ou d'arrivée pour un EQ PREND (de départ s'il ne fait que passer).
+     */
+    private static String voie(JSONArray passages, String n, long t, boolean arrivee) {
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(t);
         int s = c.get(Calendar.HOUR_OF_DAY) * 3600 + c.get(Calendar.MINUTE) * 60;
@@ -163,9 +167,11 @@ final class VoieDepart {
         int meilleur = Integer.MAX_VALUE;
         for (int i = 0; i < passages.length(); i++) {
             JSONObject p = passages.optJSONObject(i);
-            if (p == null || !p.has("d") || p.isNull("d")) continue;
+            if (p == null) continue;
+            String champ = arrivee && p.has("a") && !p.isNull("a") ? "a" : "d";
+            if (!p.has(champ) || p.isNull(champ)) continue;
             if (!p.optString("n").replaceFirst("^0+", "").equals(n)) continue;
-            int z = Math.abs((p.optInt("d") % 86400) - s);
+            int z = Math.abs((p.optInt(champ) % 86400) - s);
             z = Math.min(z, 86400 - z);
             if (z > 45 * 60 || z >= meilleur) continue;
             meilleur = z;

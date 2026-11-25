@@ -1482,7 +1482,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         sous(cN,'Voie de départ');
         const V=Object.assign({on:false, son:false, ev:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
         cN.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="nVoie"><span style="flex:1;min-width:0">Notifier la voie de départ de mes trains</span>
-          <small>« 872730 départ voie C » dès que la voie est connue, puis « voie changée » si elle change. Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
+          <small>« 872730 départ voie C » dès que la voie est connue, puis « voie changée » si elle change. Pour un EQ PREND : « 872736 arrive voie 4 ». Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
           <div id="nVoieOpts" style="margin-left:6px">
             <label class="coche"><input type="checkbox" id="nVoieSon"><span style="flex:1;min-width:0">Avec son et bandeau</span><small>Sinon, notification discrète (sans son), pratique en conduite.</small></label>
             <label class="coche"><input type="checkbox" id="nVoieEv"><span style="flex:1;min-width:0">Aussi pour mes EV</span></label>
@@ -1577,7 +1577,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const cV=carte('🛤️','Voie de départ','rVoie');
       const lit=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
       cV.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="voOn"><span style="flex:1;min-width:0">Afficher la voie de départ de mes trains <em class="exp" style="font-style:normal;font-weight:400;font-size:.85em;color:#B26A00">(fonction expérimentale)</em></span>
-        <small>Sur le graphique de la journée, le déroulé et le widget : « v3 » sous le train, en bleu, ou en orange si la voie a changé. Trains conduits et EV, à leur gare de départ. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification possible dans 🔔 Notifications › Voie de départ.</small></label>
+        <small>Sur le graphique de la journée, le déroulé et le widget : la voie dans un cadre comme à la SNCF, sous le train, en orange si elle a changé. Trains conduits et EV à leur gare de départ ; pour un EQ PREND, voie d’arrivée du train repris, en haut de la flèche. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification possible dans 🔔 Notifications › Voie de départ.</small></label>
         <p class="petit"><b>Données mobiles :</b> environ 4 à 9 Ko par gare interrogée, presque rien quand la réponse n’a pas changé depuis la minute précédente, soit 70 à 160 Ko par jour de service et 1,5 à 3,5 Mo par mois (estimation). En Wi-Fi, rien n’est pris sur ton forfait mobile.</p>
         <p class="petit" id="voConso"></p>
         <p class="petit" id="voEtat"></p>`);
@@ -2190,7 +2190,11 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .gl .ev .d b{color:#555}
 /* Retards et suppressions (flux public SNCF) */
 .gl .tr .d .rt{display:inline-block;margin-left:6px;padding:0 7px;border-radius:9px;color:#fff;font-weight:700;font-size:11.5px}
-.gl .tr .d .vo{display:inline-block;margin-left:6px;padding:0 7px;border-radius:9px;color:#fff;background:#1D4ED8;font-weight:700;font-size:11.5px}.gl .tr .d .vo.chg{background:#E8780C}
+/* Voie de départ : carte « Voie / A » comme l'appli SNCF (blanc entouré de noir ; orange si la voie a changé) */
+.gl .tr .d{overflow:hidden}.gl .tr .d .vo{float:right;margin:-2px 0 2px 8px;min-width:30px;padding:2px 6px 3px;border-radius:7px;text-align:center;background:#fff;color:#1F1F1F;border:1.5px solid #1F1F1F;line-height:1}
+.gl .tr .d .vo small{display:block;font-size:9px;font-weight:400}.gl .tr .d .vo b,.gl.gl .tr .d .vo b{display:block;font-size:19px;font-weight:700;margin-top:1px;color:inherit}.gl .tr .d .vo i{display:block;font-style:normal;font-size:8.5px;margin-top:2px}
+.gl .tr .d .vo.chg{color:#B85600;border-color:#E8780C;background:#FFF4E8}
+.gl .pt .l .voA{display:inline-block;opacity:1;margin:4px 0 1px;padding:1px 7px;border-radius:6px;background:#fff;color:#1F1F1F;border:1.5px solid #1F1F1F;font-size:11px;white-space:nowrap}.gl .pt .l .voA b{font-size:14px}.gl .pt .l .voA.chg{color:#B85600;border-color:#E8780C;background:#FFF4E8}
 .gl .tr .d .rt.ret{background:#E8780C}.gl .tr .d .rt.sup,.gl .tr .d .rt.part{background:#D32F2F}
 .gl .tr.rtsup,.gl .tr.rtpart{border-color:#D32F2F}.gl .tr.rtret{border-color:#E8780C}
 .rtNote{margin:2px 10px 10px;font-size:11.5px;color:var(--doux);line-height:1.4}
@@ -2467,21 +2471,24 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     occMin[r].push([a,b]);
     o.push(`<text x="${(anc==='end'?xx-1.5:xx+1.5).toFixed(1)}" y="${Y+14+r*8}" font-size="9" fill="${ENC}" text-anchor="${anc}">${mn(m)}</text>`);
   });
-  // voie de départ (« v3 », bleu ; orange si elle a changé) : sous la barre, juste après la minute de départ.
+  // voie de départ : cadre blanc entouré de noir, lettre noire, comme l'appli SNCF (orange si elle a changé),
+  // sous la barre, juste après la minute de départ.
   // Les minutes ne bougent pas ; la voie cherche une place libre (3 px d'écart) en glissant vers la droite
   // sous sa barre, sur la 1re puis la 2e ligne des minutes ; sinon sur la ligne des gares, là où aucune n'est écrite.
   if(voiesG.length){ const gares=[], mb=barres.filter(it=>it.g==='cond'||it.g==='ev').sort((a,b)=>a.a-b.a);
     for(let k=0;k<mb.length-1;k++){ const xa=X(mb[k].b), xb=X(mb[k+1].a), t=code(mb[k].lieu.split('->')[1]||mb[k].lieu);
       if(xb-xa>18) gares.push([(xa+xb)/2-t.length*3.1, (xa+xb)/2+t.length*3.1]); }
     const occ=[occMin[0],occMin[1],gares];
-    voiesG.sort((p,q)=>p.x-q.x).forEach(q=>{ const t='v'+q.v, lw=t.length*5.6, lim=Math.max(1.5, q.w-lw);
+    voiesG.sort((p,q)=>p.x-q.x).forEach(q=>{ const t=q.v, lw=Math.max(11,q.v.length*6+5), lim=Math.max(1.5, q.w-lw);
       const libre=(r,a,b)=>{ const g=r<2?3:2; return occ[r].every(([u,v])=>b<u-g||a>v+g); };
       let pos=null;
       for(let dx=1.5; dx<=lim+0.01 && !pos; dx+=1.5) for(const r of [0,1]) if(libre(r,q.x+dx,q.x+dx+lw)){ pos=[r,q.x+dx]; break; }
       if(!pos) for(const dx of [1.5,0.75,0,-0.75,-1.5,-2.25,-3,-4.5,-6,3,4.5,6,7.5,9,10.5,12]) if(dx<=Math.max(lim,q.w)+0.01 && libre(2,q.x+dx,q.x+dx+lw)){ pos=[2,q.x+dx]; break; }
       if(!pos) return;                                   // aucune place : la voie reste visible en touchant le train
       occ[pos[0]].push([pos[1],pos[1]+lw]);
-      o.push(`<text class="voie" x="${pos[1].toFixed(1)}" y="${Y+14+pos[0]*8}" font-size="9" font-weight="700" fill="${q.chg?'#E8780C':'#1D4ED8'}">${esc(t)}</text>`); }); }
+      // cadre de 9,3 px : il tient dans sa ligne sans toucher les minutes au-dessus ni en dessous
+      const yb=Y+14+pos[0]*8;
+      o.push(cadreVoie(pos[1], yb, lw, t, q.chg)); }); }
   // gares entre les trains
   const mob=barres.filter(it=>it.g==='cond'||it.g==='ev').sort((a,b)=>a.a-b.a);
   for(let k=0;k<mob.length-1;k++){
@@ -2493,7 +2500,7 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
       arr,(mob[k].b+mob[k+1].a)/2,(xa+xb)/2,Y+47,40,'middle'));
   }
   // cadres RS / MS / PC / EJ / F1 / EQ… avec le numéro au-dessus ; « + » pour la marche à pied
-  const rangs=[-1e9,-1e9,-1e9];
+  const rangs=[-1e9,-1e9,-1e9], occHaut=[], eqVoies=[];   // occHaut : cadres et flèches au-dessus de la barre
   items.filter(it=>it.g==='point').forEach(it=>{
     const xx=X(it.a), info=`${hm(it.a)} · ${it.lieu||''} · ${it.act}`;
     if(/^marche\b/i.test(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${(xx-2).toFixed(1)}" y="${Y-5}" font-size="10" fill="${ENC}" text-anchor="end">+</text>`); return; }
@@ -2507,6 +2514,13 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
                         :`M${(xx-2.6).toFixed(1)} ${bas-6} L${xx.toFixed(1)} ${bas} L${(xx+2.6).toFixed(1)} ${bas-6}Z`;
       o.push(`<g class="el" data-i="${esc(info)}"><line x1="${xx.toFixed(1)}" y1="${haut}" x2="${xx.toFixed(1)}" y2="${bas}" stroke="${ENC}" stroke-width="0.9"/><path d="${pointe}" fill="${ENC}"/>`+
         (num?`<text transform="translate(${(xx+1.5).toFixed(1)},${haut-1}) rotate(-55)" font-size="8" fill="${ENC}">${esc(num)}</text>`:'')+`</g>`);
+      // place prise : la tige, et le numéro penché (longueur L, à −55°)
+      occHaut.push({x1:xx-1.2, x2:xx+1.2, y1:haut, y2:bas, tige:xx});
+      // numéro penché à −55° : un petit carré par caractère, le long de la ligne d'écriture
+      for(let i=0;i<num.length;i++){ const c=Math.cos(55*Math.PI/180), sn=Math.sin(55*Math.PI/180), u=(i+0.5)*4.6;
+        const cx=xx+1.5+u*c-2.6*sn, cy=haut-1-u*sn-2.6*c; occHaut.push({x1:cx-3.4, x2:cx+3.4, y1:cy-3.4, y2:cy+3.4}); }
+      const nEq=!monte?eqNum(s,it):null;
+      if(nEq){ const e=voEtatArr(JG,nEq); if(e) eqVoies.push({xx, haut, v:e.v, chg:!!e.av, info:info+' · voie d’arrivée '+e.v+(e.av?' (changée, avant voie '+e.av+')':'')}); }
       return;
     }
     if(estChauffage(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${xx.toFixed(1)}" y="${Y-6}" font-size="12" fill="${ENC}" text-anchor="middle">#</text>`); return; }
@@ -2519,8 +2533,20 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     if(r===undefined){ r=rangs.findIndex((v,k)=>k<2 && cx-lw/2>v+2); if(r<0) r=rangs.indexOf(Math.min(rangs[0],rangs[1])); }
     rangs[r]=cx+lw/2;
     const yb=38-r*16;
+    occHaut.push({x1:cx-lw/2, x2:cx+lw/2, y1:yb-(num?8:0), y2:yb+9.5});
     o.push(`<g class="el" data-i="${esc(info)}">${num?`<text x="${(cx-lw/2).toFixed(1)}" y="${yb-1.5}" font-size="6.5" fill="${ENC}">${esc(num)}</text>`:''}<rect x="${(cx-lw/2).toFixed(1)}" y="${yb}" width="${lw.toFixed(1)}" height="9.5" fill="#fff" stroke="${ENC}" stroke-width="0.7"/><text x="${cx.toFixed(1)}" y="${yb+7.3}" font-size="7.5" fill="${ENC}" text-anchor="middle">${esc(lib)}</text></g>`);
   });
+  // EQ PREND : voie d'arrivée du train repris, en haut de la flèche (à gauche de la tige, sinon autour) ;
+  // sans place libre, elle reste dans le déroulé et en touchant la flèche
+  eqVoies.forEach(q=>{ const lw=Math.max(11,q.v.length*6+5);
+    const essais=[[q.xx-lw-2, q.haut+7],[q.xx-lw-2, q.haut+16],[q.xx+2.5, q.haut+16],[q.xx-lw-2, q.haut-3],[q.xx+2.5, q.haut+7],[q.xx-lw-6, q.haut+7],[q.xx-lw-6, q.haut+16],[q.xx-lw-2, q.haut-12]];
+    const pos=essais.find(([x,yb])=>{ const b={x1:x-1.5, x2:x+lw+1.5, y1:yb-9, y2:yb+2.3};
+      return yb-9>=1 && x>=1 && x+lw<=W-1
+        && !occNum.some(o=>o.x2>b.x1 && o.x1<b.x2 && o.y2>b.y1 && o.y1<b.y2)
+        && !occHaut.some(o=>(o.tige===q.xx && o.x1<=q.xx+1.2 && o.x2>=q.xx-1.2 && o.y2-o.y1>15 ? o.x2>b.x1+1.5 && o.x1<b.x2-1.5 : o.x2>b.x1 && o.x1<b.x2) && o.y2>b.y1 && o.y1<b.y2); });
+    if(!pos) return;
+    occHaut.push({x1:pos[0], x2:pos[0]+lw, y1:pos[1]-8, y2:pos[1]+1.3});
+    o.push(cadreVoie(pos[0], pos[1], lw, q.v, q.chg, ` data-i="${esc(q.info)}" data-vo="1"`)); });
   // PS / FS : minutes et grands codes de gare
   const premier=mob[0], dernier=mob[mob.length-1];
   const gPS=premier?code(premier.lieu.split('->')[0]):code(s.ps&&s.ps.lieu);
@@ -2551,6 +2577,11 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
 /* ---- Détail de la journée en lignes (présentation de la liste Graou) ---- */
 function nomGare(l){ const p=String(l||'').trim().split(/\s+/), g=(parent!==window && parent.vlGareCode)?parent.vlGareCode(p[0]):null;
   return g?g.n+(p.length>1?' '+p.slice(1).join(' '):''):String(l||'').trim(); }
+// Cadre de voie du graphique : blanc entouré de noir, lettre noire en gras ; orange si la voie a changé
+function cadreVoie(x, yb, lw, t, chg, attrs){
+  const c=chg?'#E8780C':'#1F1F1F';
+  return `<g class="voieG"${attrs||''}><rect x="${x.toFixed(1)}" y="${(yb-8).toFixed(1)}" width="${lw.toFixed(1)}" height="9.3" rx="2.2" fill="${chg?'#FFF4E8':'#fff'}" stroke="${c}" stroke-width="1"/>`
+    +`<text class="voie" x="${(x+lw/2).toFixed(1)}" y="${yb}" font-size="9" font-weight="700" text-anchor="middle" fill="${chg?'#B85600':'#1F1F1F'}">${esc(t)}</text></g>`; }
 function detailLignes(x){
   const s=x.s; if(!s) return '';
   const p0=min(s.ps&&s.ps.h); if(p0===null) return '';
@@ -2568,7 +2599,7 @@ function detailLignes(x){
       const taxi=g==='ev' && /^TAXI\b/i.test(String(it.act).trim()), bal=taxi?'a':'div';
       L.push(`<${bal} class="tr ${g}${taxi?' galT':''}${rtB?' rt'+rtE.e:''}"${taxi?` href="${GALACSI}" target="_blank" rel="noopener"`:''}><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
-        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${it.estime?' · arrivée estimée (terminus du train après ta FS)':''}${rtB?`<span class="rt ${rtE.e}">${esc(rtE.e==='ret'?'+'+rtE.r+' min':rtB)}</span>`:''}${voE?`<span class="vo${voE.av?' chg':''}">voie ${esc(voE.v)}${voE.av?' (avant '+esc(voE.av)+')':''}</span>`:''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
+        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${it.estime?' · arrivée estimée (terminus du train après ta FS)':''}${rtB?`<span class="rt ${rtE.e}">${esc(rtE.e==='ret'?'+'+rtE.r+' min':rtB)}</span>`:''}${voE?`<span class="vo${voE.av?' chg':''}"><small>Voie</small><b>${esc(voE.v)}</b>${voE.av?'<i>avant '+esc(voE.av)+'</i>':''}</span>`:''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
       let fin=it.h2;
@@ -2581,7 +2612,9 @@ function detailLignes(x){
         lib=estReserve(it.act)?'⏳ Réserve':'🍜 Pause repas'; }
       else if(/^train_evo\b|^EVO\b/i.test(it.act)) lib='Évolution';
       const h=fin?esc(it.h1)+'-'+esc(fin):esc(it.h1);
-      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span></span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
+      // EQ PREND : voie d'arrivée du train repris
+      const nEq=eqNum(s,it), voA=nEq?voEtatArr(JOUR,nEq):null; if(voA) voVu=true;
+      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span>${voA?`<br><span class="voA${voA.av?' chg':''}">arrivée du train voie <b>${esc(voA.v)}</b>${voA.av?' (avant '+esc(voA.av)+')':''}</span>`:''}</span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
     }
   });
   if(s.fs) L.push(`<div class="r ps"><span class="h">${esc(s.fs.h)}</span><span class="l"><b>Fin de service</b>${esc(s.fs.lieu||'')}</span></div>`);
@@ -3315,13 +3348,23 @@ function voTrains(deb, fin){
     (INDEX[j]||[]).forEach(x=>{ if(!x.s || !x.s.items) return;
       const p0=min(x.s.ps&&x.s.ps.h); if(p0===null) return;
       const [y,mo,dd]=j.split('-').map(Number);
-      x.s.items.forEach(it=>{ const g0=genre(it); if(g0!=='cond'&&g0!=='ev') return;
-        let a=min(it.h1); const n=rtNum(it.act); if(!n||a===null) return; if(a<p0-180) a+=1440;
+      x.s.items.forEach(it=>{ const g0=genre(it);
+        // EQ PREND : voie d'arrivée du train repris (là où est la rame), à la gare et à l'heure de l'EQ PREND
+        const eq=eqNum(x.s, it);
+        if(!eq && g0!=='cond' && g0!=='ev') return;
+        let a=min(it.h1); const n=eq||rtNum(it.act); if(!n||a===null) return; if(a<p0-180) a+=1440;
         const ta=new Date(y,mo-1,dd,0,a).getTime(); if(ta<deb || ta>fin) return;
         const uic=voUic(it.lieu); if(!uic) return;
         let g=''; try{ const c=String(it.lieu||'').split('->')[0].trim().split(/\s+/)[0], x=window.top.vlGareCode&&window.top.vlGareCode(c); g=x&&x.n?x.n:c; }catch(e){}
-        L.push({j, n, ta, uic, g, e:g0==='ev'}); }); }); });
+        L.push(eq?{j, n, ta, uic, g, e:false, arr:true}:{j, n, ta, uic, g, e:g0==='ev'}); }); }); });
   return L; }
+// EQ PREND utile : pas si le même train est déjà dans la journée en conduite ou en EV (on est à bord, ou sa voie
+// de départ est déjà affichée) ; numéro sans lettre devant (« S872735 » : pas de voie d'arrivée)
+function eqNum(s, it){ const m=String(it&&it.act||'').match(/^EQ\s+PREND\b\s*0*(\d{3,})\s*$/i); if(!m) return null;
+  const n=String(+m[1]); return (s.items||[]).some(y=>y!==it && (genre(y)==='cond'||genre(y)==='ev') && rtNum(y.act)===n)?null:n; }
+// clé d'un train dans vl-voie : départ « date|numéro », arrivée d'un EQ PREND « date|numéro|a »
+function voCle(t){ return t.j+'|'+t.n+(t.arr?'|a':''); }
+function voEtatArr(j,num){ if(!j || !voOn() || !num) return null; const e=voLire()[j+'|'+String(+num)+'|a']; return e&&e.v?e:null; }
 // voies trouvées appli fermée par l'appli Android : la plus récente des deux l'emporte
 function voFusion(){
   let J={}; try{ const A=window.BoulotAndroid||(window.top&&window.top.BoulotAndroid); if(A&&A.voiesJava) J=JSON.parse(A.voiesJava()||'{}')||{}; }catch(e){ return false; }
@@ -3335,8 +3378,8 @@ function voExport(now){
   if(!voOn()) return [];
   try{ voFusion(); }catch(e){}
   const H=voLire();
-  return voTrains(now-VO_APRES, now+48*3600e3).sort((a,b)=>a.ta-b.ta).slice(0,60).map(t=>{ const e=H[t.j+'|'+t.n]||{};
-    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(e.v) o.v=e.v; if(e.av) o.av=e.av; if(e.k) o.k=true; return o; }); }
+  return voTrains(now-VO_APRES, now+48*3600e3).sort((a,b)=>a.ta-b.ta).slice(0,60).map(t=>{ const e=H[voCle(t)]||{};
+    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(t.arr) o.a=true; if(e.v) o.v=e.v; if(e.av) o.av=e.av; if(e.k) o.k=true; return o; }); }
 let VO_EN_COURS=null;
 // Demande la voie aux gares qui en ont besoin maintenant ; renvoie true si une voie est nouvelle ou a changé
 function voMaj(forcer){
@@ -3345,7 +3388,7 @@ function voMaj(forcer){
   try{ indexer(); }catch(e){}
   const fus=voFusion(), now=Date.now(), H0=voLire();
   const tous=voTrains(now-VO_APRES, now+4*3600e3);
-  const dus=tous.filter(t=>{ const e=H0[t.j+'|'+t.n]; if(now>t.ta+VO_APRES) return false;
+  const dus=tous.filter(t=>{ const e=H0[voCle(t)]; if(now>t.ta+VO_APRES) return false;
     return (!e||!e.v) ? now>=t.ta-VO_AVANT-30e3 : (!e.k && now>=t.ta-VO_VERIF-30e3); });
   if(!dus.length) return Promise.resolve(fus);
   let der=0; try{ der=+localStorage.getItem('vl-voie-quand')||0; }catch(e){}
@@ -3367,9 +3410,11 @@ function voMaj(forcer){
         // toutes mes voies à cette gare, pas seulement celles qu'on attendait (évite d'autres demandes)
         tous.filter(t=>t.uic===u).forEach(t=>{
           // même numéro, au départ de cette gare, à l'heure prévue la plus proche (45 min d'écart au plus)
-          const s=sec(t.ta), ec=p=>{ const z=Math.abs(((+p.d)%86400)-s); return Math.min(z,86400-z); };
-          const c=o.passages.filter(p=>p && p.d!=null && String(p.n||'').replace(/^0+/,'')===t.n && ec(p)<=45*60).sort((p,q)=>ec(p)-ec(q))[0];
-          const k=t.j+'|'+t.n, av=H[k]||{}, v=c?String(c.v||'').trim():'';
+          // départ : heure de départ du train ; EQ PREND : heure d'arrivée (de passage s'il continue)
+          const hp=p=>t.arr?(p.a!=null?p.a:p.d):p.d;
+          const s=sec(t.ta), ec=p=>{ const z=Math.abs(((+hp(p))%86400)-s); return Math.min(z,86400-z); };
+          const c=o.passages.filter(p=>p && hp(p)!=null && String(p.n||'').replace(/^0+/,'')===t.n && ec(p)<=45*60).sort((p,q)=>ec(p)-ec(q))[0];
+          const k=voCle(t), av=H[k]||{}, v=c?String(c.v||'').trim():'';
           const verif=!!av.v && now>=t.ta-VO_VERIF-30e3 && now<=t.ta+VO_APRES;
           if(!v && !verif) return;                                       // voie pas encore affichée
           const vv=v||av.v, nv={v:vv, t:now};
@@ -3377,7 +3422,7 @@ function voMaj(forcer){
           if(verif || av.k) nv.k=true;
           if(av.v!==nv.v || av.av!==nv.av){ change=true;
             // notification (si activée) : l'appli Android filtre selon les réglages et n'avertit qu'une fois par voie
-            if(av.v!==nv.v) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, v:nv.v, av:nv.av||''})); }catch(_){} }
+            if(av.v!==nv.v) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, a:!!t.arr, v:nv.v, av:nv.av||''})); }catch(_){} }
           H[k]=nv; }); });
       try{ if(ok){ localStorage.setItem('vl-voie-ok', String(now)); if(!err) localStorage.removeItem('vl-voie-err'); }
         if(err) localStorage.setItem('vl-voie-err', String(now)+'|'+err.slice(0,120)); }catch(e){}
