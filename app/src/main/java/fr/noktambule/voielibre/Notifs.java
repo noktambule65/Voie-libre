@@ -163,12 +163,18 @@ public class Notifs extends BroadcastReceiver {
 
     private static void montrer(Context ctx, int id, String canal, String titre, String texte, String detail, PendingIntent pi,
                                 Notification.Action... actions) {
+        montrer(ctx, id, canal, titre, texte, detail, pi, true, actions);
+    }
+
+    /** grandeImage false : sans le signal à droite, pour laisser toute la largeur au titre (voie de départ). */
+    private static void montrer(Context ctx, int id, String canal, String titre, String texte, String detail, PendingIntent pi,
+                                boolean grandeImage, Notification.Action... actions) {
         if (!autorisees(ctx)) return;
         canaux(ctx);
         Notification.Builder b = new Notification.Builder(ctx, canal)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setColor(0xFFE53935)          // rouge signal, bien visible en clair comme en sombre
-                .setLargeIcon(grandeIcone(ctx))
+                .setLargeIcon(grandeImage ? grandeIcone(ctx) : null)
                 .setContentTitle(titre)
                 .setContentText(texte)
                 .setStyle(new Notification.BigTextStyle().bigText(detail != null ? detail : texte))
@@ -387,17 +393,18 @@ public class Notifs extends BroadcastReceiver {
             String n = tr.optString("n");
             boolean premiere = deja.isEmpty() && (av == null || av.isEmpty());
             String avant = av != null && !av.isEmpty() ? av : deja;
-            String titre = arrivee
-                    ? (premiere ? n + " arrive voie " + v : n + " : voie d'arrivée changée, maintenant voie " + v + " (avant " + avant + ")")
-                    : (premiere ? n + " départ voie " + v : n + " : voie changée, maintenant voie " + v + " (avant " + avant + ")");
+            // la voie en tête du titre : visible même si Android coupe la fin (« Voie C · 872643 »)
+            String titre = "Voie " + v + (premiere ? "" : " (avant " + avant + ")") + " · " + n;
             java.util.Calendar c = java.util.Calendar.getInstance();
             c.setTimeInMillis(t);
             String quand = String.format(java.util.Locale.FRANCE, "%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE));
             String gare = tr.optString("g");
-            String texte = (gare.isEmpty() ? "" : gare + " · ") + (arrivee ? "EQ PREND " : "") + quand + (!arrivee && tr.optBoolean("e") ? " · EV" : "") + " · à titre indicatif";
+            String texte = (premiere ? "" : "voie changée · ")
+                    + (arrivee ? "arrivée, EQ PREND " : "départ ") + (gare.isEmpty() ? "" : gare + " ") + quand
+                    + (!arrivee && tr.optBoolean("e") ? " · EV" : "") + " · à titre indicatif";
             int id = 7000 + Math.abs(k.hashCode() % 1000);
             montrer(ctx, id, r.optBoolean("son") ? CANAL_VOIE : CANAL_VOIE_DISCRET, titre, texte, null,
-                    ouvrir(ctx, id, "journee", "date", tr.optString("j")));
+                    ouvrir(ctx, id, "journee", "date", tr.optString("j")), false);
             faites.put(k, v);
             // ménage : 3 jours
             String lim = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.FRANCE).format(new java.util.Date(now - 3 * 86_400_000L));

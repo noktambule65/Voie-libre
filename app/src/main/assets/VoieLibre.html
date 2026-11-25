@@ -1482,7 +1482,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         sous(cN,'Voie de départ');
         const V=Object.assign({on:false, son:false, ev:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
         cN.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="nVoie"><span style="flex:1;min-width:0">Notifier la voie de départ de mes trains</span>
-          <small>« 872730 départ voie C » dès que la voie est connue, puis « voie changée » si elle change. Pour un EQ PREND : « 872736 arrive voie 4 ». Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
+          <small>« Voie C · 872730 » dès que la voie est connue, puis « Voie 3 (avant C) » si elle change ; pour un EQ PREND, voie d’arrivée du train repris. Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
           <div id="nVoieOpts" style="margin-left:6px">
             <label class="coche"><input type="checkbox" id="nVoieSon"><span style="flex:1;min-width:0">Avec son et bandeau</span><small>Sinon, notification discrète (sans son), pratique en conduite.</small></label>
             <label class="coche"><input type="checkbox" id="nVoieEv"><span style="flex:1;min-width:0">Aussi pour mes EV</span></label>

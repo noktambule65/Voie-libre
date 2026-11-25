@@ -8,11 +8,11 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.219
+## 1.220
 
 **Nouveau (expérimental, à activer dans ⚙ Paramètres)**
 - Voie de tes trains comme à la SNCF, dès 20 min avant le départ, même appli fermée, en orange si elle change ; voie d'arrivée pour un EQ PREND
-- Notification « 872730 départ voie C » au choix, filtrable par gare
+- Notification « Voie C · 872730 » au choix, filtrable par gare
 - Retards et suppressions : retard en orange avec les minutes, train supprimé en rouge
 - Sur le graphique, le déroulé et le widget ; consommation de données indiquée
 - Données SNCF, à titre indicatif
