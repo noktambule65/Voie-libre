@@ -1469,6 +1469,65 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       try{ const T=window.top; T.history.replaceState(null,'',T.location.pathname); T.location.reload(); }catch(e){ location.reload(); }
     };
 
+    // Notification de la voie de départ : même bloc dans 🔔 Notifications et dans 🛤️ Voie de départ, un seul réglage
+    // (bo-notif.voie) ; un changement dans l'un redessine l'autre
+    function blocVoieNotif(cont, px, note){
+      const lire=()=>Object.assign({on:false, son:false, ev:true, differer:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
+      let V=lire();
+      const bloc=document.createElement('div'); bloc.className='blocVoieNotif'; cont.appendChild(bloc);
+      const el=id=>bloc.querySelector('#'+px+id);
+      bloc.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="${px}Voie"><span style="flex:1;min-width:0">Notifier la voie de départ de mes trains</span>
+        <small>« Voie C · 872730 » dès que la voie est connue, puis « Voie 3 (avant C) » si elle change ; pour un EQ PREND, voie d’arrivée du train repris. ${note} À titre indicatif : seul l’affichage en gare fait foi.</small></label>
+        <div id="${px}VoieOpts" style="margin-left:6px">
+          <label class="coche"><input type="checkbox" id="${px}VoieSon"><span style="flex:1;min-width:0">Avec son et bandeau</span><small>Sinon, notification discrète (sans son), pratique en conduite.</small></label>
+          <label class="coche"><input type="checkbox" id="${px}VoieEv"><span style="flex:1;min-width:0">Aussi pour mes EV</span></label>
+          <label class="coche"><input type="checkbox" id="${px}VoieDiff"><span style="flex:1;min-width:0">Pendant une conduite ou un EV loc, attendre mon arrivée</span><small>La voie reste affichée tout de suite sur le graphique et le widget ; seule la notification attend.</small></label>
+          <label style="display:block;margin:8px 0 4px">Gares concernées
+            <select id="${px}VoieMode" style="display:block;width:100%;margin-top:4px"><option value="sauf">Toutes les gares, sauf celles de la liste</option><option value="seul">Seulement les gares de la liste</option></select></label>
+          <div id="${px}VoieListe" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
+          <input id="${px}VoieCherche" type="search" placeholder="Ajouter une gare (nom ou code, ex. Matabiau, TS)" autocomplete="off" style="width:100%;box-sizing:border-box">
+          <div id="${px}VoieRes" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
+          <p class="petit" id="${px}VoiePl"></p>
+        </div>`);
+      const T=window.top, uic=c=>{ try{ return T.vlUic?T.vlUic(c):null; }catch(e){ return null; } };
+      // toutes les gares connues de l'appli qui ont un code UIC (voie disponible) : [code, nom, uic]
+      let G=null; const gares=()=>{ if(G) return G; G=[]; const vu=new Set();
+        String(T.VL_GARES||'').split('\n').forEach(l=>{ const p=l.split(';'), u=uic(p[0]); if(u && !vu.has(u)){ vu.add(u); G.push([p[0],p[1]||p[0],u]); } }); return G; };
+      const nomDe=u=>{ const g=gares().find(x=>x[2]===u); return g?g[1]:u; };
+      const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      // gares de départ de mes trains dans le planning, pour aller plus vite
+      const duPlanning=()=>{ const s=localStorage.getItem('pl-evts')||'', vu=[];
+        const re=/\d\d:\d\d -> \d\d:\d\d \| ([A-Z]{1,4})\b[^|\\]*-> [^|\\]*\| (?:EV )?\d{4,6}/g; let m;
+        while((m=re.exec(s))){ const u=uic(m[1]); if(u && !vu.includes(u)) vu.push(u); } return vu; };
+      const enreg=()=>{ const o=charger('bo-notif',{})||{}; o.voie=V; sauver('bo-notif',o);
+        try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des réglages de notification de voie à Android',e); }
+        window.dispatchEvent(new Event('vl-voie-notif')); };   // les deux copies se redessinent
+      const puce=(u,txt,act)=>`<button type="button" data-${act}="${u}" style="border:1px solid #9AA6B4;border-radius:14px;padding:3px 10px;background:none;color:inherit;font:inherit;font-size:.9em">${txt}</button>`;
+      function dessiner(){
+        el('Voie').checked=!!V.on; el('VoieSon').checked=!!V.son; el('VoieEv').checked=V.ev!==false; el('VoieDiff').checked=V.differer!==false; el('VoieMode').value=V.mode==='seul'?'seul':'sauf';
+        el('VoieOpts').style.opacity=V.on?'1':'.5';
+        el('VoieListe').innerHTML=V.gares.length?V.gares.map(u=>puce(u,nomDe(u)+' ✕','retire')).join('')
+          :`<span class="petit">${V.mode==='seul'?'Aucune gare choisie : aucune notification.':'Aucune gare exclue : toutes sont notifiées.'}</span>`;
+        const pl=duPlanning().filter(u=>!V.gares.includes(u));
+        el('VoiePl').innerHTML=pl.length?'Gares de départ de ton planning : '+pl.map(u=>puce(u,'+ '+nomDe(u),'ajoute')).join(' '):''; }
+      bloc.addEventListener('click',e=>{ const a=e.target.closest('[data-ajoute],[data-retire]'); if(!a) return;
+        const u=a.dataset.ajoute||a.dataset.retire;
+        if(a.dataset.ajoute){ if(!V.gares.includes(u)) V.gares.push(u); el('VoieCherche').value=''; el('VoieRes').innerHTML=''; }
+        else V.gares=V.gares.filter(x=>x!==u);
+        enreg(); });
+      el('VoieCherche').addEventListener('input',()=>{ const q=norm(el('VoieCherche').value);
+        if(q.length<2){ el('VoieRes').innerHTML=''; return; }
+        const r=gares().filter(g=>!V.gares.includes(g[2]) && (norm(g[0])===q || norm(g[1]).includes(q))).sort((a,b)=>(norm(a[0])===q?-1:0)-(norm(b[0])===q?-1:0)).slice(0,8);
+        el('VoieRes').innerHTML=r.length?r.map(g=>puce(g[2],'+ '+g[1]+' ('+g[0]+')','ajoute')).join(''):'<span class="petit">Aucune gare trouvée.</span>'; });
+      el('Voie').addEventListener('change',()=>{ V.on=el('Voie').checked; enreg(); });
+      el('VoieSon').addEventListener('change',()=>{ V.son=el('VoieSon').checked; enreg(); });
+      el('VoieEv').addEventListener('change',()=>{ V.ev=el('VoieEv').checked; enreg(); });
+      el('VoieDiff').addEventListener('change',()=>{ V.differer=el('VoieDiff').checked; enreg(); });
+      el('VoieMode').addEventListener('change',()=>{ V.mode=el('VoieMode').value; enreg(); });
+      window.addEventListener('vl-voie-notif',()=>{ V=lire(); dessiner(); });
+      dessiner();
+    }
+
     // 2. Notifications
     if($('nModif')){
       const cN=carte('🔔','Notifications','rNotifs');
@@ -1478,58 +1537,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       sous(cN,'Météo'); mettre(cN, $('nNeige').closest('.coche'));
       sous(cN,'Calendrier'); mettre(cN, $('nCh3').closest('.coche'));
       // Voie de départ : notification « 872730 départ voie C » dès que la voie est connue, et si elle change
-      (function(){
-        sous(cN,'Voie de départ');
-        const V=Object.assign({on:false, son:false, ev:true, differer:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
-        cN.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="nVoie"><span style="flex:1;min-width:0">Notifier la voie de départ de mes trains</span>
-          <small>« Voie C · 872730 » dès que la voie est connue, puis « Voie 3 (avant C) » si elle change ; pour un EQ PREND, voie d’arrivée du train repris. Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
-          <div id="nVoieOpts" style="margin-left:6px">
-            <label class="coche"><input type="checkbox" id="nVoieSon"><span style="flex:1;min-width:0">Avec son et bandeau</span><small>Sinon, notification discrète (sans son), pratique en conduite.</small></label>
-            <label class="coche"><input type="checkbox" id="nVoieEv"><span style="flex:1;min-width:0">Aussi pour mes EV</span></label>
-            <label class="coche"><input type="checkbox" id="nVoieDiff"><span style="flex:1;min-width:0">Pendant une conduite ou un EV loc, attendre mon arrivée</span><small>La voie reste affichée tout de suite sur le graphique et le widget ; seule la notification attend.</small></label>
-            <label style="display:block;margin:8px 0 4px">Gares concernées
-              <select id="nVoieMode" style="display:block;width:100%;margin-top:4px"><option value="sauf">Toutes les gares, sauf celles de la liste</option><option value="seul">Seulement les gares de la liste</option></select></label>
-            <div id="nVoieListe" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-            <input id="nVoieCherche" type="search" placeholder="Ajouter une gare (nom ou code, ex. Matabiau, TS)" autocomplete="off" style="width:100%;box-sizing:border-box">
-            <div id="nVoieRes" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-            <p class="petit" id="nVoiePl"></p>
-          </div>`);
-        const T=window.top, uic=c=>{ try{ return T.vlUic?T.vlUic(c):null; }catch(e){ return null; } };
-        // toutes les gares connues de l'appli qui ont un code UIC (voie disponible) : [code, nom, uic]
-        let G=null; const gares=()=>{ if(G) return G; G=[]; const vu=new Set();
-          String(T.VL_GARES||'').split('\n').forEach(l=>{ const p=l.split(';'), u=uic(p[0]); if(u && !vu.has(u)){ vu.add(u); G.push([p[0],p[1]||p[0],u]); } }); return G; };
-        const nomDe=u=>{ const g=gares().find(x=>x[2]===u); return g?g[1]:u; };
-        const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
-        // gares de départ de mes trains dans le planning, pour aller plus vite
-        const duPlanning=()=>{ const s=localStorage.getItem('pl-evts')||'', vu=[];
-          const re=/\d\d:\d\d -> \d\d:\d\d \| ([A-Z]{1,4})\b[^|\\]*-> [^|\\]*\| (?:EV )?\d{4,6}/g; let m;
-          while((m=re.exec(s))){ const u=uic(m[1]); if(u && !vu.includes(u)) vu.push(u); } return vu; };
-        const enreg=()=>{ const o=charger('bo-notif',{})||{}; o.voie=V; sauver('bo-notif',o);
-          try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des réglages de notification de voie à Android',e); } dessiner(); };
-        const puce=(u,txt,act)=>`<button type="button" data-${act}="${u}" style="border:1px solid #9AA6B4;border-radius:14px;padding:3px 10px;background:none;color:inherit;font:inherit;font-size:.9em">${txt}</button>`;
-        function dessiner(){
-          $('nVoie').checked=!!V.on; $('nVoieSon').checked=!!V.son; $('nVoieEv').checked=V.ev!==false; $('nVoieDiff').checked=V.differer!==false; $('nVoieMode').value=V.mode==='seul'?'seul':'sauf';
-          $('nVoieOpts').style.opacity=V.on?'1':'.5';
-          $('nVoieListe').innerHTML=V.gares.length?V.gares.map(u=>puce(u,nomDe(u)+' ✕','retire')).join('')
-            :`<span class="petit">${V.mode==='seul'?'Aucune gare choisie : aucune notification.':'Aucune gare exclue : toutes sont notifiées.'}</span>`;
-          const pl=duPlanning().filter(u=>!V.gares.includes(u));
-          $('nVoiePl').innerHTML=pl.length?'Gares de départ de ton planning : '+pl.map(u=>puce(u,'+ '+nomDe(u),'ajoute')).join(' '):''; }
-        cN.addEventListener('click',e=>{ const a=e.target.closest('[data-ajoute],[data-retire]'); if(!a) return;
-          const u=a.dataset.ajoute||a.dataset.retire;
-          if(a.dataset.ajoute){ if(!V.gares.includes(u)) V.gares.push(u); $('nVoieCherche').value=''; $('nVoieRes').innerHTML=''; }
-          else V.gares=V.gares.filter(x=>x!==u);
-          enreg(); });
-        $('nVoieCherche').addEventListener('input',()=>{ const q=norm($('nVoieCherche').value);
-          if(q.length<2){ $('nVoieRes').innerHTML=''; return; }
-          const r=gares().filter(g=>!V.gares.includes(g[2]) && (norm(g[0])===q || norm(g[1]).includes(q))).sort((a,b)=>(norm(a[0])===q?-1:0)-(norm(b[0])===q?-1:0)).slice(0,8);
-          $('nVoieRes').innerHTML=r.length?r.map(g=>puce(g[2],'+ '+g[1]+' ('+g[0]+')','ajoute')).join(''):'<span class="petit">Aucune gare trouvée.</span>'; });
-        $('nVoie').addEventListener('change',()=>{ V.on=$('nVoie').checked; enreg(); });
-        $('nVoieSon').addEventListener('change',()=>{ V.son=$('nVoieSon').checked; enreg(); });
-        $('nVoieEv').addEventListener('change',()=>{ V.ev=$('nVoieEv').checked; enreg(); });
-        $('nVoieDiff').addEventListener('change',()=>{ V.differer=$('nVoieDiff').checked; enreg(); });
-        $('nVoieMode').addEventListener('change',()=>{ V.mode=$('nVoieMode').value; enreg(); });
-        dessiner();
-      })();
+      sous(cN,'Voie de départ'); blocVoieNotif(cN, 'n', 'Nécessite l’option ⚙ Paramètres › Voie de départ.');
       // Rappels de service : leur propre rubrique (le menu déroulant d'origine est ouvert en permanence)
       const cS=carte('🚆','Rappels de service','rService');
       $('nTaches').open=true; cS.appendChild($('nTaches'));
@@ -1579,10 +1587,11 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const cV=carte('🛤️','Voie de départ','rVoie');
       const lit=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
       cV.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="voOn"><span style="flex:1;min-width:0">Afficher la voie de départ de mes trains <em class="exp" style="font-style:normal;font-weight:400;font-size:.85em;color:#B26A00">(fonction expérimentale)</em></span>
-        <small>Sur le graphique de la journée, le déroulé et le widget : la voie dans un cadre comme à la SNCF, sous le train, en orange si elle a changé. Trains conduits et EV à leur gare de départ ; pour un EQ PREND, voie d’arrivée du train repris, en haut de la flèche. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification possible dans 🔔 Notifications › Voie de départ.</small></label>
+        <small>Sur le graphique de la journée, le déroulé et le widget : la voie dans un cadre comme à la SNCF, sous le train, en orange si elle a changé. Trains conduits et EV à leur gare de départ ; pour un EQ PREND, voie d’arrivée du train repris, en haut de la flèche. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification réglable ci-dessous (mêmes réglages que dans 🔔 Notifications).</small></label>
         <p class="petit"><b>Données mobiles :</b> environ 4 à 9 Ko par gare interrogée, presque rien quand la réponse n’a pas changé depuis la minute précédente, soit 70 à 160 Ko par jour de service et 1,5 à 3,5 Mo par mois (estimation). En Wi-Fi, rien n’est pris sur ton forfait mobile.</p>
         <p class="petit" id="voConso"></p>
         <p class="petit" id="voEtat"></p>`);
+      sous(cV,'Notification'); blocVoieNotif(cV, 'v', 'Mêmes réglages que dans 🔔 Notifications › Voie de départ.');
       const hh=t=>{ const d=new Date(+t); return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
       const etatV=()=>{ const on=lit('vl-voie-on')==='1', ok=+lit('vl-voie-ok')||0, er=lit('vl-voie-err').split('|'), te=+er[0]||0;
         $('voEtat').textContent=!on?'':te>ok?'Dernier essai le '+hh(te)+' : voies injoignables ('+(er.slice(1).join('|')||'erreur')+'). Nouvel essai automatique.'
