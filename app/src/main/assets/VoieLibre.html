@@ -2542,7 +2542,7 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     const essais=[[q.xx-lw-2, q.haut+7],[q.xx-lw-2, q.haut+16],[q.xx+2.5, q.haut+16],[q.xx-lw-2, q.haut-3],[q.xx+2.5, q.haut+7],[q.xx-lw-6, q.haut+7],[q.xx-lw-6, q.haut+16],[q.xx-lw-2, q.haut-12]];
     const pos=essais.find(([x,yb])=>{ const b={x1:x-1.5, x2:x+lw+1.5, y1:yb-9, y2:yb+2.3};
       return yb-9>=1 && x>=1 && x+lw<=W-1
-        && !occNum.some(o=>o.x2>b.x1 && o.x1<b.x2 && o.y2>b.y1 && o.y1<b.y2)
+        && !occNum.some(o=>o.x2>b.x1-2 && o.x1<b.x2+2 && o.y2>b.y1 && o.y1<b.y2)   // numéros : largeur estimée, marge en plus
         && !occHaut.some(o=>(o.tige===q.xx && o.x1<=q.xx+1.2 && o.x2>=q.xx-1.2 && o.y2-o.y1>15 ? o.x2>b.x1+1.5 && o.x1<b.x2-1.5 : o.x2>b.x1 && o.x1<b.x2) && o.y2>b.y1 && o.y1<b.y2); });
     if(!pos) return;
     occHaut.push({x1:pos[0], x2:pos[0]+lw, y1:pos[1]-8, y2:pos[1]+1.3});
@@ -3358,10 +3358,10 @@ function voTrains(deb, fin){
         let g=''; try{ const c=String(it.lieu||'').split('->')[0].trim().split(/\s+/)[0], x=window.top.vlGareCode&&window.top.vlGareCode(c); g=x&&x.n?x.n:c; }catch(e){}
         L.push(eq?{j, n, ta, uic, g, e:false, arr:true}:{j, n, ta, uic, g, e:g0==='ev'}); }); }); });
   return L; }
-// EQ PREND utile : pas si le même train est déjà dans la journée en conduite ou en EV (on est à bord, ou sa voie
-// de départ est déjà affichée) ; numéro sans lettre devant (« S872735 » : pas de voie d'arrivée)
+// EQ PREND utile : pas si je conduis ensuite ce même train (sa voie de départ est déjà affichée) ; arrivé dessus
+// en EV, la voie d'arrivée reste affichée ; numéro sans lettre devant (« S872735 » : pas de voie d'arrivée)
 function eqNum(s, it){ const m=String(it&&it.act||'').match(/^EQ\s+PREND\b\s*0*(\d{3,})\s*$/i); if(!m) return null;
-  const n=String(+m[1]); return (s.items||[]).some(y=>y!==it && (genre(y)==='cond'||genre(y)==='ev') && rtNum(y.act)===n)?null:n; }
+  const n=String(+m[1]); return (s.items||[]).some(y=>y!==it && genre(y)==='cond' && rtNum(y.act)===n)?null:n; }
 // clé d'un train dans vl-voie : départ « date|numéro », arrivée d'un EQ PREND « date|numéro|a »
 function voCle(t){ return t.j+'|'+t.n+(t.arr?'|a':''); }
 function voEtatArr(j,num){ if(!j || !voOn() || !num) return null; const e=voLire()[j+'|'+String(+num)+'|a']; return e&&e.v?e:null; }

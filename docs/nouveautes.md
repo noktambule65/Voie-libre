@@ -8,7 +8,7 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.217
+## 1.218
 
 **Nouveau (expérimental, à activer dans ⚙ Paramètres)**
 - Voie de tes trains comme à la SNCF, dès 20 min avant le départ, même appli fermée, en orange si elle change ; voie d'arrivée pour un EQ PREND
