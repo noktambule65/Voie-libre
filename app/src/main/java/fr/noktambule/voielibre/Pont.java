@@ -574,4 +574,13 @@ public class Pont {
     /** Voie de départ : données reçues appli fermée, par jour, pour la mesure affichée dans Paramètres. */
     @JavascriptInterface
     public String consoVoieJava() { return VoieDepart.consoTexte(ctx); }
+
+    /** Voie de départ trouvée appli ouverte : notification (filtrée selon les réglages, une fois par voie). */
+    @JavascriptInterface
+    public void notifierVoie(String json) {
+        try {
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            Notifs.notifierVoie(ctx, o, o.optString("v"), o.optString("av"));
+        } catch (Exception ignore) { }
+    }
 }

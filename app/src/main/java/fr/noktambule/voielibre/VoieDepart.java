@@ -140,6 +140,7 @@ final class VoieDepart {
                     if (verifDue) nv.put("k", true);
                     else if (av != null && av.optBoolean("k")) nv.put("k", true);
                     if (!vv.equals(vAvant) || !a.equals(avAvant)) change = true;
+                    if (!vv.equals(vAvant)) Notifs.notifierVoie(ctx, tr, vv, a);   // filtrée selon les réglages
                     mem.put(k, nv);
                 } catch (Exception ignore) { }
             }

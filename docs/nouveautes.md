@@ -8,10 +8,11 @@ donné au lancement de « Version Play Store (AAB) ». Le texte de la section la
 
 Mise en forme : titres en gras (`**…**`) et lignes commençant par un tiret.
 
-## 1.215
+## 1.216
 
 **Nouveau (expérimental, à activer dans ⚙ Paramètres)**
 - Voie de départ de tes trains : « v3 » sous le train, en orange si elle change, dès 20 min avant le départ, même appli fermée
+- Notification « 872730 départ voie C » au choix, filtrable par gare
 - Retards et suppressions : retard en orange avec les minutes, train supprimé en rouge
 - Sur le graphique, le déroulé et le widget ; consommation de données indiquée
 - Données SNCF, à titre indicatif

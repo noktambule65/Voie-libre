@@ -54,6 +54,8 @@ public class Notifs extends BroadcastReceiver {
     static final String SIGNAL_ARRIVEE = "voielibre.ARRIVEE_TRAIN";
     private static final String CANAL_NEIGE = "neige";
     private static final String CANAL_SYNC = "synchro_hs";
+    private static final String CANAL_VOIE = "voie_depart";
+    private static final String CANAL_VOIE_DISCRET = "voie_depart_discret";
     private static final String ACTION_SYNC = "fr.noktambule.voielibre.SYNCHRO_HS";
     private static final int ID_SYNC = 6;
     private static final String ACTION_SYNC_PS = "fr.noktambule.voielibre.SYNCHRO_PS";
@@ -90,6 +92,7 @@ public class Notifs extends BroadcastReceiver {
                     .putInt("rvHeure", Math.max(0, Math.min(23, o.optInt("reveilHeure", 21))))
                     .putInt("rvDe", Math.max(0, Math.min(23, o.optInt("reveilDe", 3))))
                     .putInt("rvA", Math.max(1, Math.min(24, o.optInt("reveilA", 11))))
+                    .putString("voieNotif", o.optJSONObject("voie") != null ? o.optJSONObject("voie").toString() : "{}")
                     .apply();
             // fréquence de synchro, thème du widget, portée de « Planning modifié »
             int freq = Math.max(15, Math.min(24 * 60, o.optInt("syncFreq", 120)));
@@ -131,6 +134,8 @@ public class Notifs extends BroadcastReceiver {
         nm.createNotificationChannel(new NotificationChannel(CANAL_REVEIL, "Réveil oublié", NotificationManager.IMPORTANCE_HIGH));
         nm.createNotificationChannel(new NotificationChannel(CANAL_NEIGE, "Neige sur la journée", NotificationManager.IMPORTANCE_HIGH));
         nm.createNotificationChannel(new NotificationChannel(CANAL_SYNC, "Synchro Graou en panne", NotificationManager.IMPORTANCE_HIGH));
+        nm.createNotificationChannel(new NotificationChannel(CANAL_VOIE, "Voie de départ (avec son)", NotificationManager.IMPORTANCE_HIGH));
+        nm.createNotificationChannel(new NotificationChannel(CANAL_VOIE_DISCRET, "Voie de départ (discrète)", NotificationManager.IMPORTANCE_LOW));
     }
 
     private static PendingIntent ouvrir(Context ctx, int code, String rubrique, String cle, String valeur) {
@@ -350,6 +355,51 @@ public class Notifs extends BroadcastReceiver {
         try { synchro(ctx); } catch (Exception ex) { erreur(ctx, "synchro programmée (programmation)", ex); }
         try { programmerSyncPS(ctx); } catch (Exception ex) { erreur(ctx, "synchro avant prise de service (programmation)", ex); }
         try { programmerSyncVoie(ctx); } catch (Exception ex) { erreur(ctx, "synchro voie de départ (programmation)", ex); }
+    }
+
+    // ---------- Voie de départ : notification « 872730 départ voie C » ----------
+
+    /**
+     * tr : {t départ, u code UIC, n numéro, j date, g gare, e EV} ; v : voie ; av : voie précédente si elle a changé.
+     * Réglages (Notifications › Voie de départ) : on, son, ev, mode « sauf » (toutes sauf la liste) ou « seul »,
+     * gares (codes UIC). Une seule notification par train, mise à jour si la voie change ; jamais deux fois la même.
+     */
+    static synchronized void notifierVoie(Context ctx, JSONObject tr, String v, String av) {
+        try {
+            if (v == null || v.isEmpty()) return;
+            JSONObject r = new JSONObject(prefs(ctx).getString("voieNotif", "{}"));
+            if (!r.optBoolean("on")) return;
+            if (tr.optBoolean("e") && !r.optBoolean("ev", true)) return;
+            long t = tr.optLong("t");
+            long now = System.currentTimeMillis();
+            if (t > 0 && now > t + 2 * 60_000L) return;                  // train parti
+            String u = tr.optString("u");
+            JSONArray g = r.optJSONArray("gares");
+            boolean dans = false;
+            if (g != null) for (int i = 0; i < g.length(); i++) if (u.equals(g.optString(i))) dans = true;
+            if ("seul".equals(r.optString("mode")) ? !dans : dans) return;
+            String k = tr.optString("j") + "|" + tr.optString("n");
+            String deja = "";
+            JSONObject faites = new JSONObject(prefs(ctx).getString("voiesNotifiees", "{}"));
+            deja = faites.optString(k, "");
+            if (v.equals(deja)) return;
+            String n = tr.optString("n");
+            String titre = deja.isEmpty() && (av == null || av.isEmpty()) ? n + " départ voie " + v
+                    : n + " : voie changée, maintenant voie " + v + " (avant " + (av != null && !av.isEmpty() ? av : deja) + ")";
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(t);
+            String quand = String.format(java.util.Locale.FRANCE, "%02d:%02d", c.get(java.util.Calendar.HOUR_OF_DAY), c.get(java.util.Calendar.MINUTE));
+            String gare = tr.optString("g");
+            String texte = (gare.isEmpty() ? "" : gare + " · ") + quand + (tr.optBoolean("e") ? " · EV" : "") + " · à titre indicatif";
+            int id = 7000 + Math.abs(k.hashCode() % 1000);
+            montrer(ctx, id, r.optBoolean("son") ? CANAL_VOIE : CANAL_VOIE_DISCRET, titre, texte, null,
+                    ouvrir(ctx, id, "journee", "date", tr.optString("j")));
+            faites.put(k, v);
+            // ménage : 3 jours
+            String lim = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.FRANCE).format(new java.util.Date(now - 3 * 86_400_000L));
+            for (java.util.Iterator<String> it = faites.keys(); it.hasNext(); ) if (it.next().compareTo(lim) < 0) it.remove();
+            prefs(ctx).edit().putString("voiesNotifiees", faites.toString()).apply();
+        } catch (Exception ex) { erreur(ctx, "notification de voie", ex); }
     }
 
     // ---------- Voie de départ : demandes directes à Train Nomade, appli fermée ----------
