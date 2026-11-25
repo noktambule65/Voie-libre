@@ -2518,7 +2518,7 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
       occHaut.push({x1:xx-1.2, x2:xx+1.2, y1:haut, y2:bas, tige:xx});
       // numéro penché à −55° : un petit carré par caractère, le long de la ligne d'écriture
       for(let i=0;i<num.length;i++){ const c=Math.cos(55*Math.PI/180), sn=Math.sin(55*Math.PI/180), u=(i+0.5)*4.6;
-        const cx=xx+1.5+u*c-2.6*sn, cy=haut-1-u*sn-2.6*c; occHaut.push({x1:cx-3.4, x2:cx+3.4, y1:cy-3.4, y2:cy+3.4}); }
+        const cx=xx+1.5+u*c-2.6*sn, cy=haut-1-u*sn-2.6*c; occHaut.push({x1:cx-2.6, x2:cx+2.6, y1:cy-2.6, y2:cy+2.6}); }
       const nEq=!monte?eqNum(s,it):null;
       if(nEq){ const e=voEtatArr(JG,nEq); if(e) eqVoies.push({xx, haut, v:e.v, chg:!!e.av, info:info+' · voie d’arrivée '+e.v+(e.av?' (changée, avant voie '+e.av+')':'')}); }
       return;
@@ -2539,8 +2539,9 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
   // EQ PREND : voie d'arrivée du train repris, en haut de la flèche (à gauche de la tige, sinon autour) ;
   // sans place libre, elle reste dans le déroulé et en touchant la flèche
   eqVoies.forEach(q=>{ const lw=Math.max(11,q.v.length*6+5);
-    const essais=[[q.xx-lw-2, q.haut+7],[q.xx-lw-2, q.haut+16],[q.xx+2.5, q.haut+16],[q.xx-lw-2, q.haut-3],[q.xx+2.5, q.haut+7],[q.xx-lw-6, q.haut+7],[q.xx-lw-6, q.haut+16],[q.xx-lw-2, q.haut-12]];
-    const pos=essais.find(([x,yb])=>{ const b={x1:x-1.5, x2:x+lw+1.5, y1:yb-9, y2:yb+2.3};
+    // à gauche de la flèche d'abord (le train qui arrive) : en haut, plus haut, plus bas ; à droite en dernier recours
+    const essais=[[q.xx-lw-2, q.haut+7],[q.xx-lw-2, q.haut-3],[q.xx-lw-2, q.haut-12],[q.xx-lw-2, q.haut+16],[q.xx-lw-6, q.haut+7],[q.xx-lw-6, q.haut-3],[q.xx-lw-6, q.haut-12],[q.xx+2.5, q.haut+16],[q.xx+2.5, q.haut+7]];
+    const pos=essais.find(([x,yb])=>{ const b={x1:x-1.5, x2:x+lw+1.5, y1:yb-8.3, y2:yb+1.6};
       return yb-9>=1 && x>=1 && x+lw<=W-1
         && !occNum.some(o=>o.x2>b.x1-2 && o.x1<b.x2+2 && o.y2>b.y1 && o.y1<b.y2)   // numéros : largeur estimée, marge en plus
         && !occHaut.some(o=>(o.tige===q.xx && o.x1<=q.xx+1.2 && o.x2>=q.xx-1.2 && o.y2-o.y1>15 ? o.x2>b.x1+1.5 && o.x1<b.x2-1.5 : o.x2>b.x1 && o.x1<b.x2) && o.y2>b.y1 && o.y1<b.y2); });
