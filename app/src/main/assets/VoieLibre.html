@@ -1252,7 +1252,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         ${Object.keys(t.rs.lieux).map(n=>`<tr><td>${esc(n)}</td><td><input type="number" min="0" max="180" step="5" inputmode="numeric" data-g="${esc(n)}" value="${t.rs.lieux[n]}"></td><td class="sup"><button class="lien" data-rssup="${esc(n)}" aria-label="Retirer">✕</button></td></tr>`).join('')}
         <tr><td>${Object.keys(t.rs.lieux).length?'Autres gares':'Toutes les gares'}</td><td><input type="number" min="0" max="180" step="5" inputmode="numeric" data-g="" value="${t.rs.defaut}"></td><td></td></tr></table>
         <div class="sousOpt"><button class="action clair ajoutG" data-rsajout="1">+ Délai différent pour une gare</button></div>
-        <label class="coche long"><input type="checkbox" data-hors="1"${t.rs.horsTrain?' checked':''}><span>Pas de rappel RS ou PC si je suis en conduite à ce moment-là</span></label>`; };
+        <label class="coche long"><input type="checkbox" data-hors="1"${t.rs.horsTrain?' checked':''}><span>Si je conduis ou suis en EV loc à ce moment-là, rappel RS ou PC repoussé à mon arrivée</span></label>`; };
     // Bandeau rouge persistant du départ des trains (téléphone en utilisation) : autorisation Android 14+
     const pleinEcranHtml=()=>{ let ok=true; try{ ok=!AND.pleinEcranAutorise || AND.pleinEcranAutorise(); }catch(e){}
       return ok?'':'<div class="sousOpt"><div class="noteAuto">⚠️ <b>Bandeau rouge non autorisé</b> : le rappel de départ disparaît après quelques secondes si tu utilises le téléphone. <button class="btnAuto" data-pleinecran="1">Autoriser</button></div></div>'; };
@@ -1480,12 +1480,13 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       // Voie de départ : notification « 872730 départ voie C » dès que la voie est connue, et si elle change
       (function(){
         sous(cN,'Voie de départ');
-        const V=Object.assign({on:false, son:false, ev:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
+        const V=Object.assign({on:false, son:false, ev:true, differer:true, mode:'sauf', gares:[]}, (charger('bo-notif',{})||{}).voie||{});
         cN.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="nVoie"><span style="flex:1;min-width:0">Notifier la voie de départ de mes trains</span>
           <small>« Voie C · 872730 » dès que la voie est connue, puis « Voie 3 (avant C) » si elle change ; pour un EQ PREND, voie d’arrivée du train repris. Nécessite l’option ⚙ Paramètres › Voie de départ. À titre indicatif : seul l’affichage en gare fait foi.</small></label>
           <div id="nVoieOpts" style="margin-left:6px">
             <label class="coche"><input type="checkbox" id="nVoieSon"><span style="flex:1;min-width:0">Avec son et bandeau</span><small>Sinon, notification discrète (sans son), pratique en conduite.</small></label>
             <label class="coche"><input type="checkbox" id="nVoieEv"><span style="flex:1;min-width:0">Aussi pour mes EV</span></label>
+            <label class="coche"><input type="checkbox" id="nVoieDiff"><span style="flex:1;min-width:0">Pendant une conduite ou un EV loc, attendre mon arrivée</span><small>La voie reste affichée tout de suite sur le graphique et le widget ; seule la notification attend.</small></label>
             <label style="display:block;margin:8px 0 4px">Gares concernées
               <select id="nVoieMode" style="display:block;width:100%;margin-top:4px"><option value="sauf">Toutes les gares, sauf celles de la liste</option><option value="seul">Seulement les gares de la liste</option></select></label>
             <div id="nVoieListe" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
@@ -1507,7 +1508,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
           try{ AND.reglerNotifs(JSON.stringify(o)); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('envoi des réglages de notification de voie à Android',e); } dessiner(); };
         const puce=(u,txt,act)=>`<button type="button" data-${act}="${u}" style="border:1px solid #9AA6B4;border-radius:14px;padding:3px 10px;background:none;color:inherit;font:inherit;font-size:.9em">${txt}</button>`;
         function dessiner(){
-          $('nVoie').checked=!!V.on; $('nVoieSon').checked=!!V.son; $('nVoieEv').checked=V.ev!==false; $('nVoieMode').value=V.mode==='seul'?'seul':'sauf';
+          $('nVoie').checked=!!V.on; $('nVoieSon').checked=!!V.son; $('nVoieEv').checked=V.ev!==false; $('nVoieDiff').checked=V.differer!==false; $('nVoieMode').value=V.mode==='seul'?'seul':'sauf';
           $('nVoieOpts').style.opacity=V.on?'1':'.5';
           $('nVoieListe').innerHTML=V.gares.length?V.gares.map(u=>puce(u,nomDe(u)+' ✕','retire')).join('')
             :`<span class="petit">${V.mode==='seul'?'Aucune gare choisie : aucune notification.':'Aucune gare exclue : toutes sont notifiées.'}</span>`;
@@ -1525,6 +1526,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         $('nVoie').addEventListener('change',()=>{ V.on=$('nVoie').checked; enreg(); });
         $('nVoieSon').addEventListener('change',()=>{ V.son=$('nVoieSon').checked; enreg(); });
         $('nVoieEv').addEventListener('change',()=>{ V.ev=$('nVoieEv').checked; enreg(); });
+        $('nVoieDiff').addEventListener('change',()=>{ V.differer=$('nVoieDiff').checked; enreg(); });
         $('nVoieMode').addEventListener('change',()=>{ V.mode=$('nVoieMode').value; enreg(); });
         dessiner();
       })();
@@ -3103,14 +3105,15 @@ function svgVersPng(svg,w,h,k){
 /* ---- Tâches en cours de journée (EV, EQ PREND, RS/PC, fin de coupure) et trains en conduite :
    l'appli Android en tire les rappels « avant tâches » selon les réglages de Paramètres ---- */
 function tachesSeg(x, j){
-  const taches=[], cond=[];
-  const p0=min(x.s.ps&&x.s.ps.h); if(p0===null) return {taches, cond};
+  const taches=[], cond=[], cabine=[];   // cabine : trains conduits et EV loc (notifications différées)
+  const p0=min(x.s.ps&&x.s.ps.h); if(p0===null) return {taches, cond, cabine};
   const [y,m,d]=j.split('-').map(Number);
   const abs=h=>{ let v=min(h); if(v===null) return null; if(v<p0-180) v+=1440; return new Date(y,m-1,d,0,v).getTime(); };
   const gare=l=>{ const L=lieuMeteo(l); return L?L.n:nomGare(l); };
   (x.s.items||[]).forEach(it=>{
     const act=String(it.act||'').trim(), lieu=String(it.lieu||'').trim();
-    if(it.cond){ const a=abs(it.h1), b=abs(it.h2); if(a!==null && b!==null) cond.push([a, b>a?b:b+864e5]);
+    if(/^EVLOC\b/i.test(act)){ const a=abs(it.h1), b=abs(it.h2); if(a!==null && b!==null) cabine.push([a, b>a?b:b+864e5]); }
+    if(it.cond){ const a=abs(it.h1), b=abs(it.h2); if(a!==null && b!==null){ cond.push([a, b>a?b:b+864e5]); cabine.push([a, b>a?b:b+864e5]); }
       // départ d'un train conduit (jamais les EV) ; arrivée gardée pour le signal aux applis d'automatisation
       if(a!==null){ const [de,ar]=lieu.split('->').map(t=>t.trim());
         taches.push({type:'train', t:a, h:it.h1, date:j, lieu:gare(de), quoi:act, ou:gare(de)+(ar?' → '+gare(ar):''),
@@ -3131,7 +3134,7 @@ function tachesSeg(x, j){
       taches.push({type:'coup', t:abs(it.h2), h:it.h2, date:j, lieu:gare(lieu), quoi:'Fin de coupure', ou:gare(lieu)});
     }
   });
-  return {taches:taches.filter(z=>z.t), cond};
+  return {taches:taches.filter(z=>z.t), cond, cabine};
 }
 /* ---- Neige prévue sur les lieux de la journée (codes météo WMO 71-77, 85-86 d'Open-Meteo) ----
    Chaque lieu est retenu pendant le temps où on y est : de la PS au départ du premier train, à l'arrivée,
@@ -3465,7 +3468,7 @@ window.exporterWidget=function(forcer,sansRT){
   exportEnCours=(async()=>{
     try{
       indexer();
-      const now=new Date(), deb=cle(ajout(now,-1)), fin=cle(ajout(now,45)), sortie=[], taches=[], cond=[], neige=[];
+      const now=new Date(), deb=cle(ajout(now,-1)), fin=cle(ajout(now,45)), sortie=[], taches=[], cond=[], cabine=[], neige=[];
       const aVenir=new Map(), finMeteo=cle(ajout(now,16));
       Object.keys(INDEX).filter(k=>k>=deb && k<=finMeteo).forEach(k=>INDEX[k].forEach(x=>lieuxDuJour(x).forEach(L=>aVenir.set(L.n,L))));
       await Promise.race([Promise.all([...aVenir.values()].map(chargerMeteo)), new Promise(r=>setTimeout(r,8000))]);   // météo, sans bloquer si le réseau traîne
@@ -3479,7 +3482,7 @@ window.exporterWidget=function(forcer,sansRT){
           const rh=x.dec && x.seg===0 && x.a && x.a.rhr ? x.a.rhr.lieu : '', Lr=rh?lieuMeteo(rh):null;
           // déroulé complet, pour signaler toute modification de la journée (trains, EV, coupure…)
           const sig=(x.s.items||[]).map(it=>(it.cond?'*':'')+'|'+it.h1+'|'+(it.h2||'')+'|'+it.lieu+'|'+it.act);
-          if(j<=cle(ajout(now,7))){ const tc=tachesSeg(x,j); taches.push(...tc.taches); cond.push(...tc.cond);
+          if(j<=cle(ajout(now,7))){ const tc=tachesSeg(x,j); taches.push(...tc.taches); cond.push(...tc.cond); cabine.push(...(tc.cabine||[]));
             try{ const nz=neigeSeg(x,j); if(nz) neige.push(nz); }catch(e){ window.top.vlNoteErreur&&window.top.vlNoteErreur('alerte neige ('+j+')',e); } }
           sortie.push({date:j, seg:x.seg, code:x.code, dec:!!x.dec, rhr:Lr?Lr.n:String(rh||''), sig,
             debut:new Date(y,m-1,d,0,g.p0).getTime(), fin:new Date(y,m-1,d,0,g.f0).getTime(),
@@ -3497,7 +3500,7 @@ window.exporterWidget=function(forcer,sansRT){
       let graou=0, graouErreur=''; try{ const st=JSON.parse(localStorage.getItem('pl-statut')||'null'); if(st && st.source==='lien') graou=st.quand||0;
         if(st && st.erreur && (st.erreurQuand||0)>(st.quand||0)) graouErreur=st.erreur; }catch(e){}
       let voieTrains=[]; try{ voieTrains=voExport(Date.now()); }catch(e){}
-      A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, neige, voieTrains}));
+      A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, cabine, neige, voieTrains}));
       // tuile Rappels de l'accueil : prochaines tâches et neige prévue
       try{ localStorage.setItem('vl-prochains', JSON.stringify({maj:Date.now(),
         taches:taches.map(z=>({type:z.type, t:z.t, quoi:z.quoi, ou:z.ou})),

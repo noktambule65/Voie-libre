@@ -60,6 +60,7 @@ public class Notifs extends BroadcastReceiver {
     private static final int ID_SYNC = 6;
     private static final String ACTION_SYNC_PS = "fr.noktambule.voielibre.SYNCHRO_PS";
     private static final String ACTION_SYNC_VOIE = "fr.noktambule.voielibre.SYNCHRO_VOIE";
+    private static final String ACTION_VOIE_ATTENTE = "fr.noktambule.voielibre.VOIE_ATTENTE";
     private static final String ACTION_NEIGE = "fr.noktambule.voielibre.NEIGE";
 
     // ---------- Réglages ----------
@@ -370,7 +371,10 @@ public class Notifs extends BroadcastReceiver {
      * Réglages (Notifications › Voie de départ) : on, son, ev, mode « sauf » (toutes sauf la liste) ou « seul »,
      * gares (codes UIC). Une seule notification par train, mise à jour si la voie change ; jamais deux fois la même.
      */
-    static synchronized void notifierVoie(Context ctx, JSONObject tr, String v, String av) {
+    static synchronized void notifierVoie(Context ctx, JSONObject tr, String v, String av) { notifierVoie(ctx, tr, v, av, false); }
+
+    /** sansAttente : envoi à la fin d'une conduite ou d'un EV loc (notification mise en attente). */
+    static synchronized void notifierVoie(Context ctx, JSONObject tr, String v, String av, boolean sansAttente) {
         try {
             if (v == null || v.isEmpty()) return;
             JSONObject r = new JSONObject(prefs(ctx).getString("voieNotif", "{}"));
@@ -390,9 +394,21 @@ public class Notifs extends BroadcastReceiver {
             JSONObject faites = new JSONObject(prefs(ctx).getString("voiesNotifiees", "{}"));
             deja = faites.optString(k, "");
             if (v.equals(deja)) return;
+            // en conduite ou en EV loc : notification gardée jusqu'à l'arrivée (si le train n'est pas parti d'ici là)
+            if (!sansAttente && r.optBoolean("differer", true)) {
+                long fin = finCabine(cabine(donnees(ctx)), now);
+                if (fin > 0) {
+                    if (t > 0 && fin > t + 2 * 60_000L) return;
+                    JSONObject att = new JSONObject(prefs(ctx).getString("voiesAttente", "{}"));
+                    att.put(k, new JSONObject().put("tr", tr).put("v", v).put("fin", fin));
+                    prefs(ctx).edit().putString("voiesAttente", att.toString()).apply();
+                    programmerVoieAttente(ctx);
+                    return;
+                }
+            }
             String n = tr.optString("n");
-            boolean premiere = deja.isEmpty() && (av == null || av.isEmpty());
-            String avant = av != null && !av.isEmpty() ? av : deja;
+            boolean premiere = deja.isEmpty();          // « avant » : la voie déjà annoncée par notification
+            String avant = deja;
             // la voie en tête du titre : visible même si Android coupe la fin (« Voie C · 872643 »)
             String titre = "Voie " + v + (premiere ? "" : " (avant " + avant + ")") + " · " + n;
             java.util.Calendar c = java.util.Calendar.getInstance();
@@ -411,6 +427,45 @@ public class Notifs extends BroadcastReceiver {
             for (java.util.Iterator<String> it = faites.keys(); it.hasNext(); ) if (it.next().compareTo(lim) < 0) it.remove();
             prefs(ctx).edit().putString("voiesNotifiees", faites.toString()).apply();
         } catch (Exception ex) { erreur(ctx, "notification de voie", ex); }
+    }
+
+    /** Prochaine fin de conduite ou d'EV loc où des notifications de voie attendent. */
+    private static void programmerVoieAttente(Context ctx) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        long quand = 0;
+        try {
+            JSONObject att = new JSONObject(prefs(ctx).getString("voiesAttente", "{}"));
+            for (java.util.Iterator<String> it = att.keys(); it.hasNext(); ) {
+                long f = att.optJSONObject(it.next()).optLong("fin");
+                if (f > 0 && (quand == 0 || f < quand)) quand = f;
+            }
+        } catch (Exception ignore) { }
+        Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_VOIE_ATTENTE);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3013, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        if (quand == 0) { am.cancel(pi); return; }
+        planifier(am, Math.max(quand, System.currentTimeMillis() + 5000), pi);
+    }
+
+    /** Fin de conduite ou d'EV loc : envoie les notifications de voie en attente (dernière voie connue). */
+    private static void envoyerVoiesAttente(Context ctx) {
+        long now = System.currentTimeMillis();
+        try {
+            JSONObject att = new JSONObject(prefs(ctx).getString("voiesAttente", "{}")), reste = new JSONObject();
+            JSONObject mem = VoieDepart.memoire(ctx);
+            for (java.util.Iterator<String> it = att.keys(); it.hasNext(); ) {
+                String k = it.next();
+                JSONObject a = att.optJSONObject(k);
+                if (a == null) continue;
+                if (a.optLong("fin") > now + 30_000L) { reste.put(k, a); continue; }
+                JSONObject m = mem.optJSONObject(k);
+                String v = m != null && !m.optString("v").isEmpty() ? m.optString("v") : a.optString("v");
+                JSONObject tr = a.optJSONObject("tr");
+                if (tr != null) notifierVoie(ctx, tr, v, "", true);
+            }
+            prefs(ctx).edit().putString("voiesAttente", reste.toString()).apply();
+        } catch (Exception ex) { erreur(ctx, "voies en attente", ex); }
+        programmerVoieAttente(ctx);
     }
 
     // ---------- Voie de départ : demandes directes à Train Nomade, appli fermée ----------
@@ -912,7 +967,31 @@ public class Notifs extends BroadcastReceiver {
         return c.optInt("defaut", 15);
     }
 
-    /** Instant du rappel de chaque tâche (0 si aucun : désactivé, ou RS/PC pendant la conduite). */
+    /**
+     * Fin de la période « en cabine » (train conduit ou EV loc) qui contient x, en enchaînant les périodes
+     * collées ; 0 si x n'est dans aucune.
+     */
+    static long finCabine(JSONArray per, long x) {
+        if (per == null) return 0;
+        long fin = 0;
+        boolean encore = true;
+        for (int tour = 0; encore && tour < 20; tour++) {
+            encore = false;
+            for (int c = 0; c < per.length(); c++) {
+                JSONArray iv = per.optJSONArray(c);
+                if (iv != null && x >= iv.optLong(0) && x < iv.optLong(1)) { x = iv.optLong(1); fin = x; encore = true; }
+            }
+        }
+        return fin;
+    }
+
+    /** Périodes en cabine envoyées par la page (anciennes versions : trains conduits seulement). */
+    static JSONArray cabine(JSONObject d) {
+        JSONArray a = d.optJSONArray("cabine");
+        return a != null ? a : d.optJSONArray("cond");
+    }
+
+    /** Instant du rappel de chaque tâche (0 si aucun : désactivé, ou RS/PC repoussée au-delà de son heure). */
     private static long[] instantsTaches(Context ctx, JSONArray taches, JSONArray cond) {
         JSONObject r = reglagesTaches(ctx);
         JSONObject rs = r.optJSONObject("rs");
@@ -924,13 +1003,13 @@ public class Notifs extends BroadcastReceiver {
             int a = avance(r, t);
             if (a < 0) continue;
             long quand = t.optLong("t") - a * 60000L;
+            // RS ou PC pendant une conduite ou un EV loc : rappel repoussé à l'arrivée, s'il est encore temps
             if (horsTrain && "rs".equals(t.optString("type")) && cond != null) {
-                boolean enTrain = false;
-                for (int c = 0; c < cond.length(); c++) {
-                    JSONArray iv = cond.optJSONArray(c);
-                    if (iv != null && quand >= iv.optLong(0) && quand < iv.optLong(1)) { enTrain = true; break; }
+                long fin = finCabine(cond, quand);
+                if (fin > 0) {
+                    if (fin >= t.optLong("t")) continue;
+                    quand = fin;
                 }
-                if (enTrain) continue;
             }
             q[k] = quand;
         }
@@ -1070,7 +1149,7 @@ public class Notifs extends BroadcastReceiver {
         JSONArray taches = d.optJSONArray("taches");
         long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("tacheVu", 0), quand = 0;
         if (taches != null) {
-            long[] q = instantsTaches(ctx, taches, d.optJSONArray("cond"));
+            long[] q = instantsTaches(ctx, taches, cabine(d));
             for (long t : q) if (t > now && t > vu && (quand == 0 || t < quand)) quand = t;
         }
         Intent i = new Intent(ctx, Notifs.class).setAction(ACTION_TACHE);
@@ -1091,7 +1170,7 @@ public class Notifs extends BroadcastReceiver {
         JSONArray taches = d.optJSONArray("taches");
         if (taches == null) return;
         long now = System.currentTimeMillis(), vu = prefs(ctx).getLong("tacheVu", 0), max = vu;
-        long[] q = instantsTaches(ctx, taches, d.optJSONArray("cond"));
+        long[] q = instantsTaches(ctx, taches, cabine(d));
         for (int k = 0; k < taches.length(); k++) {
             long quand = q[k];
             // échu depuis moins de 10 min (un rappel trop ancien n'a plus de sens), et pas encore montré
@@ -1617,6 +1696,7 @@ public class Notifs extends BroadcastReceiver {
             return;
         }
         if (ACTION_NEIGE.equals(intent.getAction()) || ACTION_SYNC.equals(intent.getAction())) { programmer(ctx); return; }
+        if (ACTION_VOIE_ATTENTE.equals(intent.getAction())) { envoyerVoiesAttente(ctx); return; }
         if (ACTION_SYNC_VOIE.equals(intent.getAction())) {
             // appli ouverte : c'est la page qui demande (chaque minute) ; sinon demande directe, sans ouvrir la page
             if (MainActivity.visible) { programmerSyncVoie(ctx); return; }
