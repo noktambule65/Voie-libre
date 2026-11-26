@@ -1188,6 +1188,12 @@ public class Notifs extends BroadcastReceiver {
             String titre = "train".equals(type)
                     ? (dans > 0 ? "Départ dans " + dans + " min : " : "Départ maintenant : ") + t.optString("quoi")
                     : (dans > 0 ? "Dans " + dans + " min : " : "Maintenant : ") + t.optString("quoi");
+            // EV et EV loc (pas les trains conduits) : voie en tête du titre si elle est déjà connue
+            if ("ev".equals(type)) {
+                java.util.regex.Matcher mn = java.util.regex.Pattern.compile("(\\d{4,6})\\s*$").matcher(t.optString("quoi").trim());
+                String v = mn.find() ? VoieDepart.voieConnue(ctx, t.optString("date"), mn.group(1)) : "";
+                if (!v.isEmpty()) titre = "Voie " + v + " · " + (dans > 0 ? "dans " + dans + " min : " : "maintenant : ") + t.optString("quoi");
+            }
             String texte = "coup".equals(type) ? "Coupure jusqu'à " + h + (ou.isEmpty() ? "" : " · " + ou)
                     : "ev".equals(type) || "train".equals(type) ? "Départ " + h + (ou.isEmpty() ? "" : " · " + ou)
                     : h + (ou.isEmpty() ? "" : " à " + ou);

@@ -74,6 +74,28 @@ final class VoieDepart {
         return tr.optBoolean("k") || (m != null && m.optBoolean("k"));
     }
 
+    /**
+     * Voie de départ connue du train « numéro » de la journée « date » (rappel avant un EV ou un EV loc), ou "".
+     * Seulement si l'option Voie de départ est active (le train figure alors dans la liste envoyée par la page).
+     */
+    static String voieConnue(Context ctx, String date, String numero) {
+        if (date == null || numero == null || numero.isEmpty()) return "";
+        String n = numero.replaceFirst("^0+", "");
+        JSONArray L = trains(ctx);
+        JSONObject mem = memoire(ctx);
+        for (int i = 0; i < L.length(); i++) {
+            JSONObject tr = L.optJSONObject(i);
+            if (tr == null || tr.optBoolean("a") || !date.equals(tr.optString("j")) || !n.equals(tr.optString("n"))) continue;
+            // la plus récente des deux : trouvée ici (appli fermée) ou par la page (vt : heure de l'info)
+            JSONObject m = mem.optJSONObject(cle(tr));
+            String vm = m != null ? m.optString("v") : "", vp = tr.optString("v");
+            if (vm.isEmpty()) return vp;
+            if (vp.isEmpty()) return vm;
+            return m.optLong("t") >= tr.optLong("vt") ? vm : vp;
+        }
+        return "";
+    }
+
     /** Heure de la prochaine demande utile, ou 0 s'il n'y en a pas. */
     static long prochaine(Context ctx, long now) {
         JSONArray L = trains(ctx);

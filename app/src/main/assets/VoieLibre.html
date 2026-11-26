@@ -3392,7 +3392,7 @@ function voExport(now){
   try{ voFusion(); }catch(e){}
   const H=voLire();
   return voTrains(now-VO_APRES, now+48*3600e3).sort((a,b)=>a.ta-b.ta).slice(0,60).map(t=>{ const e=H[voCle(t)]||{};
-    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(t.arr) o.a=true; if(e.v) o.v=e.v; if(e.av) o.av=e.av; if(e.k) o.k=true; return o; }); }
+    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(t.arr) o.a=true; if(e.v){ o.v=e.v; if(e.t) o.vt=e.t; } if(e.av) o.av=e.av; if(e.k) o.k=true; return o; }); }
 let VO_EN_COURS=null;
 // Demande la voie aux gares qui en ont besoin maintenant ; renvoie true si une voie est nouvelle ou a changé
 function voMaj(forcer){
