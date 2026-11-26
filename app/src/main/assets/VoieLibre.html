@@ -1491,8 +1491,13 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         </div>`);
       const T=window.top, uic=c=>{ try{ return T.vlUic?T.vlUic(c):null; }catch(e){ return null; } };
       // toutes les gares connues de l'appli qui ont un code UIC (voie disponible) : [code, nom, uic]
-      let G=null; const gares=()=>{ if(G) return G; G=[]; const vu=new Set();
-        String(T.VL_GARES||'').split('\n').forEach(l=>{ const p=l.split(';'), u=uic(p[0]); if(u && !vu.has(u)){ vu.add(u); G.push([p[0],p[1]||p[0],u]); } }); return G; };
+      // une entrée par gare (code UIC), avec tous ses codes Graou et ses noms (PMP et PM8 pour Montparnasse) ;
+      // nom affiché : le principal (sans parenthèse, le plus court) → [code, nom, uic, codes, noms]
+      let G=null; const gares=()=>{ if(G) return G; const M=new Map();
+        String(T.VL_GARES||'').split('\n').forEach(l=>{ const p=l.split(';'), u=uic(p[0]); if(!u) return;
+          const e=M.get(u)||{codes:[], noms:[]}; e.codes.push(p[0]); e.noms.push(p[1]||p[0]); M.set(u,e); });
+        G=[...M].map(([u,e])=>{ const ix=e.noms.map((n,i)=>i).sort((a,b)=>(/\(/.test(e.noms[a])-/\(/.test(e.noms[b]))||(e.noms[a].length-e.noms[b].length))[0];
+          return [e.codes[ix], e.noms[ix], u, e.codes, e.noms]; }); return G; };
       const nomDe=u=>{ const g=gares().find(x=>x[2]===u); return g?g[1]:u; };
       const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
       // gares de départ de mes trains dans le planning, pour aller plus vite
@@ -1517,7 +1522,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
         enreg(); });
       el('VoieCherche').addEventListener('input',()=>{ const q=norm(el('VoieCherche').value);
         if(q.length<2){ el('VoieRes').innerHTML=''; return; }
-        const r=gares().filter(g=>!V.gares.includes(g[2]) && (norm(g[0])===q || norm(g[1]).includes(q))).sort((a,b)=>(norm(a[0])===q?-1:0)-(norm(b[0])===q?-1:0)).slice(0,8);
+        const code=g=>g[3].some(c=>norm(c)===q);
+        const r=gares().filter(g=>!V.gares.includes(g[2]) && (code(g) || g[4].some(n=>norm(n).includes(q)))).sort((a,b)=>(code(b)-code(a))||(a[1].length-b[1].length)).slice(0,8);
         el('VoieRes').innerHTML=r.length?r.map(g=>puce(g[2],'+ '+g[1]+' ('+g[0]+')','ajoute')).join(''):'<span class="petit">Aucune gare trouvée.</span>'; });
       el('Voie').addEventListener('change',()=>{ V.on=el('Voie').checked; enreg(); });
       el('VoieSon').addEventListener('change',()=>{ V.son=el('VoieSon').checked; enreg(); });
