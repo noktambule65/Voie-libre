@@ -97,6 +97,13 @@ public class MainActivity extends Activity {
                 return chargeur.shouldInterceptRequest(r.getUrl());
             }
 
+            /** Page chargée (ou restaurée) : la destination demandée par le widget ou une notification est appliquée. */
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                super.onPageFinished(v, url);
+                if (destinationEnAttente != null) { attente.removeCallbacks(essaiAller); attente.post(essaiAller); }
+            }
+
             /** Moteur web arrêté (plantage ou mémoire) : on le note pour le journal de diagnostic et on relance l'écran. */
             @Override
             public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
@@ -230,10 +237,40 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         if (intent != null && intent.getBooleanExtra("maj", false)) majDemandee = true;
         String[] d = destination(intent);
-        if (d != null && web != null)
-            web.evaluateJavascript("window.boulotAller&&window.boulotAller(" + org.json.JSONObject.quote(d[0]) + ","
-                    + org.json.JSONObject.quote(d[1]) + "," + org.json.JSONObject.quote(d[2]) + ")", null);
+        if (d != null) aller(d);
     }
+
+    // ---------- Ouverture directe (widget, notification) ----------
+    // Appli fermée par Android depuis : l'écran est recréé, la page restaurée se recharge et ne connaît pas encore
+    // boulotAller au moment où arrive la demande. Elle est donc gardée et réessayée jusqu'à ce que la page soit prête
+    // (10 s au plus), au lieu d'être perdue (l'appli s'ouvrait alors sur la dernière page consultée).
+    private final android.os.Handler attente = new android.os.Handler(android.os.Looper.getMainLooper());
+    private String[] destinationEnAttente;
+    private int essaisAller;
+
+    private void aller(String[] d) {
+        destinationEnAttente = d;
+        essaisAller = 0;
+        attente.removeCallbacks(essaiAller);
+        attente.post(essaiAller);
+    }
+
+    private final Runnable essaiAller = new Runnable() {
+        @Override
+        public void run() {
+            final String[] d = destinationEnAttente;
+            if (d == null || web == null) return;
+            String js = "(function(){if(document.readyState==='loading'||typeof window.boulotAller!=='function')return false;"
+                    + "window.boulotAller(" + org.json.JSONObject.quote(d[0]) + "," + org.json.JSONObject.quote(d[1]) + ","
+                    + org.json.JSONObject.quote(d[2]) + ");return true;})()";
+            web.evaluateJavascript(js, r -> {
+                if (destinationEnAttente != d) return;                    // une autre demande est arrivée entre-temps
+                if ("true".equals(r)) { destinationEnAttente = null; return; }
+                if (++essaisAller < 40) { attente.removeCallbacks(essaiAller); attente.postDelayed(essaiAller, 250); }
+                else destinationEnAttente = null;
+            });
+        }
+    };
 
     @SuppressWarnings("deprecation")
     private void barresSysteme(boolean visibles) {
@@ -476,6 +513,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        attente.removeCallbacksAndMessages(null);
         if (web != null) { racine.removeView(web); web.destroy(); }
         super.onDestroy();
     }

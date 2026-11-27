@@ -1564,8 +1564,8 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const cT=carte('🚦','Retards et suppressions','rRetards');
       const lit=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
       cT.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="rtOn"><span style="flex:1;min-width:0">Afficher les retards et suppressions de mes trains <em class="exp" style="font-style:normal;font-weight:400;font-size:.85em;color:#B26A00">(fonction expérimentale)</em></span>
-        <small>Sur le graphique de la journée, le déroulé et le widget : retard en orange avec les minutes, train supprimé en rouge. Information du flux public de la SNCF (données ouvertes), surtout dans l’heure qui précède le départ, à titre indicatif : seul Pacific fait foi. Ni compte ni clé : l’appli télécharge le flux seulement quand un de tes trains est proche.</small></label>
-        <p class="petit"><b>Données mobiles :</b> chaque lecture du flux SNCF pèse environ 0,3 à 2 Mo selon l’heure (estimation). Il est lu à chaque synchro automatique, à chaque ouverture de l’appli et toutes les 2 min 30 tant qu’elle reste ouverte, quand un de tes trains est entre 4 h avant et 12 h après : compter plusieurs Mo par jour de service, davantage si l’appli reste longtemps ouverte. En Wi-Fi, rien n’est pris sur ton forfait mobile.</p>
+        <small>Sur le graphique de la journée, le déroulé et le widget : retard en orange avec les minutes, train supprimé en rouge ; pour un EQ PREND, retard ou suppression du train repris à la gare de relève. Information du flux public de la SNCF (données ouvertes), surtout dans l’heure qui précède le départ, à titre indicatif : seul Pacific fait foi. Ni compte ni clé : l’appli télécharge le flux seulement quand un de tes trains est proche. Dans les 20 min avant chaque départ (et avant un EQ PREND), la gare est aussi vérifiée toutes les 2 min jusqu’au départ, appli ouverte ou fermée (Train Nomade, comme pour les voies) : un retard ou une suppression y apparaît à la minute, et le flux SNCF est alors relu pour le détail.</small></label>
+        <p class="petit"><b>Données mobiles :</b> chaque lecture du flux SNCF pèse environ 0,3 à 2 Mo selon l’heure (estimation). Il est lu à chaque synchro automatique, à chaque ouverture de l’appli et toutes les 2 min 30 tant qu’elle reste ouverte, quand un de tes trains est entre 4 h avant et 12 h après : compter plusieurs Mo par jour de service, davantage si l’appli reste longtemps ouverte. Vérification avant les départs : environ 40 Ko par train, plus une lecture du flux SNCF par retard ou suppression annoncé. En Wi-Fi, rien n’est pris sur ton forfait mobile.</p>
         <p class="petit" id="rtConso"></p>
         <p class="petit" id="rtEtat"></p>`);
       const hh=t=>{ const d=new Date(+t); return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
@@ -1593,7 +1593,7 @@ body.b-seul .panneau{border-radius:0;max-width:640px;max-height:none;height:100%
       const cV=carte('🛤️','Voie de départ','rVoie');
       const lit=k=>{ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } };
       cV.insertAdjacentHTML('beforeend',`<label class="coche"><input type="checkbox" id="voOn"><span style="flex:1;min-width:0">Afficher la voie de départ de mes trains <em class="exp" style="font-style:normal;font-weight:400;font-size:.85em;color:#B26A00">(fonction expérimentale)</em></span>
-        <small>Sur le graphique de la journée, le déroulé et le widget : la voie dans un cadre comme à la SNCF, sous le train, en orange si elle a changé. Trains conduits et EV à leur gare de départ ; pour un EQ PREND, voie d’arrivée du train repris, en haut de la flèche. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification réglable ci-dessous (mêmes réglages que dans 🔔 Notifications).</small></label>
+        <small>Sur le graphique de la journée, le déroulé et le widget : la voie dans un cadre comme à la SNCF, sous le train, en orange si elle a changé. Trains conduits et EV à leur gare de départ ; pour un EQ PREND, voie d’arrivée du train repris, en haut de la flèche. La voie est demandée chaque minute à partir de 20 min avant le départ (la SNCF la publie en général entre 10 et 30 min avant), appli ouverte ou fermée, jusqu’à ce qu’elle soit connue ; puis une seule vérification 5 min avant le départ, au cas où elle changerait (toutes les 2 min si l’option Retards et suppressions est active). Pas de voie pour un train supprimé. Données SNCF (ODbL), via Train Nomade, à titre indicatif : seul l’affichage en gare fait foi. Notification réglable ci-dessous (mêmes réglages que dans 🔔 Notifications).</small></label>
         <p class="petit"><b>Données mobiles :</b> environ 4 à 9 Ko par gare interrogée, presque rien quand la réponse n’a pas changé depuis la minute précédente, soit 70 à 160 Ko par jour de service et 1,5 à 3,5 Mo par mois (estimation). En Wi-Fi, rien n’est pris sur ton forfait mobile.</p>
         <p class="petit" id="voConso"></p>
         <p class="petit" id="voEtat"></p>`);
@@ -2212,6 +2212,7 @@ svg text{font-family:Roboto,"Segoe UI",system-ui,Arial,sans-serif}
 .gl .tr .d .vo small{display:block;font-size:9px;font-weight:400}.gl .tr .d .vo b,.gl.gl .tr .d .vo b{display:block;font-size:19px;font-weight:700;margin-top:1px;color:inherit}.gl .tr .d .vo i{display:block;font-style:normal;font-size:8.5px;margin-top:2px}
 .gl .tr .d .vo.chg{color:#B85600;border-color:#E8780C;background:#FFF4E8}
 .gl .pt .l .voA{display:inline-block;opacity:1;margin:4px 0 1px;padding:1px 7px;border-radius:6px;background:#fff;color:#1F1F1F;border:1.5px solid #1F1F1F;font-size:11px;white-space:nowrap}.gl .pt .l .voA b{font-size:14px}.gl .pt .l .voA.chg{color:#B85600;border-color:#E8780C;background:#FFF4E8}
+.gl .pt .l .rtA{display:inline-block;opacity:1;margin:4px 6px 1px 0;padding:1px 8px;border-radius:9px;color:#fff;font-weight:700;font-size:11.5px;white-space:nowrap}.gl .pt .l .rtA.ret{background:#E8780C}.gl .pt .l .rtA.sup{background:#D32F2F}
 .gl .tr .d .rt.ret{background:#E8780C}.gl .tr .d .rt.sup,.gl .tr .d .rt.part{background:#D32F2F}
 .gl .tr.rtsup,.gl .tr.rtpart{border-color:#D32F2F}.gl .tr.rtret{border-color:#E8780C}
 .rtNote{margin:2px 10px 10px;font-size:11.5px;color:var(--doux);line-height:1.4}
@@ -2517,7 +2518,7 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
       arr,(mob[k].b+mob[k+1].a)/2,(xa+xb)/2,Y+47,40,'middle'));
   }
   // cadres RS / MS / PC / EJ / F1 / EQ… avec le numéro au-dessus ; « + » pour la marche à pied
-  const rangs=[-1e9,-1e9,-1e9], occHaut=[], eqVoies=[];   // occHaut : cadres et flèches au-dessus de la barre
+  const rangs=[-1e9,-1e9,-1e9], occHaut=[], eqVoies=[], eqRt=[];   // occHaut : cadres et flèches au-dessus de la barre
   items.filter(it=>it.g==='point').forEach(it=>{
     const xx=X(it.a), info=`${hm(it.a)} · ${it.lieu||''} · ${it.act}`;
     if(/^marche\b/i.test(it.act)){ o.push(`<text class="el" data-i="${esc(info)}" x="${(xx-2).toFixed(1)}" y="${Y-5}" font-size="10" fill="${ENC}" text-anchor="end">+</text>`); return; }
@@ -2529,14 +2530,17 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
       const monte=/^C/i.test(eq[1]), haut=Y-24, bas=Y-4, num=eq[2]||'';
       const pointe=monte?`M${(xx-2.6).toFixed(1)} ${haut+6} L${xx.toFixed(1)} ${haut} L${(xx+2.6).toFixed(1)} ${haut+6}Z`
                         :`M${(xx-2.6).toFixed(1)} ${bas-6} L${xx.toFixed(1)} ${bas} L${(xx+2.6).toFixed(1)} ${bas-6}Z`;
-      o.push(`<g class="el" data-i="${esc(info)}"><line x1="${xx.toFixed(1)}" y1="${haut}" x2="${xx.toFixed(1)}" y2="${bas}" stroke="${ENC}" stroke-width="0.9"/><path d="${pointe}" fill="${ENC}"/>`+
-        (num?`<text transform="translate(${(xx+1.5).toFixed(1)},${haut-1}) rotate(-55)" font-size="8" fill="${ENC}">${esc(num)}</text>`:'')+`</g>`);
+      // EQ PREND : train repris en retard (orange, pastille « +12 ») ou supprimé (rouge), comme les trains
+      const nEq=!monte?eqNum(s,it):null, rtQ=nEq?rtEtatEq(JG,nEq):null, cQ=rtQ?(rtQ.e==='sup'?RT_R:(rtQ.e==='ret'&&rtQ.r>0?RT_O:null)):null, cE=cQ||ENC;
+      const rtLq=cQ?rtLigneEq(rtQ,nEq,it.a):null, rtAq=rtLq?` data-rt="${rtLq.cls}" data-rtt="${esc(rtLq.txt)}" data-rts="${esc(rtLq.src)}"`:'';
+      o.push(`<g class="el" data-i="${esc(info)}"${rtAq}><line x1="${xx.toFixed(1)}" y1="${haut}" x2="${xx.toFixed(1)}" y2="${bas}" stroke="${cE}" stroke-width="${cQ?1.3:0.9}"/><path d="${pointe}" fill="${cE}"/>`+
+        (num?`<text transform="translate(${(xx+1.5).toFixed(1)},${haut-1}) rotate(-55)" font-size="8" fill="${cE}"${cQ?' font-weight="700"':''}>${esc(num)}</text>`:'')+`</g>`);
+      if(cQ===RT_O) eqRt.push({xx, haut, badge:'+'+rtQ.r, info, rtA:rtAq});
       // place prise : la tige, et le numéro penché (longueur L, à −55°)
       occHaut.push({x1:xx-1.2, x2:xx+1.2, y1:haut, y2:bas, tige:xx});
       // numéro penché à −55° : un petit carré par caractère, le long de la ligne d'écriture
       for(let i=0;i<num.length;i++){ const c=Math.cos(55*Math.PI/180), sn=Math.sin(55*Math.PI/180), u=(i+0.5)*4.6;
         const cx=xx+1.5+u*c-2.6*sn, cy=haut-1-u*sn-2.6*c; occHaut.push({x1:cx-2.6, x2:cx+2.6, y1:cy-2.6, y2:cy+2.6}); }
-      const nEq=!monte?eqNum(s,it):null;
       if(nEq){ const e=voEtatArr(JG,nEq); if(e) eqVoies.push({xx, haut, v:e.v, chg:!!e.av, info:info+' · voie d’arrivée '+e.v+(e.av?' (changée, avant voie '+e.av+')':'')}); }
       return;
     }
@@ -2553,6 +2557,17 @@ function graphique(x, largeurDispo, sansMaintenant, sansMeteo){
     occHaut.push({x1:cx-lw/2, x2:cx+lw/2, y1:yb-(num?8:0), y2:yb+9.5});
     o.push(`<g class="el" data-i="${esc(info)}">${num?`<text x="${(cx-lw/2).toFixed(1)}" y="${yb-1.5}" font-size="6.5" fill="${ENC}">${esc(num)}</text>`:''}<rect x="${(cx-lw/2).toFixed(1)}" y="${yb}" width="${lw.toFixed(1)}" height="9.5" fill="#fff" stroke="${ENC}" stroke-width="0.7"/><text x="${cx.toFixed(1)}" y="${yb+7.3}" font-size="7.5" fill="${ENC}" text-anchor="middle">${esc(lib)}</text></g>`);
   });
+  // EQ PREND en retard : pastille « +12 » à côté de la flèche (à gauche en haut, sinon autour), avant la voie
+  eqRt.forEach(q=>{ const pw=q.badge.length*5.3+12, h=13;
+    const essais=[[q.xx-pw-3, q.haut-4],[q.xx-pw-3, q.haut-17],[q.xx-pw-3, q.haut-29],[q.xx-pw-3, q.haut+9],[q.xx+4, q.haut+10],[q.xx+4, q.haut-4],[q.xx-pw/2, q.haut-29]]
+      .filter(([x,y])=>y>=12 && x>=1 && x+pw<=W-1);
+    // place prise : surface recouverte (numéros, pastilles, cadres, flèches) ; la première libre, sinon la moins encombrée
+    const pris=(x,y)=>[occNum,occHaut].reduce((t,L)=>t+L.reduce((u,b)=>u+Math.max(0,Math.min(b.x2,x+pw+1)-Math.max(b.x1,x-1))*Math.max(0,Math.min(b.y2,y+h+1)-Math.max(b.y1,y-1)),0),0);
+    const pos=essais.find(([x,y])=>!pris(x,y))||essais.slice().sort((u,v)=>pris(u[0],u[1])-pris(v[0],v[1]))[0]||[q.xx-pw-3, q.haut-4];
+    occHaut.push({x1:pos[0], x2:pos[0]+pw, y1:pos[1], y2:pos[1]+h});
+    trous.push([pos[0]-1, pos[0]+pw+1, pos[1]-1, pos[1]+h+1]);
+    o.push(`<g class="el" data-i="${esc(q.info)}"${q.rtA}><rect x="${pos[0].toFixed(1)}" y="${pos[1].toFixed(1)}" width="${pw.toFixed(1)}" height="${h}" rx="6.5" fill="${RT_O}" stroke="#fff" stroke-width="1.4"/>`
+      +`<text x="${(pos[0]+pw/2).toFixed(1)}" y="${(pos[1]+9.4).toFixed(1)}" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">${esc(q.badge)}</text></g>`); });
   // EQ PREND : voie d'arrivée du train repris, en haut de la flèche (à gauche de la tige, sinon autour) ;
   // sans place libre, elle reste dans le déroulé et en touchant la flèche
   eqVoies.forEach(q=>{ const lw=Math.max(11,q.v.length*6+5);
@@ -2609,7 +2624,7 @@ function detailLignes(x){
   s.items.forEach(it=>{
     const g=genre(it), num=(it.act.match(/([A-Z]?\d{3,})\s*$/)||[])[1]||'';
     if(g==='cond'||g==='ev'){
-      const rtE=rtEtat(JOUR,it), rtB=rtE&&rtE.e!=='ok'?rtBadge(rtE):'', voE=voEtat(JOUR,it); if(voE) voVu=true;
+      const rtE=rtEtat(JOUR,it), rtB=rtListe(rtE), voE=voEtat(JOUR,it); if(voE) voVu=true;
       if(rtE && (rtB || rtE.max>0)) rtVu=Math.max(rtVu||0, rtE.t||0);
       const [de,a]=String(it.lieu).split('->').map(t=>nomGare(t));
       const d=reel(rel(it.h1),rel(it.h2)), dur=(d>=60?Math.floor(d/60)+'h'+pad(d%60):d)+'min';
@@ -2617,7 +2632,7 @@ function detailLignes(x){
       const taxi=g==='ev' && /^TAXI\b/i.test(String(it.act).trim()), bal=taxi?'a':'div';
       L.push(`<${bal} class="tr ${g}${taxi?' galT':''}${rtB?' rt'+rtE.e:''}"${taxi?` href="${GALACSI}" target="_blank" rel="noopener"`:''}><div class="t"><span class="h">${esc(it.h1)} - ${esc(it.h2)}</span><span class="ic">${g==='cond'?'🚆':icEV(it.act)}</span>
         <span class="l">${esc(de||'')}<br>${esc(a||'')}</span><span class="n">${esc(g==='ev'?libEV(it.act):it.act)}</span></div>
-        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${it.estime?' · arrivée estimée (terminus du train après ta FS)':''}${rtB?`<span class="rt ${rtE.e}">${esc(rtE.e==='ret'?'+'+rtE.r+' min':rtB)}</span>`:''}${voE?`<span class="vo${voE.av?' chg':''}"><small>Voie</small><b>${esc(voE.v)}</b>${voE.av?'<i>avant '+esc(voE.av)+'</i>':''}</span>`:''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
+        <div class="d">${dur}${g==='ev'?' - <b>En voyageur</b>':''}${it.estime?' · arrivée estimée (terminus du train après ta FS)':''}${rtB?`<span class="rt ${rtE.e}">${esc(rtB)}</span>`:''}${voE?`<span class="vo${voE.av?' chg':''}"><small>Voie</small><b>${esc(voE.v)}</b>${voE.av?'<i>avant '+esc(voE.av)+'</i>':''}</span>`:''}${taxi?'<span class="galV">réservation ↗</span>':''}</div></${bal}>`);
     } else {
       let lib=LIB_PONCT(it.act)||it.act;
       let fin=it.h2;
@@ -2630,9 +2645,14 @@ function detailLignes(x){
         lib=estReserve(it.act)?'⏳ Réserve':'🍜 Pause repas'; }
       else if(/^train_evo\b|^EVO\b/i.test(it.act)) lib='Évolution';
       const h=fin?esc(it.h1)+'-'+esc(fin):esc(it.h1);
-      // EQ PREND : voie d'arrivée du train repris
+      // EQ PREND : voie d'arrivée du train repris, son retard à la gare de relève ou sa suppression
       const nEq=eqNum(s,it), voA=nEq?voEtatArr(JOUR,nEq):null; if(voA) voVu=true;
-      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span>${voA?`<br><span class="voA${voA.av?' chg':''}">arrivée du train voie <b>${esc(voA.v)}</b>${voA.av?' (avant '+esc(voA.av)+')':''}</span>`:''}</span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
+      const rtQ=nEq?rtEtatEq(JOUR,nEq):null, ma=rel(it.h1);
+      const rtH=!rtQ?'':rtQ.e==='sup'?'<span class="rtA sup">🔴 train supprimé</span>'
+        :rtQ.e==='ret'&&rtQ.r>0?`<span class="rtA ret">🟠 arrivée +${rtQ.r} min${ma!==null?' · estimée '+hm(ma+rtQ.r):''}</span>`:'';
+      if(rtH) rtVu=Math.max(rtVu||0, rtQ.t||0);
+      const voH=voA?`<span class="voA${voA.av?' chg':''}">arrivée du train voie <b>${esc(voA.v)}</b>${voA.av?' (avant '+esc(voA.av)+')':''}</span>`:'';
+      L.push(`<div class="r pt"><span class="h"${fin?' style="width:auto"':''}>${h}</span><span class="l">${esc(lib)}<span>${esc(nomGare(String(it.lieu).replace(/\s*->\s*/,' → ')))}</span>${rtH||voH?'<br>'+rtH+voH:''}</span>${num&&!/^marche/i.test(it.act)?`<span class="n">${esc(num)}</span>`:''}</div>`);
     }
   });
   if(s.fs) L.push(`<div class="r ps"><span class="h">${esc(s.fs.h)}</span><span class="l"><b>Fin de service</b>${esc(s.fs.lieu||'')}</span></div>`);
@@ -2903,7 +2923,7 @@ function rendre(){
   const jour=JOUR;
   Promise.all(liste.flatMap(lieuxDuJour).map(chargerMeteo)).then(r=>{ if(r.some(Boolean) && JOUR===jour) rendre(); });
   // retards et suppressions : flux relu (au plus toutes les 100 s), journée redessinée si un état change
-  if(voOn() && Math.abs(diff)<=1) voMaj().then(ch=>{ if(ch && JOUR===jour && MODE!=='mois'){ rendre(); try{ window.exporterWidget(true,true); }catch(e){} } });
+  if(tnOn() && Math.abs(diff)<=1) voMaj().then(ch=>{ if(ch && JOUR===jour && MODE!=='mois'){ rendre(); try{ window.exporterWidget(true,true); }catch(e){} } });
   if(rtOn() && Math.abs(diff)<=1) rtMaj().then(ch=>{ if(ch && JOUR===jour && MODE!=='mois'){ rendre(); try{ window.exporterWidget(true,true); }catch(e){} } });
 }
 /* ---- Réveils (appli Android) : réveil et départ, délais selon le lieu de PS (Paramètres) ---- */
@@ -3194,20 +3214,45 @@ function rtLire(){ let b=''; try{ b=localStorage.getItem('vl-rt')||''; }catch(e)
 // numéro de train en fin d'intitulé Graou (« 872804 », « EV 872735 ») ; sans les zéros de tête
 function rtNum(act){ const m=String(act||'').match(/(?:^|\D)(\d{4,6})\s*$/); return m?String(+m[1]):''; }
 // état connu d'un train de la journée j (null si option coupée, pas de numéro ou rien de connu)
-function rtEtat(j,it){ if(!j || !rtOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; return rtLire()[j+'|'+n]||null; }
+function rtEtat(j,it){ if(!j || !rtOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; const k=j+'|'+n; return rtFusion(rtLire()[k]||null, tnEtat(k)); }
+// arrivée du train repris à un EQ PREND (clé « date|numéro|a ») : retard à la gare de relève, ou suppression
+function rtEtatEq(j,num){ if(!j || !rtOn() || !num) return null; const k=j+'|'+String(+num)+'|a'; return rtFusion(rtLire()[k]||null, tnEtat(k)); }
+// Train Nomade (lu avec la voie, dans les 20 min avant le départ) : {sup, r minutes, t heure de l'info} à la gare
+// demandée (départ, ou arrivée pour un EQ PREND). an = 1 : train supprimé ; x : arrêt supprimé à cette gare.
+function tnEtat(k){ let e=null; try{ e=voLire()[k]; }catch(_){} if(!e || !e.ts) return null;
+  return {sup:!!e.sup, r:Math.max(0,Math.round((+e.rd||0)/60)), t:+e.ts}; }
+// Les deux sources ensemble : suppression dès que l'une l'annonce ; retard, l'info la plus récente
+// (le flux SNCF garde le détail : terminus avancé, origine retardée, retard sur tout le trajet)
+function rtFusion(e, tn){
+  if(!tn) return e;
+  if(tn.sup) return e && e.e==='sup' ? e : {e:'sup', r:0, max:e?e.max||0:0, t:tn.t, tn:1};
+  if(!e) return tn.r>=1 ? {e:'ret', r:tn.r, max:tn.r, t:tn.t, tn:1} : null;
+  if(tn.t<=(e.t||0) || e.e==='sup') return e;
+  if(e.e==='part') return Object.assign({}, e, {r:tn.r, max:Math.max(e.max||0,tn.r), t:tn.t, tn:1});
+  return {e:tn.r>=1?'ret':'ok', r:tn.r, max:Math.max(e.max||0,tn.r), t:tn.t, tn:1}; }
 // Pastille : seulement le retard, en court (« +15 »). Une suppression se voit à la barre et au numéro en rouge ;
 // le détail (supprimé, terminus avancé, départ retardé) est dans la ligne dédiée quand on touche le train.
 function rtBadge(e){ return !e?'':(e.e==='ret'||e.e==='part') && e.r>0?'+'+e.r:''; }
+// Déroulé de la journée : le retard, et la suppression en toutes lettres (la ligne n'a pas de barre rouge)
+function rtListe(e){ if(!e) return ''; if(e.e==='sup') return 'supprimé';
+  if(e.e==='part') return (e.cut==='fin'?'terminus avancé':e.cut==='deb'?'départ retardé':'arrêts supprimés')+(e.r>0?' · +'+e.r+' min':'');
+  return e.e==='ret'&&e.r>0?'+'+e.r+' min':''; }
 // Ligne dédiée, affichée quand on touche le train : {cls, txt, src}
 function rtLigne(e,it){ if(!e || (e.e==='ok' && !(e.max>0))) return null;
   const nom=(genre(it)==='ev'?'EV ':'')+rtNum(it.act), q=e.t?new Date(e.t):null;
-  const src='Info SNCF'+(q?' de '+pad(q.getHours())+':'+pad(q.getMinutes()):'')+' · à titre indicatif, seul Pacific fait foi';
+  const src='Info SNCF'+(q?' de '+pad(q.getHours())+':'+pad(q.getMinutes()):'')+(e.tn?' (via Train Nomade)':'')+' · à titre indicatif, seul Pacific fait foi';
   const arr=it.b!=null?hm(it.b+(e.r||0)):'';
   if(e.e==='sup') return {cls:'sup', txt:'🔴 '+nom+' supprimé'+(genre(it)==='ev'?' : prévoir un autre moyen':''), src};
   if(e.e==='part') return {cls:'sup', txt:'🔴 '+nom+(e.cut==='fin'?' : terminus avancé, arrêté après '+rtHm(e.tc):e.cut==='deb'?' : départ retardé, au départ de l’arrêt de '+rtHm(e.tc):' : arrêts supprimés')+(e.r>0?' · +'+e.r+' min':''), src};
   if(e.e==='ret') return {cls:'ret', txt:'🟠 '+nom+' : +'+e.r+' min'+(arr?' · arrivée estimée '+arr:'')+(e.max>e.r?' (jusqu’à +'+e.max+')':''), src};
   return {cls:'ok', txt:'🟢 '+nom+' : à l’heure (retard de +'+e.max+' min résorbé)', src};
 }
+// EQ PREND : ligne dédiée quand on touche la flèche (train repris en retard à la gare de relève, ou supprimé)
+function rtLigneEq(e, n, m){ if(!e || (e.e!=='sup' && !(e.e==='ret' && e.r>0))) return null;
+  const q=e.t?new Date(e.t):null;
+  const src='Info SNCF'+(q?' de '+pad(q.getHours())+':'+pad(q.getMinutes()):'')+(e.tn?' (via Train Nomade)':'')+' · à titre indicatif, seul Pacific fait foi';
+  if(e.e==='sup') return {cls:'sup', txt:'🔴 EQ PREND '+n+' : train supprimé', src};
+  return {cls:'ret', txt:'🟠 EQ PREND '+n+' : arrivée +'+e.r+' min'+(m!=null?' · estimée '+hm(m+e.r):''), src}; }
 const rtHm=t=>{ const d=new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
 function rtTexte(e){ if(!e) return '';
   const q=e.t?new Date(e.t):null, h=q?' (info SNCF de '+pad(q.getHours())+':'+pad(q.getMinutes())+', à titre indicatif)':'';
@@ -3238,6 +3283,7 @@ function rtDecoder(b){
         else if(n3===2 && t3===2){ const s={rel:0};
           sous(v3).forEach(([a,ta,va])=>{
             if((a===2||a===3) && ta===2){ const e={}; sous(va).forEach(([c,tc,vc])=>{ if(c===1&&tc===0) e.r=i64(vc); else if(c===2&&tc===0) e.t=i64(vc); }); s[a===2?'arr':'dep']=e; }
+            else if(a===4 && ta===2) s.gare=txt(va);
             else if(a===5 && ta===0) s.rel=Number(va); });
           tu.arrets.push(s); } });
       sortie.push(tu); }); });
@@ -3250,11 +3296,27 @@ function rtTrainsUtiles(now){
       const p0=min(x.s.ps&&x.s.ps.h); if(p0===null) return;
       const rel=h=>{ let m=min(h); if(m===null) return null; if(m<p0-180) m+=1440; return m; };
       const [y,mo,d]=j.split('-').map(Number);
-      x.s.items.forEach(it=>{ const g=genre(it); if(g!=='cond'&&g!=='ev') return;
+      x.s.items.forEach(it=>{ const g=genre(it);
+        // EQ PREND : arrivée du train repris, à la gare et à l'heure de la relève
+        const eq=eqNum(x.s,it);
+        if(eq){ const a=rel(it.h1); if(a===null) return; const t=new Date(y,mo-1,d,0,a).getTime();
+          if(t>=deb && t<=fin) L.push({j, n:eq, ta:t, tb:t, arr:true, uic:voUic(it.lieu)||''}); return; }
+        if(g!=='cond'&&g!=='ev') return;
         const n=rtNum(it.act), a=rel(it.h1), b=rel(it.h2); if(!n||a===null||b===null) return;
         const ta=new Date(y,mo-1,d,0,a).getTime(), tb=new Date(y,mo-1,d,0,b<a?b+1440:b).getTime();
         if(tb>=deb && ta<=fin) L.push({j, n, ta, tb}); }); }); });
   return L; }
+// EQ PREND : retard du train à la gare de relève (arrêt reconnu par son code, sinon par l'heure prévue, ±5 min) ;
+// supprimé si le train entier l'est ou s'il ne s'arrête plus à cette gare
+function rtCalculEq(tu, tr){
+  if(tu.rel===3) return {e:'sup', r:0};
+  const L=tu.arrets, u=String(tr.uic||'');
+  let s=u?L.find(a=>String(a.gare||'').indexOf(u)>=0):null;
+  if(!s){ let bz=5*60e3+1; L.forEach(a=>{ const e=a.arr||a.dep; if(!e||!e.t) return; const z=Math.abs((e.t-(e.r||0))*1000-tr.ta); if(z<bz){ bz=z; s=a; } }); }
+  if(!s){ const c=rtCalcul(tu,tr); return c.e==='part'?{e:c.r>=1?'ret':'ok', r:c.r}:c; }
+  if(s.rel===1) return {e:'sup', r:0};
+  const e=s.arr&&s.arr.r!=null?s.arr:s.dep, r=Math.max(0,Math.round(((e&&e.r!=null)?e.r:(tu.retard||0))/60));
+  return {e:r>=1?'ret':'ok', r}; }
 // état d'un train d'après le flux, limité aux arrêts de ton trajet (heures prévues entre début et fin, ±5 min)
 // Suppression partielle : jamais en milieu de train, seulement terminus avancé (derniers arrêts supprimés)
 // ou origine retardée (premiers arrêts supprimés). La limite est l'heure prévue du dernier (ou du premier)
@@ -3307,7 +3369,7 @@ function rtMaj(forcer){
         const r=re(tr.n), cand=flux.filter(tu=>r.test(tu.id) && Math.abs(rtEcartJours(tu.date,tr.ta))<=1);
         if(!cand.length) return;
         cand.sort((u,v)=>Math.abs(rtEcartJours(u.date,tr.ta))-Math.abs(rtEcartJours(v.date,tr.ta)));
-        const c=rtCalcul(cand[0],tr), k=tr.j+'|'+tr.n, av=H[k]||{};
+        const c=tr.arr?rtCalculEq(cand[0],tr):rtCalcul(cand[0],tr), k=tr.j+'|'+tr.n+(tr.arr?'|a':''), av=H[k]||{};
         const nv={e:c.e, r:c.r, max:Math.max(av.max||0, c.r), t:now}; if(c.cut){ nv.cut=c.cut; nv.tc=c.tc; }
         if(av.e!==nv.e || av.r!==nv.r || av.max!==nv.max || av.cut!==nv.cut || av.tc!==nv.tc) change=true;
         H[k]=nv; });
@@ -3344,19 +3406,29 @@ function conso(type, octets){
    Option coupée par défaut (Paramètres › Voie de départ). Pour chacun de mes trains (conduite ou EV) :
    - voie pas encore connue : une demande par minute à partir de 20 min avant le départ, jusqu'à la trouver ;
    - voie connue : plus rien, sauf une vérification 5 min avant le départ (changement de voie).
+   Retards et suppressions (option Retards) : la même réponse donne aussi an (train supprimé), x (arrêt supprimé
+   à cette gare), rd / ra (retard au départ / à l'arrivée, en s). Dans les 20 min avant le départ, la gare est
+   relue toutes les 2 min jusqu'au départ (plus tard si le train est en retard, 1 h au plus) ; si Train Nomade
+   annonce une suppression ou un retard que le flux SNCF ne montre pas encore, ce flux est relu aussitôt
+   (détail : terminus avancé, retard sur le trajet). Le train supprimé n'est plus suivi et sa voie n'est plus montrée.
    Appli ouverte, c'est la page qui demande ; appli fermée, l'appli Android (VoieDepart.java), même règle.
    Demandes revalidées par ETag (cache « no-cache ») : réponse inchangée = quelques centaines d'octets.
-   vl-voie : {"date|numéro": {v:voie, av:voie précédente si elle a changé, t:heure de l'info, k:vérifiée à −5 min}},
-   gardé sans limite. */
+   vl-voie : {"date|numéro": {v:voie, av:voie précédente si elle a changé, t:heure de l'info, k:vérifiée à −5 min,
+   sup:1 supprimé, rd:retard (s), ts:heure de l'état, tg:état qui a déjà fait relire le flux SNCF}}, gardé sans limite. */
 const VO_URL='https://api.trainnomade.fr/gare/';
-const VO_AVANT=20*60e3, VO_VERIF=5*60e3, VO_APRES=2*60e3, VO_ECART=55*1000;
+const VO_AVANT=20*60e3, VO_VERIF=5*60e3, VO_APRES=2*60e3, VO_ECART=55*1000, VO_SUIVI=2*60e3, RT_TN_ECART=3*60e3;
 function voOn(){ try{ return localStorage.getItem('vl-voie-on')==='1'; }catch(e){ return false; } }
+// Train Nomade est lu si l'une des deux options est active (voies, ou retards et suppressions)
+function tnOn(){ return voOn()||rtOn(); }
 let VO_MEMO={brut:null, o:{}};
 function voLire(){ let b=''; try{ b=localStorage.getItem('vl-voie')||''; }catch(e){}
   if(b!==VO_MEMO.brut){ let o={}; try{ o=JSON.parse(b||'{}')||{}; }catch(e){} VO_MEMO={brut:b, o}; } return VO_MEMO.o; }
 // sig : une voie est nouvelle ou a changé (journée et widget à redessiner)
 function voEcrire(H, sig){ try{ localStorage.setItem('vl-voie', JSON.stringify(H)); if(sig) localStorage.setItem('vl-voie-sig', String(Date.now())); }catch(e){} }
-function voEtat(j,it){ if(!j || !voOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; const e=voLire()[j+'|'+n]; return e&&e.v?e:null; }
+// voie connue d'un train ; rien s'il est supprimé (Train Nomade ou flux SNCF) : pas de voie trompeuse
+function voVisible(k){ const e=voLire()[k]; if(!e || !e.v || e.sup) return null;
+  if(rtOn()){ const r=rtLire()[k]; if(r && r.e==='sup') return null; } return e; }
+function voEtat(j,it){ if(!j || !voOn()) return null; const n=rtNum(it&&it.act); if(!n) return null; return voVisible(j+'|'+n); }
 // gare de départ du train (premier mot avant « -> ») → code UIC, si la gare est connue
 function voUic(lieu){ const c=String(lieu||'').split('->')[0].trim().split(/\s+/)[0];
   try{ const t=window.top; return t&&t.vlUic?t.vlUic(c):null; }catch(e){ return null; } }
@@ -3383,32 +3455,54 @@ function eqNum(s, it){ const m=String(it&&it.act||'').match(/^EQ\s+PREND\b\s*0*(
   const n=String(+m[1]); return (s.items||[]).some(y=>y!==it && genre(y)==='cond' && rtNum(y.act)===n)?null:n; }
 // clé d'un train dans vl-voie : départ « date|numéro », arrivée d'un EQ PREND « date|numéro|a »
 function voCle(t){ return t.j+'|'+t.n+(t.arr?'|a':''); }
-function voEtatArr(j,num){ if(!j || !voOn() || !num) return null; const e=voLire()[j+'|'+String(+num)+'|a']; return e&&e.v?e:null; }
+function voEtatArr(j,num){ if(!j || !voOn() || !num) return null; return voVisible(j+'|'+String(+num)+'|a'); }
 // voies trouvées appli fermée par l'appli Android : la plus récente des deux l'emporte
 function voFusion(){
   let J={}; try{ const A=window.BoulotAndroid||(window.top&&window.top.BoulotAndroid); if(A&&A.voiesJava) J=JSON.parse(A.voiesJava()||'{}')||{}; }catch(e){ return false; }
-  const H=Object.assign({}, voLire()); let ch=false;
-  Object.keys(J).forEach(k=>{ const a=H[k], b=J[k]; if(!b||!b.v) return;
-    if(!a || (+b.t||0)>(+a.t||0)){ if(!a || a.v!==b.v || a.av!==b.av || !!a.k!==!!b.k){ H[k]=b; ch=true; } } });
-  if(ch) voEcrire(H, true);
+  const H=Object.assign({}, voLire()); let ch=false, ecr=false;
+  Object.keys(J).forEach(k=>{ const a=H[k]||{}, b=J[k]; if(!b) return; let n=null;
+    // voie : la plus récente des deux
+    if(b.v && (+b.t||0)>(+a.t||0) && (a.v!==b.v || a.av!==b.av || !!a.k!==!!b.k)){
+      n=Object.assign({}, a, {v:b.v, t:b.t}); if(b.av) n.av=b.av; else delete n.av; if(b.k) n.k=true; ch=true; }
+    // retard et suppression lus par Train Nomade : le plus récent
+    if(b.ts && (+b.ts)>(+a.ts||0)){ const m=n||Object.assign({}, a);
+      if(!!m.sup!==!!b.sup || Math.round((+m.rd||0)/60)!==Math.round((+b.rd||0)/60)) ch=true;
+      m.sup=b.sup?1:0; m.rd=+b.rd||0; m.ts=+b.ts; if(b.tg) m.tg=b.tg; n=m; }
+    if(n){ H[k]=n; ecr=true; } });
+  if(ecr) voEcrire(H, ch);
   return ch; }
 // pour l'appli Android : mes trains des 48 h à venir, avec la voie si elle est déjà connue
+// (rr : retard connu du flux SNCF en min, rs : supprimé d'après lui, pour savoir s'il faut le relire)
 function voExport(now){
-  if(!voOn()) return [];
+  if(!tnOn()) return [];
   try{ voFusion(); }catch(e){}
-  const H=voLire();
-  return voTrains(now-VO_APRES, now+48*3600e3).sort((a,b)=>a.ta-b.ta).slice(0,60).map(t=>{ const e=H[voCle(t)]||{};
-    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(t.arr) o.a=true; if(e.v){ o.v=e.v; if(e.t) o.vt=e.t; } if(e.av) o.av=e.av; if(e.k) o.k=true; return o; }); }
+  const H=voLire(), R=rtOn()?rtLire():{};
+  return voTrains(now-VO_APRES-3600e3, now+48*3600e3).sort((a,b)=>a.ta-b.ta).slice(0,60).map(t=>{ const k=voCle(t), e=H[k]||{}, r=R[k];
+    const o={t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g}; if(t.e) o.e=true; if(t.arr) o.a=true; if(e.v){ o.v=e.v; if(e.t) o.vt=e.t; } if(e.av) o.av=e.av; if(e.k) o.k=true;
+    if(e.ts){ o.ts=e.ts; o.rd=+e.rd||0; if(e.sup) o.sup=1; if(e.tg) o.tg=e.tg; }
+    if(r){ o.rr=r.r||0; if(r.e==='sup') o.rs=1; } return o; }); }
 let VO_EN_COURS=null;
-// Demande la voie aux gares qui en ont besoin maintenant ; renvoie true si une voie est nouvelle ou a changé
+// fin du suivi d'un train : 2 min après le départ, plus son retard connu (1 h au plus)
+function voFin(t,e){ return t.ta+VO_APRES+Math.min(60,Math.max(0,Math.round((+(e&&e.rd)||0)/60)))*60e3; }
+// passage du train à la gare dans une réponse de Train Nomade : même numéro, heure prévue la plus proche (45 min au plus) ;
+// départ : heure de départ ; EQ PREND : heure d'arrivée (de passage s'il continue)
+function voPassage(o,t){
+  const x=new Date(t.ta), s=x.getHours()*3600+x.getMinutes()*60, hp=p=>t.arr?(p.a!=null?p.a:p.d):p.d;
+  const ec=p=>{ const z=Math.abs(((+hp(p))%86400)-s); return Math.min(z,86400-z); };
+  return o.passages.filter(p=>p && hp(p)!=null && String(p.n||'').replace(/^0+/,'')===t.n && ec(p)<=45*60).sort((p,q)=>ec(p)-ec(q))[0]||null; }
+// Demande Train Nomade aux gares qui en ont besoin maintenant (voie, retard, suppression) ;
+// renvoie true si une voie, un retard ou une suppression a changé (journée et widget à redessiner)
 function voMaj(forcer){
-  if(!voOn()) return Promise.resolve(false);
+  if(!tnOn()) return Promise.resolve(false);
   if(VO_EN_COURS) return VO_EN_COURS;
   try{ indexer(); }catch(e){}
-  const fus=voFusion(), now=Date.now(), H0=voLire();
-  const tous=voTrains(now-VO_APRES, now+4*3600e3);
-  const dus=tous.filter(t=>{ const e=H0[voCle(t)]; if(now>t.ta+VO_APRES) return false;
-    return (!e||!e.v) ? now>=t.ta-VO_AVANT-30e3 : (!e.k && now>=t.ta-VO_VERIF-30e3); });
+  const fus=voFusion(), now=Date.now(), H0=voLire(), vo=voOn(), rt=rtOn();
+  const tous=voTrains(now-VO_APRES-3600e3, now+4*3600e3);
+  const dus=tous.filter(t=>{ const e=H0[voCle(t)]||{};
+    if(e.sup || now>voFin(t,e) || now<t.ta-VO_AVANT-30e3) return false;
+    if(vo && !e.v) return true;                                         // voie cherchée chaque minute
+    if(vo && !e.k && now>=t.ta-VO_VERIF-30e3) return true;             // vérification à −5 min
+    return rt && now-(+e.ts||0)>=VO_SUIVI-15e3; });                      // retard et suppression : toutes les 2 min
   if(!dus.length) return Promise.resolve(fus);
   let der=0; try{ der=+localStorage.getItem('vl-voie-quand')||0; }catch(e){}
   if(!forcer && now-der<VO_ECART) return Promise.resolve(fus);
@@ -3422,36 +3516,46 @@ function voMaj(forcer){
       return r.text().then(t=>{ conso('vo', lg||t.length); return JSON.parse(t); }); }),
     new Promise((_,ko)=>setTimeout(()=>ko(new Error('délai dépassé')),20000))]).then(o=>[u,o]).catch(e=>[u,null,e]);
   VO_EN_COURS=Promise.all(gares.map(lire1)).then(res=>{
-      const H=Object.assign({}, voLire()); let change=false, ok=0, err='';
-      const sec=t=>{ const x=new Date(t); return x.getHours()*3600+x.getMinutes()*60; };
+      const H=Object.assign({}, voLire()), R=rt?rtLire():{}; let change=false, ok=0, err='', relire=false;
       res.forEach(([u,o,e])=>{
         if(!o || !Array.isArray(o.passages)){ err=String(e&&e.message||e||'réponse illisible'); return; } ok++;
-        // toutes mes voies à cette gare, pas seulement celles qu'on attendait (évite d'autres demandes)
+        // tous mes trains à cette gare, pas seulement ceux qu'on attendait (évite d'autres demandes)
         tous.filter(t=>t.uic===u).forEach(t=>{
-          // même numéro, au départ de cette gare, à l'heure prévue la plus proche (45 min d'écart au plus)
-          // départ : heure de départ du train ; EQ PREND : heure d'arrivée (de passage s'il continue)
-          const hp=p=>t.arr?(p.a!=null?p.a:p.d):p.d;
-          const s=sec(t.ta), ec=p=>{ const z=Math.abs(((+hp(p))%86400)-s); return Math.min(z,86400-z); };
-          const c=o.passages.filter(p=>p && hp(p)!=null && String(p.n||'').replace(/^0+/,'')===t.n && ec(p)<=45*60).sort((p,q)=>ec(p)-ec(q))[0];
-          const k=voCle(t), av=H[k]||{}, v=c?String(c.v||'').trim():'';
-          const verif=!!av.v && now>=t.ta-VO_VERIF-30e3 && now<=t.ta+VO_APRES;
-          if(!v && !verif) return;                                       // voie pas encore affichée
-          const vv=v||av.v, nv={v:vv, t:now};
-          if(av.v && av.v!==vv) nv.av=av.v; else if(av.av && av.av!==vv) nv.av=av.av;
-          if(verif || av.k) nv.k=true;
-          if(av.v!==nv.v || av.av!==nv.av){ change=true;
-            // notification (si activée) : l'appli Android filtre selon les réglages et n'avertit qu'une fois par voie
-            if(av.v!==nv.v) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, a:!!t.arr, v:nv.v, av:nv.av||''})); }catch(_){} }
-          H[k]=nv; }); });
+          const c=voPassage(o,t), k=voCle(t), av=H[k]||{}, nv=Object.assign({}, av);
+          // retard et suppression à cette gare
+          if(c){ const sup=+c.an===1 || +c.x===1 || c.x===true, rd=Math.max(0, +(t.arr?(c.ra!=null?c.ra:c.rd):c.rd)||0);
+            if(!!av.sup!==sup || Math.round((+av.rd||0)/60)!==Math.round(rd/60)) change=true;
+            nv.sup=sup?1:0; nv.rd=rd; nv.ts=now;
+            // le flux SNCF (détail du trajet) ne le montre pas encore : il est relu, une fois par état nouveau
+            if(rt){ const r=R[k], rr=r?(r.r||0):0, sig=(sup?'s':'')+Math.round(rd/60);
+              if(((sup && !(r && r.e==='sup')) || Math.abs(Math.round(rd/60)-rr)>=2) && nv.tg!==sig){ nv.tg=sig; relire=true; } } }
+          // voie
+          const v=vo && c ? String(c.v||'').trim() : '';
+          const verif=vo && !!av.v && now>=t.ta-VO_VERIF-30e3 && now<=voFin(t,av);
+          if(v || verif){
+            const vv=v||av.v; nv.v=vv; nv.t=now;
+            if(av.v && av.v!==vv) nv.av=av.v; else if(av.av && av.av!==vv) nv.av=av.av; else delete nv.av;
+            if(verif || av.k) nv.k=true;
+            if(av.v!==nv.v || av.av!==nv.av){ change=true;
+              // notification (si activée) : l'appli Android filtre selon les réglages et n'avertit qu'une fois par voie ;
+              // jamais pour un train supprimé
+              if(av.v!==nv.v && !nv.sup) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, a:!!t.arr, v:nv.v, av:nv.av||''})); }catch(_){} } }
+          if(c || v || verif) H[k]=nv; }); });
       try{ if(ok){ localStorage.setItem('vl-voie-ok', String(now)); if(!err) localStorage.removeItem('vl-voie-err'); }
         if(err) localStorage.setItem('vl-voie-err', String(now)+'|'+err.slice(0,120)); }catch(e){}
       voEcrire(H, change);
+      // flux SNCF relu tout de suite (3 min au moins entre deux relectures ainsi déclenchées)
+      let derRt=0; try{ derRt=+localStorage.getItem('vl-rt-tn')||0; }catch(e){}
+      if(relire && now-derRt>=RT_TN_ECART){ try{ localStorage.setItem('vl-rt-tn', String(now)); }catch(e){}
+        return rtMaj(true).catch(()=>false).then(x=>change||fus||x); }
       return change||fus; })
     .catch(()=>fus).finally(()=>{ VO_EN_COURS=null; });
   return VO_EN_COURS;
 }
 // synchro « voie » (appli fermée) : l'appli Android vient de trouver une voie ; la page la reprend sans redemander
 window.voMajSync=()=>Promise.resolve(voFusion());
+// synchro « retards » (appli fermée) : Train Nomade annonce un retard ou une suppression ; flux SNCF relu
+window.rtMajSync=()=>rtOn()?rtMaj(true).catch(()=>false):Promise.resolve(false);
 // Option activée ou coupée dans Paramètres : voies demandées tout de suite, journée et widget redessinés
 function voChange(){
   const apres=()=>{ try{ if(JOUR && MODE!=='mois') rendre(); }catch(_){} try{ window.exporterWidget(true,true); }catch(_){} };
@@ -3460,7 +3564,7 @@ try{ window.top.__vlVoieChange=voChange; }catch(e){}
 window.addEventListener('storage',e=>{ if(e.key==='vl-voie-on') voChange(); });
 // Appli ouverte : une fois par minute, seulement pour les trains qui en ont besoin (voir plus haut)
 setInterval(()=>{
-  try{ if(!voOn() || /[?&]sync=/.test(window.top.location.search) || window.top.document.visibilityState!=='visible') return; }catch(e){ return; }
+  try{ if(!tnOn() || /[?&]sync=/.test(window.top.location.search) || window.top.document.visibilityState!=='visible') return; }catch(e){ return; }
   voMaj().then(ch=>{ if(!ch) return; try{ if(JOUR && MODE!=='mois') rendre(); }catch(e){} try{ window.exporterWidget(true,true); }catch(e){} });
 }, 20*1000);
 let exportEnCours=null;
@@ -3476,7 +3580,7 @@ window.exporterWidget=function(forcer,sansRT){
   if(exportEnCours) return exportEnCours;
   // retards et suppressions : flux SNCF relu avant de dessiner (25 s au plus ; sans effet si l'option est coupée)
   // voies de départ : demandées aussi si un train part dans les 20 min (sans effet sinon)
-  if((rtOn()||voOn()) && !sansRT) return Promise.all([rtOn()?rtMaj().catch(()=>false):false, voOn()?voMaj().catch(()=>false):false]).then(()=>window.exporterWidget(forcer,true));
+  if((rtOn()||voOn()) && !sansRT) return Promise.all([rtOn()?rtMaj().catch(()=>false):false, voMaj().catch(()=>false)]).then(()=>window.exporterWidget(forcer,true));
   const sig=signatureExport();
   let avant=''; try{ avant=localStorage.getItem('vl-sig-widget')||''; }catch(e){}
   if(!forcer && sig===avant) return Promise.resolve();
@@ -3515,7 +3619,7 @@ window.exporterWidget=function(forcer,sansRT){
       let graou=0, graouErreur=''; try{ const st=JSON.parse(localStorage.getItem('pl-statut')||'null'); if(st && st.source==='lien') graou=st.quand||0;
         if(st && st.erreur && (st.erreurQuand||0)>(st.quand||0)) graouErreur=st.erreur; }catch(e){}
       let voieTrains=[]; try{ voieTrains=voExport(Date.now()); }catch(e){}
-      A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, cabine, neige, voieTrains}));
+      A.majWidget(JSON.stringify({maj:Date.now(), graou, graouErreur, jours:sortie, semaines, taches, cond, cabine, neige, voieTrains, tn:{vo:voOn(), rt:rtOn()}}));
       // tuile Rappels de l'accueil : prochaines tâches et neige prévue
       try{ localStorage.setItem('vl-prochains', JSON.stringify({maj:Date.now(),
         taches:taches.map(z=>({type:z.type, t:z.t, quoi:z.quoi, ou:z.ou})),
@@ -3707,7 +3811,7 @@ window.vlMeteo=(function(){
   function charger(L){
     if(!L) return Promise.resolve(false);
     // synchro « voie » (appli fermée, une voie vient d'être trouvée) : pas de météo, la synchro normale s'en charge
-    if(/[?&]sync=voie/.test(location.search)) return Promise.resolve(false);
+    if(/[?&]sync=(voie|rt)\b/.test(location.search)) return Promise.resolve(false);
     const c=cache(L.n);
     if(c && Date.now()-c.t<2*3600*1000) return Promise.resolve(false);
     if(EN_COURS[L.n]) return EN_COURS[L.n];
@@ -4414,11 +4518,14 @@ try{ if(history.state && history.state.boulot) history.replaceState(null,''); }c
 /* ---- Appli Android : widget ---- */
 if(window.BoulotAndroid){
   const exporter=()=>cadre('journee', fj=>{ try{ fj.contentWindow.exporterWidget(); }catch(e){ window.vlNoteErreur('lancement de la mise à jour du widget',e); } });
-  if(/[?&]sync=voie/.test(location.search)){
-    // Synchro légère (appli fermée, voie trouvée ou changée par l'appli Android) : voies reprises, widget redessiné, sans Graou
+  if(/[?&]sync=(voie|rt)\b/.test(location.search)){
+    // Synchro légère (appli fermée) : voies, retards et suppressions trouvés par l'appli Android repris, widget redessiné,
+    // sans Graou ; « rt » : Train Nomade annonce un retard ou une suppression, le flux SNCF est relu pour le détail
+    const rt=/[?&]sync=rt\b/.test(location.search);
     cadre('journee', fj=>{ const w=fj.contentWindow;
       Promise.resolve().then(()=>w.voMajSync?w.voMajSync():false).catch(()=>false)
-        .then(()=>w.exporterWidget(false,true)).catch(()=>{}).then(()=>{ try{ BoulotAndroid.finSync(true); }catch(e){} }); });
+        .then(()=>rt&&w.rtMajSync?w.rtMajSync():false).catch(()=>false)
+        .then(()=>w.exporterWidget(rt,true)).catch(()=>{}).then(()=>{ try{ BoulotAndroid.finSync(true); }catch(e){} }); });
   } else if(/[?&]sync=1/.test(location.search)){
     try{ window.__vlDiagNote && window.__vlDiagNote('synchro invisible (widget ou arrière-plan)'); }catch(e){}
     // Synchro demandée par le bouton ⟳ du widget : planning Graou retéléchargé, puis journées recalculées

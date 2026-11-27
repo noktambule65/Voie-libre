@@ -384,6 +384,7 @@ public class Notifs extends BroadcastReceiver {
             long t = tr.optLong("t");
             long now = System.currentTimeMillis();
             if (t > 0 && now > t + 2 * 60_000L) return;                  // train parti
+            if (VoieDepart.supprime(ctx, tr)) return;                     // train supprimé : pas de voie trompeuse
             String u = tr.optString("u");
             JSONArray g = r.optJSONArray("gares");
             boolean dans = false;
@@ -471,8 +472,9 @@ public class Notifs extends BroadcastReceiver {
     // ---------- Voie de départ : demandes directes à Train Nomade, appli fermée ----------
 
     /**
-     * Prochaine demande de voie (voir VoieDepart) : chaque minute à partir de 20 min avant un départ tant que la
-     * voie n'est pas connue, puis une vérification 5 min avant. Rien si l'option est coupée (liste vide).
+     * Prochaine demande à Train Nomade (voir VoieDepart) : chaque minute à partir de 20 min avant un départ tant que la
+     * voie n'est pas connue, puis une vérification 5 min avant ; retards et suppressions : toutes les 2 min jusqu'au
+     * départ. Rien si les deux options sont coupées (liste vide).
      */
     static void programmerSyncVoie(Context ctx) {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
@@ -1709,7 +1711,11 @@ public class Notifs extends BroadcastReceiver {
             final PendingResult fin = goAsync();
             new Thread(() -> {
                 try {
-                    if (VoieDepart.verifier(ctx)) SyncWorker.synchroVoie(ctx);   // voie nouvelle ou changée : widget redessiné
+                    int r = VoieDepart.verifier(ctx);
+                    // retard ou suppression annoncé : flux SNCF relu pour le détail ; sinon voie, retard ou
+                    // suppression repris tels quels : widget redessiné
+                    if ((r & VoieDepart.RETARDS) != 0) SyncWorker.synchroRetards(ctx);
+                    else if (r != 0) SyncWorker.synchroVoie(ctx);
                 } catch (Exception ex) { erreur(ctx, "voie de départ", ex); }
                 try { programmerSyncVoie(ctx); } catch (Exception ex) { erreur(ctx, "voie de départ (programmation)", ex); }
                 fin.finish();

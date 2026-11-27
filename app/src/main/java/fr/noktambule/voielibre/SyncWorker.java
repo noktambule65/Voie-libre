@@ -41,8 +41,11 @@ public class SyncWorker extends Worker {
     private static final long DELAI_MANUEL_S = 60;
     private static final String MANUEL = "manuel";
     private static final String VOIE = "voie";
-    /** Synchro « voie » : la page ne demande que les voies de départ et redessine le widget (quelques Ko). */
+    /** Synchro « voie » : la page reprend les voies trouvées ici et redessine le widget (rien à télécharger). */
     private static final long DELAI_VOIE_S = 75;
+    private static final String RETARDS = "retards";
+    /** Synchro « retards » : la page relit en plus le flux SNCF des retards (25 s au plus) avant de redessiner. */
+    private static final long DELAI_RETARDS_S = 90;
 
     public SyncWorker(@NonNull Context ctx, @NonNull WorkerParameters params) { super(ctx, params); }
 
@@ -85,6 +88,20 @@ public class SyncWorker extends Worker {
         OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
                 .setInputData(new Data.Builder().putBoolean(VOIE, true).build())   // pas de réseau nécessaire
                 .build();
+        // à la suite d'une synchro « retards » en attente (qui fait déjà ce travail), sans la remplacer
+        WorkManager.getInstance(ctx.getApplicationContext())
+                .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.APPEND_OR_REPLACE, r);
+    }
+
+    /**
+     * Retards et suppressions (option de Paramètres) : Train Nomade vient d'annoncer, appli fermée, un retard ou une
+     * suppression que le flux SNCF ne montrait pas encore. La page relit ce flux, reprend les voies et redessine le
+     * widget. Ni Graou ni météo.
+     */
+    static void synchroRetards(Context ctx) {
+        OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
+                .setInputData(new Data.Builder().putBoolean(RETARDS, true).build())
+                .build();
         WorkManager.getInstance(ctx.getApplicationContext())
                 .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.REPLACE, r);
     }
@@ -94,9 +111,10 @@ public class SyncWorker extends Worker {
     public Result doWork() {
         final Context ctx = getApplicationContext();
         final boolean manuel = getInputData().getBoolean(MANUEL, false);
-        final boolean voie = getInputData().getBoolean(VOIE, false);
+        final boolean retards = getInputData().getBoolean(RETARDS, false);
+        final boolean voie = retards || getInputData().getBoolean(VOIE, false);
         try {
-            return synchroniser(ctx, manuel, voie);
+            return synchroniser(ctx, manuel, voie, retards);
         } finally {
             if (manuel) {
                 ctx.getSharedPreferences(VoieLibreWidget.PREFS, 0).edit().remove("syncDepuis").apply();
@@ -105,7 +123,7 @@ public class SyncWorker extends Worker {
         }
     }
 
-    private Result synchroniser(Context ctx, boolean manuel, boolean voie) {
+    private Result synchroniser(Context ctx, boolean manuel, boolean voie, boolean retards) {
         // Nouvelle version validée sur GitHub ? (une fois par jour au plus, notification une seule fois par version)
         // Pas pour le bouton ⟳ ni la synchro « voie » : elles doivent être rapides.
         if (!manuel && !voie) { try { MiseAJour.enArrierePlan(ctx); } catch (Exception ignore) { } }
@@ -157,14 +175,14 @@ public class SyncWorker extends Worker {
                 ponts[0] = pont;
                 pont.finSynchro = fin::countDown;
                 w.addJavascriptInterface(pont, "BoulotAndroid");
-                w.loadUrl(MainActivity.ACCUEIL + (voie ? "?sync=voie" : "?sync=1"));
+                w.loadUrl(MainActivity.ACCUEIL + (retards ? "?sync=rt" : voie ? "?sync=voie" : "?sync=1"));
             } catch (Exception e) {
                 fin.countDown();
             }
         });
 
         boolean aTemps = false;
-        try { aTemps = fin.await(voie ? DELAI_VOIE_S : manuel ? DELAI_MANUEL_S : DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
+        try { aTemps = fin.await(retards ? DELAI_RETARDS_S : voie ? DELAI_VOIE_S : manuel ? DELAI_MANUEL_S : DELAI_MAX_S, TimeUnit.SECONDS); } catch (InterruptedException ignore) { }
         final boolean ok = aTemps && ponts[0] != null && ponts[0].syncOk;
 
         // Laisse le temps à la page d'envoyer les journées au widget, puis libère tout
