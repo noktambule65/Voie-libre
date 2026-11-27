@@ -3222,10 +3222,11 @@ function rtEtatEq(j,num){ if(!j || !rtOn() || !num) return null; const k=j+'|'+S
 // demandée (départ, ou arrivée pour un EQ PREND). an = 1 : train supprimé ; x : arrêt supprimé à cette gare.
 function tnEtat(k){ let e=null; try{ e=voLire()[k]; }catch(_){} if(!e || !e.ts) return null;
   return {sup:!!e.sup, r:Math.max(0,Math.round((+e.rd||0)/60)), t:+e.ts}; }
-// Les deux sources ensemble : suppression dès que l'une l'annonce ; retard, l'info la plus récente
-// (le flux SNCF garde le détail : terminus avancé, origine retardée, retard sur tout le trajet)
+// Les deux sources ensemble : suppression dès que l'une l'annonce ; retard, l'info la plus récente. Train Nomade
+// sans retard n'efface jamais un retard du flux SNCF (le retard n'y est pas toujours donné, à l'arrivée surtout) :
+// c'est le flux SNCF, relu dans ce cas, qui dit si le retard est résorbé. Il garde aussi le détail (terminus avancé…).
 function rtFusion(e, tn){
-  if(!tn) return e;
+  if(!tn || (!tn.sup && tn.r<1 && e)) return e;
   if(tn.sup) return e && e.e==='sup' ? e : {e:'sup', r:0, max:e?e.max||0:0, t:tn.t, tn:1};
   if(!e) return tn.r>=1 ? {e:'ret', r:tn.r, max:tn.r, t:tn.t, tn:1} : null;
   if(tn.t<=(e.t||0) || e.e==='sup') return e;
@@ -3370,7 +3371,11 @@ function rtMaj(forcer){
         const r=re(tr.n), cand=flux.filter(tu=>r.test(tu.id) && Math.abs(rtEcartJours(tu.date,tr.ta))<=1);
         if(!cand.length) return;
         cand.sort((u,v)=>Math.abs(rtEcartJours(u.date,tr.ta))-Math.abs(rtEcartJours(v.date,tr.ta)));
-        const c=tr.arr?rtCalculEq(cand[0],tr):rtCalcul(cand[0],tr), k=tr.j+'|'+tr.n+(tr.arr?'|a':''), av=H[k]||{};
+        const k=tr.j+'|'+tr.n+(tr.arr?'|a':''), av=H[k]||{};
+        // train arrivé (ou EQ PREND passé), retard compris : son état est gardé tel quel (le flux ne garde que les
+        // arrêts à venir, une relecture ne dirait plus rien de juste sur le trajet fait)
+        if(av.t && now>tr.tb+((av.r||0)+5)*60e3) return;
+        const c=tr.arr?rtCalculEq(cand[0],tr):rtCalcul(cand[0],tr);
         const nv={e:c.e, r:c.r, max:Math.max(av.max||0, c.r), t:now}; if(c.cut){ nv.cut=c.cut; nv.tc=c.tc; }
         if(av.e!==nv.e || av.r!==nv.r || av.max!==nv.max || av.cut!==nv.cut || av.tc!==nv.tc) change=true;
         H[k]=nv; });
