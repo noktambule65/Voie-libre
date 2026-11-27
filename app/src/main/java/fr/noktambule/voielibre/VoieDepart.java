@@ -91,6 +91,11 @@ final class VoieDepart {
         return tr.optLong("t") + APRES + Math.min(60, Math.max(0, Math.round(e.optLong("rd") / 60.0))) * MIN;
     }
 
+    /** Fin du suivi d'un train (voir fin()) : au-delà, plus de notification de voie. */
+    static long finSuivi(Context ctx, JSONObject tr) {
+        try { return fin(tr, etat(tr, memoire(ctx))); } catch (Exception e) { return tr.optLong("t") + APRES; }
+    }
+
     /** Train supprimé d'après Train Nomade (voie ni montrée ni notifiée). */
     static boolean supprime(Context ctx, JSONObject tr) {
         try { return etat(tr, memoire(ctx)).optBoolean("sup"); } catch (Exception e) { return false; }

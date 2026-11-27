@@ -3546,7 +3546,7 @@ function voMaj(forcer){
             if(av.v!==nv.v || av.av!==nv.av){ change=true;
               // notification (si activée) : l'appli Android filtre selon les réglages et n'avertit qu'une fois par voie ;
               // jamais pour un train supprimé
-              if(av.v!==nv.v && !nv.sup) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, a:!!t.arr, v:nv.v, av:nv.av||''})); }catch(_){} } }
+              if(av.v!==nv.v && !nv.sup) try{ const A=window.BoulotAndroid; if(A&&A.notifierVoie) A.notifierVoie(JSON.stringify({t:t.ta, u:t.uic, n:t.n, j:t.j, g:t.g, e:!!t.e, a:!!t.arr, v:nv.v, av:nv.av||'', rd:+nv.rd||0, ts:+nv.ts||0})); }catch(_){} } }
           nv.tq=now; H[k]=nv; }); });
       try{ if(ok){ localStorage.setItem('vl-voie-ok', String(now)); if(!err) localStorage.removeItem('vl-voie-err'); }
         if(err) localStorage.setItem('vl-voie-err', String(now)+'|'+err.slice(0,120)); }catch(e){}

@@ -383,7 +383,8 @@ public class Notifs extends BroadcastReceiver {
             if (!arrivee && tr.optBoolean("e") && !r.optBoolean("ev", true)) return;
             long t = tr.optLong("t");
             long now = System.currentTimeMillis();
-            if (t > 0 && now > t + 2 * 60_000L) return;                  // train parti
+            long parti = VoieDepart.finSuivi(ctx, tr);                    // 2 min après le départ, plus le retard connu
+            if (t > 0 && now > parti) return;                              // train parti
             if (VoieDepart.supprime(ctx, tr)) return;                     // train supprimé : pas de voie trompeuse
             String u = tr.optString("u");
             JSONArray g = r.optJSONArray("gares");
@@ -399,7 +400,7 @@ public class Notifs extends BroadcastReceiver {
             if (!sansAttente && r.optBoolean("differer", true)) {
                 long fin = finCabine(cabine(donnees(ctx)), now);
                 if (fin > 0) {
-                    if (t > 0 && fin > t + 2 * 60_000L) return;
+                    if (t > 0 && fin > parti) return;
                     JSONObject att = new JSONObject(prefs(ctx).getString("voiesAttente", "{}"));
                     att.put(k, new JSONObject().put("tr", tr).put("v", v).put("fin", fin));
                     prefs(ctx).edit().putString("voiesAttente", att.toString()).apply();
