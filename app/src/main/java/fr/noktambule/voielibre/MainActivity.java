@@ -440,7 +440,11 @@ public class MainActivity extends Activity {
     static volatile boolean visible = false;
 
     @Override
-    protected void onPause() { super.onPause(); Pont.etape(this, "⏸ appli en pause", false); visible = false; chien.removeCallbacks(veille); if (web != null) web.onPause(); }
+    protected void onPause() {
+        super.onPause(); Pont.etape(this, "⏸ appli en pause", false); visible = false; chien.removeCallbacks(veille);
+        // le widget reprend ce que l'appli vient de montrer (voie, retard, suppression trouvés appli ouverte)
+        if (web != null) { try { web.evaluateJavascript("window.vlSortie&&window.vlSortie()", null); } catch (Exception ignore) { } web.onPause(); }
+    }
 
     // ---------- Chien de garde (diagnostic) : repère une page figée ou un écran Android bloqué, et note où ----------
     private final Handler chien = new Handler(Looper.getMainLooper());

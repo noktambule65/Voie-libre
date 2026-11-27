@@ -2923,8 +2923,9 @@ function rendre(){
   const jour=JOUR;
   Promise.all(liste.flatMap(lieuxDuJour).map(chargerMeteo)).then(r=>{ if(r.some(Boolean) && JOUR===jour) rendre(); });
   // retards et suppressions : flux relu (au plus toutes les 100 s), journée redessinée si un état change
-  if(tnOn() && Math.abs(diff)<=1) voMaj().then(ch=>{ if(ch && JOUR===jour && MODE!=='mois'){ rendre(); try{ window.exporterWidget(true,true); }catch(e){} } });
-  if(rtOn() && Math.abs(diff)<=1) rtMaj().then(ch=>{ if(ch && JOUR===jour && MODE!=='mois'){ rendre(); try{ window.exporterWidget(true,true); }catch(e){} } });
+  // voie, retard ou suppression nouveaux : le widget est redessiné même si on a changé de vue entre-temps
+  if(tnOn() && Math.abs(diff)<=1) voMaj().then(ch=>{ if(!ch) return; if(JOUR===jour && MODE!=='mois') rendre(); try{ window.exporterWidget(true,true); }catch(e){} });
+  if(rtOn() && Math.abs(diff)<=1) rtMaj().then(ch=>{ if(!ch) return; if(JOUR===jour && MODE!=='mois') rendre(); try{ window.exporterWidget(true,true); }catch(e){} });
 }
 /* ---- Réveils (appli Android) : réveil et départ, délais selon le lieu de PS (Paramètres) ---- */
 const REVEIL_DEFAUT={defaut:{r:60,d:30}, lieux:{}};
@@ -4415,6 +4416,9 @@ let courante=null;
 // Cadre de la rubrique affichée (écran maintenu allumé seulement pour elle, dans l'appli Android)
 window.__boulotCadreVisible=()=>courante && CADRES[courante.app] ? CADRES[courante.app].f : null;
 const ecran=()=>{ try{ window.__boulotEcran && window.__boulotEcran(); }catch(e){} };
+// L'appli passe en arrière-plan (appelé par l'appli Android) : le widget reprend tout ce que l'appli sait
+// (voies, retards, suppressions…) ; signature inchangée : rien n'est redessiné
+window.vlSortie=function(){ try{ const c=CADRES.journee; if(c && c.pret && c.f.contentWindow.exporterWidget) c.f.contentWindow.exporterWidget(false,true); }catch(e){} };
 function cadre(app, pret){
   if(CADRES[app]){ if(CADRES[app].pret) pret(CADRES[app].f); else CADRES[app].attente.push(pret); return CADRES[app].f; }
   const f=document.createElement('iframe');

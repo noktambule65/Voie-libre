@@ -18,7 +18,9 @@ import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ForegroundInfo;
 import androidx.work.NetworkType;
+import androidx.work.OutOfQuotaPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
@@ -85,12 +87,16 @@ public class SyncWorker extends Worker {
      * fermée. La page la reprend (sans redemander) et redessine le widget. Ni Graou, ni météo, ni flux des retards.
      */
     static void synchroVoie(Context ctx) {
+        // « urgente » : Android la lance tout de suite, même téléphone en veille (sinon elle pouvait attendre
+        // la prochaine fenêtre de maintenance, et le widget restait sans la voie ou le retard) ; quota épuisé :
+        // synchro ordinaire
         OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
                 .setInputData(new Data.Builder().putBoolean(VOIE, true).build())   // pas de réseau nécessaire
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build();
-        // à la suite d'une synchro « retards » en attente (qui fait déjà ce travail), sans la remplacer
+        // une synchro « voie » ou « retards » déjà en attente fait ce travail : gardée
         WorkManager.getInstance(ctx.getApplicationContext())
-                .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.APPEND_OR_REPLACE, r);
+                .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.KEEP, r);
     }
 
     /**
@@ -101,9 +107,31 @@ public class SyncWorker extends Worker {
     static void synchroRetards(Context ctx) {
         OneTimeWorkRequest r = new OneTimeWorkRequest.Builder(SyncWorker.class)
                 .setInputData(new Data.Builder().putBoolean(RETARDS, true).build())
+                .setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)   // tout de suite, même en veille
                 .build();
         WorkManager.getInstance(ctx.getApplicationContext())
                 .enqueueUniqueWork("synchro-voie", ExistingWorkPolicy.REPLACE, r);
+    }
+
+    /**
+     * Android 10 et 11 : une synchro urgente tourne comme service de premier plan, avec une notification discrète
+     * le temps de la synchro (Android 12 et plus : sans notification).
+     */
+    @NonNull
+    @Override
+    public ForegroundInfo getForegroundInfo() {
+        Context ctx = getApplicationContext();
+        android.app.NotificationManager nm = (android.app.NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.createNotificationChannel(new android.app.NotificationChannel("synchro", "Mise à jour du widget",
+                android.app.NotificationManager.IMPORTANCE_MIN));
+        android.app.Notification n = new android.app.Notification.Builder(ctx, "synchro")
+                .setSmallIcon(R.drawable.ic_notif)
+                .setContentTitle("Voie libre")
+                .setContentText("Mise à jour du widget…")
+                .setOngoing(true)
+                .build();
+        return new ForegroundInfo(3020, n);
     }
 
     @NonNull
