@@ -34,6 +34,8 @@ import java.util.Map;
  * suppression ou un retard que le flux SNCF ne montrait pas à la page (rr, rs), la page est relancée en synchro
  * « retards » : elle relit ce flux (détail du trajet) et redessine le widget. Un train supprimé n'est plus suivi,
  * et sa voie n'est ni montrée ni notifiée.
+ * EQ PREND : le train à relever roule déjà ; la gare de relève est lue dès 45 min avant, toutes les 10 min jusqu'à
+ * −20 min, pour savoir tôt s'il arrive en retard.
  *
  * Source : API publique Train Nomade, https://api.trainnomade.fr/gare/{UIC}.json (données SNCF, ODbL, sans clé).
  */
@@ -44,7 +46,8 @@ final class VoieDepart {
     static final String PREFS = "voie-depart";
     private static final String URL_GARE = "https://api.trainnomade.fr/gare/";
     private static final long MIN = 60_000L;
-    static final long AVANT = 20 * MIN, VERIF = 5 * MIN, APRES = 2 * MIN, SUIVI = 2 * MIN, RT_ECART = 3 * MIN;
+    static final long AVANT = 20 * MIN, VERIF = 5 * MIN, APRES = 2 * MIN, SUIVI = 2 * MIN, RT_ECART = 3 * MIN,
+            AVANT_EQ = 45 * MIN, TOT = 10 * MIN;
     /** Résultat de verifier() : voie, retard ou suppression à redessiner ; flux SNCF des retards à relire. */
     static final int VOIE = 1, RETARDS = 2;
 
@@ -77,7 +80,8 @@ final class VoieDepart {
         JSONObject src = m != null && m.optLong("ts") >= tr.optLong("ts") ? m : tr;
         try {
             e.put("sup", vrai(src, "sup")).put("rd", src.optLong("rd")).put("ts", src.optLong("ts"))
-                    .put("tg", m != null && !m.optString("tg").isEmpty() ? m.optString("tg") : tr.optString("tg"));
+                    .put("tg", m != null && !m.optString("tg").isEmpty() ? m.optString("tg") : tr.optString("tg"))
+                    .put("tq", Math.max(Math.max(m != null ? m.optLong("tq") : 0, tr.optLong("tq")), src.optLong("ts")));
         } catch (Exception ignore) { }
         return e;
     }
@@ -153,12 +157,16 @@ final class VoieDepart {
             JSONObject e = etat(tr, mem);
             long f = fin(tr, e);
             if (t <= 0 || now > f || e.optBoolean("sup")) continue;
-            long c = 0;
+            long c = 0, tq = e.optLong("tq");
             if (op[0] && !connue(tr, mem)) c = Math.max(t - AVANT, now + MIN);
             else if (op[0] && !verifiee(tr, mem)) c = Math.max(t - VERIF, now + 5000);
             if (op[1]) {                                                  // retard et suppression : toutes les 2 min
-                long s = Math.max(Math.max(t - AVANT, e.optLong("ts") + SUIVI), now + 5000);
+                long s = Math.max(Math.max(t - AVANT, tq + SUIVI), now + 5000);
                 c = c == 0 ? s : Math.min(c, s);
+            }
+            if (tr.optBoolean("a")) {                                     // EQ PREND, de −45 à −20 min : toutes les 10 min
+                long s = Math.max(Math.max(t - AVANT_EQ, tq + TOT), now + 5000);
+                if (s < t - AVANT) c = c == 0 ? s : Math.min(c, s);
             }
             if (c == 0 || c > f) continue;
             if (q == 0 || c < q) q = c;
@@ -183,11 +191,17 @@ final class VoieDepart {
             if (tr == null || tr.optString("u").isEmpty()) continue;
             long t = tr.optLong("t");
             JSONObject e = etat(tr, mem);
-            if (e.optBoolean("sup") || now > fin(tr, e) || now < t - AVANT - 30_000) continue;
-            boolean c = connue(tr, mem);
-            if ((op[0] && !c) || (op[0] && !verifiee(tr, mem) && now >= t - VERIF - 30_000)
-                    || (op[1] && now - e.optLong("ts") >= SUIVI - 15_000))
-                gares.put(tr.optString("u"), true);
+            boolean eq = tr.optBoolean("a");
+            if (e.optBoolean("sup") || now > fin(tr, e) || now < t - (eq ? AVANT_EQ : AVANT) - 30_000) continue;
+            long tq = e.optLong("tq");
+            boolean du;
+            if (now < t - AVANT - 30_000) du = now - tq >= TOT - 15_000;   // EQ PREND en avance : toutes les 10 min
+            else {
+                boolean c = connue(tr, mem);
+                du = (op[0] && !c) || (op[0] && !verifiee(tr, mem) && now >= t - VERIF - 30_000)
+                        || (op[1] && now - tq >= SUIVI - 15_000);
+            }
+            if (du) gares.put(tr.optString("u"), true);
         }
         if (gares.isEmpty()) return 0;
         int res = 0;
@@ -210,7 +224,8 @@ final class VoieDepart {
                 try {
                     JSONObject nv = av != null ? new JSONObject(av.toString()) : new JSONObject();
                     JSONObject e0 = etat(tr, mem);
-                    boolean touche = false, sup = e0.optBoolean("sup");
+                    boolean touche = true, sup = e0.optBoolean("sup");
+                    nv.put("tq", now);                                        // dernière demande pour ce train
                     // retard et suppression à cette gare
                     if (p != null) {
                         sup = vrai(p, "an") || vrai(p, "x");
