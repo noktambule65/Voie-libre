@@ -383,7 +383,7 @@ public class Notifs extends BroadcastReceiver {
             if (!arrivee && tr.optBoolean("e") && !r.optBoolean("ev", true)) return;
             long t = tr.optLong("t");
             long now = System.currentTimeMillis();
-            long parti = VoieDepart.finSuivi(ctx, tr);                    // 2 min après le départ, plus le retard connu
+            long parti = VoieDepart.finSuivi(ctx, tr);                    // fin de la recherche de la voie (retard + 10 min)
             if (t > 0 && now > parti) return;                              // train parti
             if (VoieDepart.supprime(ctx, tr)) return;                     // train supprimé : pas de voie trompeuse
             String u = tr.optString("u");

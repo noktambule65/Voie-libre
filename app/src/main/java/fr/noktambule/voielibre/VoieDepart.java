@@ -30,7 +30,8 @@ import java.util.Map;
  *
  * Retards et suppressions (option de Paramètres) : la même réponse donne an (train supprimé), x (arrêt supprimé à
  * cette gare), rd / ra (retard au départ / à l'arrivée, en s). Dans les 20 min avant le départ, la gare est relue
- * toutes les 2 min jusqu'au départ (plus tard si le train est en retard, 1 h au plus). Si Train Nomade annonce une
+ * toutes les 2 min jusqu'au départ prévu. Train en retard dont la voie n'est pas encore annoncée : elle est cherchée
+ * jusqu'à l'heure prévue + retard + 10 min (retard d'1 h au plus) ; une fois connue, plus de demande. Si Train Nomade annonce une
  * suppression ou un retard que le flux SNCF ne montrait pas à la page (rr, rs), la page est relancée en synchro
  * « retards » : elle relit ce flux (détail du trajet) et redessine le widget. Un train supprimé n'est plus suivi,
  * et sa voie n'est ni montrée ni notifiée.
@@ -47,7 +48,7 @@ final class VoieDepart {
     private static final String URL_GARE = "https://api.trainnomade.fr/gare/";
     private static final long MIN = 60_000L;
     static final long AVANT = 20 * MIN, VERIF = 5 * MIN, APRES = 2 * MIN, SUIVI = 2 * MIN, RT_ECART = 3 * MIN,
-            AVANT_EQ = 45 * MIN, TOT = 10 * MIN;
+            AVANT_EQ = 45 * MIN, TOT = 10 * MIN, APRES_RETARD = 10 * MIN;
     /** Résultat de verifier() : voie, retard ou suppression à redessiner ; flux SNCF des retards à relire. */
     static final int VOIE = 1, RETARDS = 2;
 
@@ -86,14 +87,21 @@ final class VoieDepart {
         return e;
     }
 
-    /** Fin du suivi : 2 min après le départ, plus le retard connu (1 h au plus). */
-    private static long fin(JSONObject tr, JSONObject e) {
-        return tr.optLong("t") + APRES + Math.min(60, Math.max(0, Math.round(e.optLong("rd") / 60.0))) * MIN;
+    /** Fin du suivi (retard, suppression, vérification de la voie) : 2 min après l'heure de départ prévue. */
+    private static long fin(JSONObject tr) { return tr.optLong("t") + APRES; }
+
+    /**
+     * Fin de la recherche de la voie, tant qu'elle n'est pas connue : 2 min après l'heure prévue ; train en retard :
+     * heure prévue + retard connu (1 h au plus) + 10 min. Une fois la voie connue, plus de demande après l'heure prévue.
+     */
+    private static long finVoie(JSONObject tr, JSONObject e) {
+        long r = Math.min(60, Math.max(0, Math.round(e.optLong("rd") / 60.0))) * MIN;
+        return r > 0 ? tr.optLong("t") + r + APRES_RETARD : tr.optLong("t") + APRES;
     }
 
-    /** Fin du suivi d'un train (voir fin()) : au-delà, plus de notification de voie. */
+    /** Au-delà, plus de notification de voie : fin de la recherche de la voie (voir finVoie()). */
     static long finSuivi(Context ctx, JSONObject tr) {
-        try { return fin(tr, etat(tr, memoire(ctx))); } catch (Exception e) { return tr.optLong("t") + APRES; }
+        try { return Math.max(fin(tr), finVoie(tr, etat(tr, memoire(ctx)))); } catch (Exception e) { return fin(tr); }
     }
 
     /** Train supprimé d'après Train Nomade (voie ni montrée ni notifiée). */
@@ -160,20 +168,24 @@ final class VoieDepart {
             if (tr == null) continue;
             long t = tr.optLong("t");
             JSONObject e = etat(tr, mem);
-            long f = fin(tr, e);
-            if (t <= 0 || now > f || e.optBoolean("sup")) continue;
-            long c = 0, tq = e.optLong("tq");
-            if (op[0] && !connue(tr, mem)) c = Math.max(t - AVANT, now + MIN);
-            else if (op[0] && !verifiee(tr, mem)) c = Math.max(t - VERIF, now + 5000);
+            if (t <= 0 || e.optBoolean("sup")) continue;
+            long f = fin(tr), fv = finVoie(tr, e), c = 0, tq = e.optLong("tq");
+            if (op[0] && !connue(tr, mem)) {                              // voie cherchée chaque minute
+                long s = Math.max(t - AVANT, now + MIN);
+                if (s <= fv) c = s;
+            } else if (op[0] && !verifiee(tr, mem)) {                     // vérification à −5 min
+                long s = Math.max(t - VERIF, now + 5000);
+                if (s <= f) c = s;
+            }
             if (op[1]) {                                                  // retard et suppression : toutes les 2 min
                 long s = Math.max(Math.max(t - AVANT, tq + SUIVI), now + 5000);
-                c = c == 0 ? s : Math.min(c, s);
+                if (s <= f) c = c == 0 ? s : Math.min(c, s);
             }
             if (tr.optBoolean("a")) {                                     // EQ PREND, de −45 à −20 min : toutes les 10 min
                 long s = Math.max(Math.max(t - AVANT_EQ, tq + TOT), now + 5000);
                 if (s < t - AVANT) c = c == 0 ? s : Math.min(c, s);
             }
-            if (c == 0 || c > f) continue;
+            if (c == 0) continue;
             if (q == 0 || c < q) q = c;
         }
         return q;
@@ -197,14 +209,15 @@ final class VoieDepart {
             long t = tr.optLong("t");
             JSONObject e = etat(tr, mem);
             boolean eq = tr.optBoolean("a");
-            if (e.optBoolean("sup") || now > fin(tr, e) || now < t - (eq ? AVANT_EQ : AVANT) - 30_000) continue;
+            if (e.optBoolean("sup") || now < t - (eq ? AVANT_EQ : AVANT) - 30_000) continue;
             long tq = e.optLong("tq");
             boolean du;
             if (now < t - AVANT - 30_000) du = now - tq >= TOT - 15_000;   // EQ PREND en avance : toutes les 10 min
             else {
-                boolean c = connue(tr, mem);
-                du = (op[0] && !c) || (op[0] && !verifiee(tr, mem) && now >= t - VERIF - 30_000)
-                        || (op[1] && now - tq >= SUIVI - 15_000);
+                boolean c = connue(tr, mem), avantFin = now <= fin(tr);
+                du = (op[0] && !c && now <= finVoie(tr, e))               // voie : jusqu'à son annonce (retard + 10 min)
+                        || (avantFin && op[0] && c && !verifiee(tr, mem) && now >= t - VERIF - 30_000)
+                        || (avantFin && op[1] && now - tq >= SUIVI - 15_000);
             }
             if (du) gares.put(tr.optString("u"), true);
         }
@@ -255,7 +268,7 @@ final class VoieDepart {
                         String vAvant = av != null && !av.optString("v").isEmpty() ? av.optString("v") : tr.optString("v");
                         String avAvant = av != null && !av.optString("v").isEmpty() ? av.optString("av") : tr.optString("av");
                         String v = p != null ? p.optString("v", "").trim() : "";
-                        boolean verifDue = !vAvant.isEmpty() && now >= t - VERIF - 30_000 && now <= fin(tr, e0);
+                        boolean verifDue = !vAvant.isEmpty() && now >= t - VERIF - 30_000 && now <= fin(tr);
                         if (!v.isEmpty() || verifDue) {
                             String vv = v.isEmpty() ? vAvant : v;
                             nv.put("v", vv);

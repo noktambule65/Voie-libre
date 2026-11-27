@@ -3409,7 +3409,8 @@ function conso(type, octets){
    - voie connue : plus rien, sauf une vérification 5 min avant le départ (changement de voie).
    Retards et suppressions (option Retards) : la même réponse donne aussi an (train supprimé), x (arrêt supprimé
    à cette gare), rd / ra (retard au départ / à l'arrivée, en s). Dans les 20 min avant le départ, la gare est
-   relue toutes les 2 min jusqu'au départ (plus tard si le train est en retard, 1 h au plus) ; si Train Nomade
+   relue toutes les 2 min jusqu'au départ prévu (train en retard dont la voie n'est pas encore annoncée : elle est
+   cherchée jusqu'à l'heure prévue + retard + 10 min, puis plus rien une fois connue) ; si Train Nomade
    annonce une suppression ou un retard que le flux SNCF ne montre pas encore, ce flux est relu aussitôt
    (détail : terminus avancé, retard sur le trajet). Le train supprimé n'est plus suivi et sa voie n'est plus montrée.
    EQ PREND : le train à relever roule déjà, son retard se sait tôt ; la gare de relève est lue dès 45 min avant,
@@ -3489,7 +3490,11 @@ function voExport(now){
     if(r){ o.rr=r.r||0; if(r.e==='sup') o.rs=1; } return o; }); }
 let VO_EN_COURS=null;
 // fin du suivi d'un train : 2 min après le départ, plus son retard connu (1 h au plus)
-function voFin(t,e){ return t.ta+VO_APRES+Math.min(60,Math.max(0,Math.round((+(e&&e.rd)||0)/60)))*60e3; }
+// fin du suivi (retard, suppression, vérification de la voie) : 2 min après l'heure de départ prévue
+function voFin(t){ return t.ta+VO_APRES; }
+// fin de la recherche de la voie tant qu'elle n'est pas connue : train en retard, heure prévue + retard (1 h au plus)
+// + 10 min ; sinon 2 min après l'heure prévue. Une fois la voie connue, plus de demande après l'heure prévue.
+function voFinVoie(t,e){ const r=Math.min(60,Math.max(0,Math.round((+(e&&e.rd)||0)/60))); return r>0?t.ta+r*60e3+10*60e3:t.ta+VO_APRES; }
 // passage du train à la gare dans une réponse de Train Nomade : même numéro, heure prévue la plus proche (45 min au plus) ;
 // départ : heure de départ ; EQ PREND : heure d'arrivée (de passage s'il continue)
 function voPassage(o,t){
@@ -3505,9 +3510,10 @@ function voMaj(forcer){
   const fus=voFusion(), now=Date.now(), H0=voLire(), vo=voOn(), rt=rtOn();
   const tous=voTrains(now-VO_APRES-3600e3, now+4*3600e3);
   const dus=tous.filter(t=>{ const e=H0[voCle(t)]||{}, tq=Math.max(+e.tq||0,+e.ts||0);
-    if(e.sup || now>voFin(t,e) || now<t.ta-(t.arr?VO_AVANT_EQ:VO_AVANT)-30e3) return false;
+    if(e.sup || now<t.ta-(t.arr?VO_AVANT_EQ:VO_AVANT)-30e3) return false;
     if(now<t.ta-VO_AVANT-30e3) return now-tq>=VO_TOT-15e3;             // EQ PREND, de −45 à −20 min : toutes les 10 min
-    if(vo && !e.v) return true;                                         // voie cherchée chaque minute
+    if(vo && !e.v) return now<=voFinVoie(t,e);                          // voie cherchée chaque minute (retard + 10 min)
+    if(now>voFin(t)) return false;
     if(vo && !e.k && now>=t.ta-VO_VERIF-30e3) return true;             // vérification à −5 min
     return rt && now-tq>=VO_SUIVI-15e3; });                              // retard et suppression : toutes les 2 min
   if(!dus.length) return Promise.resolve(fus);
@@ -3538,7 +3544,7 @@ function voMaj(forcer){
               if(((sup && !(r && r.e==='sup')) || Math.abs(Math.round(rd/60)-rr)>=2) && nv.tg!==sig){ nv.tg=sig; relire=true; } } }
           // voie
           const v=vo && c ? String(c.v||'').trim() : '';
-          const verif=vo && !!av.v && now>=t.ta-VO_VERIF-30e3 && now<=voFin(t,av);
+          const verif=vo && !!av.v && now>=t.ta-VO_VERIF-30e3 && now<=voFin(t);
           if(v || verif){
             const vv=v||av.v; nv.v=vv; nv.t=now;
             if(av.v && av.v!==vv) nv.av=av.v; else if(av.av && av.av!==vv) nv.av=av.av; else delete nv.av;
