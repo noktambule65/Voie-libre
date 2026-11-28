@@ -3315,7 +3315,7 @@ function rtCalculEq(tu, tr){
   const L=tu.arrets, u=String(tr.uic||'');
   let s=u?L.find(a=>String(a.gare||'').indexOf(u)>=0):null;
   if(!s){ let bz=5*60e3+1; L.forEach(a=>{ const e=a.arr||a.dep; if(!e||!e.t) return; const z=Math.abs((e.t-(e.r||0))*1000-tr.ta); if(z<bz){ bz=z; s=a; } }); }
-  if(!s){ const c=rtCalcul(tu,tr); return c.e==='part'?{e:c.r>=1?'ret':'ok', r:c.r}:c; }
+  if(!s){ const c=rtCalcul(tu,tr); return c.e==='part'?{e:c.r>=1?'ret':'ok', r:c.r, src:'autre'}:Object.assign(c,{src:'autre'}); }
   if(s.rel===1) return {e:'sup', r:0};
   const e=s.arr&&s.arr.r!=null?s.arr:s.dep, r=Math.max(0,Math.round(((e&&e.r!=null)?e.r:(tu.retard||0))/60));
   return {e:r>=1?'ret':'ok', r}; }
@@ -3344,7 +3344,8 @@ function rtCalcul(tu, tr){
       if(tc!==null){ if(tc>=tr.tb-marge) return {e:'sup', r:0}; if(tc>tr.ta+marge) return {e:'part', r, cut:'deb', tc}; } }
     if((finSup||debSup) && (finSup?prevuDe(L[i1]):prevuDe(L[i0]))===null) return {e:'part', r};   // limite inconnue : toute la barre
   }
-  return {e:r>=1?'ret':'ok', r};
+  // src « autre » : aucun arrêt de mon trajet dans le flux (déjà passés), retard pris sur d'autres arrêts
+  return {e:r>=1?'ret':'ok', r, src:max!==null?'trajet':'autre'};
 }
 // date AAAAMMJJ du flux → écart en jours avec la date du trajet
 function rtEcartJours(date, t){ if(!/^\d{8}$/.test(date||'')) return 0;
@@ -3372,10 +3373,11 @@ function rtMaj(forcer){
         if(!cand.length) return;
         cand.sort((u,v)=>Math.abs(rtEcartJours(u.date,tr.ta))-Math.abs(rtEcartJours(v.date,tr.ta)));
         const k=tr.j+'|'+tr.n+(tr.arr?'|a':''), av=H[k]||{};
-        // train arrivé (ou EQ PREND passé), retard compris : son état est gardé tel quel (le flux ne garde que les
-        // arrêts à venir, une relecture ne dirait plus rien de juste sur le trajet fait)
-        if(av.t && now>tr.tb+((av.r||0)+5)*60e3) return;
         const c=tr.arr?rtCalculEq(cand[0],tr):rtCalcul(cand[0],tr);
+        // trajet commencé (ou EQ PREND passé) et plus aucun de ses arrêts dans le flux, qui ne garde que les arrêts
+        // à venir : le dernier état connu est gardé (le retard d'arrêts plus lointains ne dirait rien de mon trajet).
+        // Tant que mes arrêts y sont, même après l'heure prévue (train en retard), ils sont relus.
+        if(av.t && c.src==='autre' && c.e!=='sup' && now>tr.ta) return;
         const nv={e:c.e, r:c.r, max:Math.max(av.max||0, c.r), t:now}; if(c.cut){ nv.cut=c.cut; nv.tc=c.tc; }
         if(av.e!==nv.e || av.r!==nv.r || av.max!==nv.max || av.cut!==nv.cut || av.tc!==nv.tc) change=true;
         H[k]=nv; });
